@@ -1,14 +1,18 @@
+### iterative quantile binning functions
 
-# library(tidyverse)
-# library(ggplot2)
-# library(dplyr)
+## Function List
+# quant_bin_1d for quantile binning in one dimension
+# make_stack_matrix helper funtion for iterative binner to create stacking J matrices
+
+
+# Note: a #!# tag will be added on items that need improved efficiency/clarity
 
 #--------------------------------------
 ## Quantile 1d Binning
 # used for binning the counts values by quantile
 # define vector of counts and number of bin
 # xs <- diamonds$price; nbin=4
-quant_bin_1d <- function(xs, nbin, output="labels"){
+quant_bin_1d <- function(xs, nbin, output="data"){
   quants <- quantile(xs, seq(0, 1, by=1/(2*nbin)))
   bin_centers <- quants[seq(2,length(quants)-1, by=2)]
   bin_bounds <- quants[seq(1,length(quants)+1, by=2)]
@@ -19,17 +23,18 @@ quant_bin_1d <- function(xs, nbin, output="labels"){
     for (i in 2:length(bin_centers)){
       data_bins[bin_bounds[i] < xs] <- bin_centers[i]
     } 
-    if(output=="labels") return(data_bins)
+    if(output=="data") return(data_bins)
     if(output=="both") return(list(data_bins=data_bins,bin_centers=bin_centers,bin_bounds=bin_bounds))
   }
 }
-quant_bin_1d(ggplot2::diamonds$price,4,output="labels")
+quant_bin_1d(ggplot2::diamonds$price,4,output="data")
 quant_bin_1d(ggplot2::diamonds$price,4,output="definition")
 quant_bin_1d(runif(1000,0,10),nbin=4,output="both")
 
 #--------------------------------------
 ## function to make a matrix for duplicating the N rows of a matrix M times each
 # support funciton for IQ binning function
+#!# Update later for speed 
 make_stack_matrix <- function(N,M){ 
   mat <- unname(model.matrix(~as.factor(rep(1:N,each=M))-(1)))
   attributes(mat)[2:3]<-NULL
@@ -39,7 +44,7 @@ make_stack_matrix(3,4)
 
 ### Iterative Quantile Binning
 # Input:
-#   dat = data to be binned
+#   dat = data frame to be binned (will coerce matrix or tibble to simple data frame)
 #   cols = vector of column names of variables to iteratively bin, ordered first to last
 #   nbins = vector of number of bins per step of iterative binning, ordered first to last
 iterativeQuantBin <- function(dat, cols, nbins, output="data"){
@@ -53,6 +58,7 @@ iterativeQuantBin <- function(dat, cols, nbins, output="data"){
                        nrow=nbins[1],byrow=FALSE )
   bin_centers <- matrix(step_bin_info$bin_centers, nrow=nbins[1])
   bin_dat[,1] <- step_bin_info$data_bins
+  # Loop over remaining variables to use quantile binning WITHIN each of previous state bins
   for(d in 2:bin_dim){
     stack_size <- nrow(bin_centers)
     stack_matrix <- make_stack_matrix(stack_size,nbins[d])
@@ -73,6 +79,9 @@ iterativeQuantBin <- function(dat, cols, nbins, output="data"){
   if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds))
   if(output=="both") return(list(bin_dat=cbind(dat,bin_dat), bin_centers=bin_centers, bin_bounds=bin_bounds))
 }
+
+#-----------------------------------------------------------------------------------------
+### Break from function writing to applications testing
 # Test on iris and diamonds data
 iterativeQuantBin(iris, cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="definition")
 library(ggplot2)
@@ -85,8 +94,9 @@ dat$Sepal.Length <- dat$Sepal.Length + runif(nrow(dat), -.001,.001)
 dat$Sepal.Width <- dat$Sepal.Width + runif(nrow(dat), -.001,.001)
 cols=c("Sepal.Length","Sepal.Width")
 mybins <- iterativeQuantBin(dat, cols, nbins=c(6,5), output="both")
+library(tidyverse)
 bin_aggs <- mybins$bin_dat %>%
-  group_by(Sepal.Length_binned,Sepal.Width_binned) %>%
+  dplyr::group_by(Sepal.Length_binned,Sepal.Width_binned) %>%
   dplyr::summarize(binAvg=mean(Petal.Length),
                    binSd=sd(Petal.Length),
                    binCount=n())
