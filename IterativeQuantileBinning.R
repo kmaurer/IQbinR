@@ -47,7 +47,7 @@ make_stack_matrix(3,4)
 #   dat = data frame to be binned (will coerce matrix or tibble to simple data frame)
 #   cols = vector of column names of variables to iteratively bin, ordered first to last
 #   nbins = vector of number of bins per step of iterative binning, ordered first to last
-iterativeQuantBin <- function(dat, cols, nbins, output="data"){
+iterative_quant_bin <- function(dat, cols, nbins, output="data"){
   dat <- as.data.frame(dat)
   bin_dim <- length(cols)
   bin_dat <- matrix(NA,nrow=nrow(dat),ncol=bin_dim, dimnames=list(row.names(dat),paste(cols,"binned",sep="_")))
@@ -80,12 +80,15 @@ iterativeQuantBin <- function(dat, cols, nbins, output="data"){
   if(output=="both") return(list(bin_dat=cbind(dat,bin_dat), bin_centers=bin_centers, bin_bounds=bin_bounds))
 }
 
+### Iterative Quantile Binning New Data from defined bins
+
+
 #-----------------------------------------------------------------------------------------
 ### Break from function writing to applications testing
 # Test on iris and diamonds data
-iterativeQuantBin(iris, cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="definition")
+iterative_quant_bin(iris, cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="definition")
 library(ggplot2)
-iterativeQuantBin(ggplot2::diamonds, cols=c("price","carat"), nbins=c(5,8), output="definition")
+iterative_quant_bin(ggplot2::diamonds, cols=c("price","carat"), nbins=c(5,8), output="definition")
 
 # try out plotting with them
 dat=iris
@@ -93,7 +96,7 @@ set.seed(123)
 dat$Sepal.Length <- dat$Sepal.Length + runif(nrow(dat), -.001,.001)
 dat$Sepal.Width <- dat$Sepal.Width + runif(nrow(dat), -.001,.001)
 cols=c("Sepal.Length","Sepal.Width")
-mybins <- iterativeQuantBin(dat, cols, nbins=c(6,5), output="both")
+mybins <- iterative_quant_bin(dat, cols, nbins=c(6,5), output="both")
 library(tidyverse)
 bin_aggs <- mybins$bin_dat %>%
   dplyr::group_by(Sepal.Length_binned,Sepal.Width_binned) %>%
@@ -131,8 +134,19 @@ p2 <- ggplot() +
   geom_jitter(aes_string(x=cols[1],y=cols[2],color="Petal.Length"),size=4,data=mybins$bin_dat)+
   theme_bw()
 
-rectbindata <- data.frame(x=StandRectBin1d(dat[,cols[1]],4.3,.5),
-           y=StandRectBin1d(dat[,cols[2]],4.3,.5),
+library(gridExtra)
+grid.arrange(p2,p1,nrow=1)
+
+library(devtools)
+install_github("kmaurer/BinPackage")
+help(package="BinPackage")
+library(BinPackage)
+
+xs <- ggplot2::diamonds$price; nbins=4; origin=min(xs); width=diff(range(xs))/nbins
+rect_bin_1d(rnorm(1000,0,1),origin=-4,width=1)
+
+rectbindata <- data.frame(x=rect_bin_1d(dat[,cols[1]],4.3,.5),
+           y=rect_bin_1d(dat[,cols[2]],4.3,.5),
            z=dat$Petal.Length) %>%
   group_by(x,y) %>%
   dplyr::summarize(avgZ = mean(z))
@@ -146,7 +160,7 @@ grid.arrange(p2,p1,p3,nrow=1)
 
 dat=diamonds
 cols=c("carat","depth")
-mybins <- iterativeQuantBin(dat, cols, nbins=c(11,10), output="both")
+mybins <- iterative_quant_bin(dat, cols, nbins=c(11,10), output="both")
 bin_aggs <- mybins$bin_dat %>%
   group_by(carat_binned,depth_binned) %>%
   dplyr::summarize(binAvg=mean(price),
@@ -172,7 +186,7 @@ names(dat1) <- str_replace_all(names(dat1)," ","")
 remove(.)
 dat=dat1
 cols=c("Aa","Ao")
-mybins <- iterativeQuantBin(dat, cols, nbins=c(4,4), output="both")
+mybins <- iterative_quant_bin(dat, cols, nbins=c(4,4), output="both")
 bin_aggs <- mybins$bin_dat %>%
   group_by(Aa_binned,Ao_binned) %>%
   dplyr::summarize(binAvg=mean(Iy),
