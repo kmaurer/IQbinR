@@ -1,26 +1,35 @@
-library(ggplot2)
-library(dplyr)
 
+# library(tidyverse)
+# library(ggplot2)
+# library(dplyr)
+
+#--------------------------------------
 ## Quantile 1d Binning
 # used for binning the counts values by quantile
 # define vector of counts and number of bin
-xs <- diamonds$price; nbin=4
+# xs <- diamonds$price; nbin=4
 quant_bin_1d <- function(xs, nbin, output="labels"){
   quants <- quantile(xs, seq(0, 1, by=1/(2*nbin)))
   bin_centers <- quants[seq(2,length(quants)-1, by=2)]
   bin_bounds <- quants[seq(1,length(quants)+1, by=2)]
   data_bins <- rep(bin_centers[1],length(xs))
-  for (i in 2:length(bin_centers)){
-    data_bins[bin_bounds[i] < xs] <- bin_centers[i]
-  } 
-  if(output=="labels") return(data_bins)
-  if(output=="definition") return(list(bin_centers=bin_centers,bin_bounds=bin_bounds))
-  if(output=="both") return(list(data_bins=data_bins,bin_centers=bin_centers,bin_bounds=bin_bounds))
+  if(output=="definition") {
+    return(list(bin_centers=bin_centers,bin_bounds=bin_bounds))
+  } else{
+    for (i in 2:length(bin_centers)){
+      data_bins[bin_bounds[i] < xs] <- bin_centers[i]
+    } 
+    if(output=="labels") return(data_bins)
+    if(output=="both") return(list(data_bins=data_bins,bin_centers=bin_centers,bin_bounds=bin_bounds))
+  }
 }
-quant_bin_1d(diamonds$price,4,output="labels")
+quant_bin_1d(ggplot2::diamonds$price,4,output="labels")
+quant_bin_1d(ggplot2::diamonds$price,4,output="definition")
 quant_bin_1d(runif(1000,0,10),nbin=4,output="both")
 
-# make a matrix for duplicating the N rows of a matrix M times each
+#--------------------------------------
+## function to make a matrix for duplicating the N rows of a matrix M times each
+# support funciton for IQ binning function
 make_stack_matrix <- function(N,M){ 
   mat <- unname(model.matrix(~as.factor(rep(1:N,each=M))-(1)))
   attributes(mat)[2:3]<-NULL
