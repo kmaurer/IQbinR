@@ -98,16 +98,8 @@ bin_by_IQdef <- finction(IQdef, new_data){
 # takes in data, response column and binning parameters
 library(dplyr)
 iqnn <- function(dat, y, bin_cols, nbins, jit=0){
+  ## make bins
   iq_bin<- iterative_quant_bin(dat, bin_cols, nbins, output="both",jit)
-  ## dplyr approach
-  # bin_cols_aug <- names(iq_bin$bin_dat)[!names(iq_bin$bin_dat) %in% names(dat)]
-  # iq_bin$bin_dat$y <- iq_bin$bin_dat[,y]
-  # bin_aggs <- iq_bin$bin_dat %>%
-  #   dplyr::group_by_(.dots=lazyeval::as.lazy_dots(bin_cols_aug, globalenv())) %>%
-  #   dplyr::summarize(binCount=n(),
-  #                    binAvg = mean(y,na.rm=TRUE))
-  # data.frame(bin_aggs)
-  
   ## For each bin, find indeces from original data where bins match, take average y value
   total_bins = nrow(iq_bin$bin_def$bin_centers)
   iq_bin$bin_def$bin_pred <- rep(NA,total_bins)
