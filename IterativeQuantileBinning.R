@@ -81,12 +81,13 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit=0){
   if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins))
   if(output=="both") return(list(bin_dat=list(dat=dat,bin_dat=bin_dat), bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins)))
 }
+iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="both",jit=0.001)
 
 
 ### Iterative Quantile Binning New Data from defined bins
 # Input must be IQ bin definition list from iterative_quant_bin
 # Take defined bins and identify the 
-iterative_quant_bin(ggplot2::diamonds, bin_cols=c("price","carat"), nbins=c(5,8), output="definition")
+iterative_quant_bin(ggplot2::diamonds, bin_cols=c("price","carat"), nbins=c(5,8), output="definition", jit=.001)
 
 bin_by_IQdef <- finction(IQdef, new_data){
   1
@@ -102,16 +103,18 @@ iqnn <- function(dat, y, bin_cols, nbins, jit=0){
   iq_bin<- iterative_quant_bin(dat, bin_cols, nbins, output="both",jit)
   ## For each bin, find indeces from original data where bins match, take average y value
   total_bins = nrow(iq_bin$bin_def$bin_centers)
-  iq_bin$bin_def$bin_pred <- rep(NA,total_bins)
+  iq_bin$bin_def$bin_stats <- data.frame(avg = rep(NA,total_bins),
+                                         obs = NA)
   for(b in 1:total_bins){
     match_matrix <- iq_bin$bin_dat$bin_dat == matrix(rep(iq_bin$bin_def$bin_centers[b,],nrow(dat)),ncol=3,byrow=TRUE)
-    iq_bin$bin_def$bin_pred[b] <- mean(dat[,y][match_matrix[,length(bin_cols)]],na.rm=TRUE)
+    temp_data <- dat[,y][match_matrix[,length(bin_cols)]]
+    iq_bin$bin_def$bin_stats[b,] <- c(mean(temp_data,na.rm=TRUE),length(temp_data))
   }
   ## Return bin definition with predictions added
   return(iq_bin$bin_def)
 }
-iq_bin<-iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="both",jit=0.001)
-iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=.001)
+iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
+mydat <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=.001)
 
 ### Cross Validation function for assessing 
 
