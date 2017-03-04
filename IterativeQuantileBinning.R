@@ -112,6 +112,7 @@ myiq
 ### Helper function for checking if a vector is in a p-dimensional bin, defined by 2*p boundaries
 # x = p-dimensional vector
 # bin_bounds = 2*p dimensional boundary matrix (like in iq-binning definition list)
+#!# need to adapt to allow bin allocations for observations outside of observed bins
 bin_index_finder <- function(x, bin_bounds){ 
   p = length(x)
   xrep_mat = matrix(rep(x,nrow(bin_bounds)),ncol=3,byrow=TRUE)
