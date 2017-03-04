@@ -107,6 +107,25 @@ myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Pe
 myiq
 
 
+
+
+### Helper function for checking if a vector is in a p-dimensional bin, defined by 2*p boundaries
+# x = p-dimensional vector
+# bin_bounds = 2*p dimensional boundary matrix (like in iq-binning definition list)
+bin_index_finder <- function(x, bin_bounds){ 
+  p = length(x)
+  xrep_mat = matrix(rep(x,nrow(bin_bounds)),ncol=3,byrow=TRUE)
+  which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
+} 
+myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=.001)
+new_row <- iris[1,c("Sepal.Length","Sepal.Width","Petal.Width")]
+new_row_index <- bin_index_finder(new_row, myiq$bin_bounds)
+new_row
+myiq$bin_bounds[new_row_index,]
+myiq$bin_centers[new_row_index,]
+myiq$bin_stats[new_row_index,]
+
+
 ### Iterative Quantile Binning New Data from defined bins
 # iq_def= IQ bin definition list from iterative_quant_bin or iqnn
 # new_data = data frame with column names matching the binned columns from bin-training data
@@ -114,8 +133,30 @@ myiq
 iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="definition",jit=0.001)
 str(iqdef)
 bin_by_IQdef <- finction(iq_def, new_data){
-  new_data <- as.data.frame(new_data)
+  total_bins = nrow(iq_def$bin_centers)
+  total_cols = length(iq_def$bin_cols)
+  bin_dat <- list(dat=as.data.frame(new_data), bin_dat=matrix(NA,nrow=nrow(new_data),ncol=total_cols))
+  # loop over each obs in new data, identify the bin and its attributes to add to the bin_data 
+  lapply(1:nrow(new_data), function(i){
+    bin_index_finder(bin_dat$dat[i,iq_def$bin_cols],iq_def$bin_bounds)
+  })
+  #!# identify bins for observations outside of "true" ranges (problem with jitter shrinking true range of data when shift inward)
+  
+  for(i in 1:nrow(new_data)){
+    dat_i <- bin_dat$dat[i,iq_def$bin_cols]
+    
+    in_bin_int(dat_i[1], )
+    
+    }
+  }
 
+
+                  
+  if(!is.null(iq_def$bin_stats)){
+    #!# work to add predictions goes here
+  }           
+
+  
 } 
 
 
