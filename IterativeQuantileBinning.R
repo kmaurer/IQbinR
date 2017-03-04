@@ -84,20 +84,9 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit=0){
 iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="both",jit=0.001)
 
 
-### Iterative Quantile Binning New Data from defined bins
-# Input must be IQ bin definition list from iterative_quant_bin
-# Take defined bins and identify the 
-iterative_quant_bin(ggplot2::diamonds, bin_cols=c("price","carat"), nbins=c(5,8), output="definition", jit=.001)
-
-bin_by_IQdef <- finction(IQdef, new_data){
-  1
-} 
-
-
 
 ### Iterative Quantile Binned Nearest Neighbors Regression
 # takes in data, response column and binning parameters
-library(dplyr)
 iqnn <- function(dat, y, bin_cols, nbins, jit=0){
   ## make bins
   iq_bin<- iterative_quant_bin(dat, bin_cols, nbins, output="both",jit)
@@ -114,7 +103,22 @@ iqnn <- function(dat, y, bin_cols, nbins, jit=0){
   return(iq_bin$bin_def)
 }
 iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
-mydat <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=.001)
+myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=.001)
+myiq
+
+
+### Iterative Quantile Binning New Data from defined bins
+# iq_def= IQ bin definition list from iterative_quant_bin or iqnn
+# new_data = data frame with column names matching the binned columns from bin-training data
+# output matches format of iterative_quant_bin and inherets properties from iqnn if applicable
+iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="definition",jit=0.001)
+str(iqdef)
+bin_by_IQdef <- finction(iq_def, new_data){
+  new_data <- as.data.frame(new_data)
+
+} 
+
+
 
 ### Cross Validation function for assessing 
 
