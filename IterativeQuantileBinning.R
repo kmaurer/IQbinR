@@ -215,6 +215,9 @@ predict_iqnn(iqnn_mod, test_data,strict=FALSE)
 predict_iqnn(iqnn_mod, test_data,type="binsize")
 
 
+### K-fold Cross Validation for evaluating iqnn models
+
+
 
 ### Helper function for suggesting parameters for jittering number of bins in each dimension
 # based on number of ties and data resolution
