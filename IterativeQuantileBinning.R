@@ -49,13 +49,13 @@ make_stack_matrix(3,4)
 #   dat = data frame to be binned (will coerce matrix or tibble to simple data frame)
 #   bin_cols = vector of column names of variables to iteratively bin, ordered first to last
 #   nbins = vector of number of bins per step of iterative binning, ordered first to last
-#   jit = margin for uniform jitter to each dimension to create seperability of tied obs due to finite precision
-iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit=0){
+#   jit = vector of margins for uniform jitter to each dimension to create seperability of tied obs due to finite precision
+iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit = rep(0,length(bin_cols))){
   dat <- as.data.frame(dat)
   bin_dim <- length(bin_cols)
   bin_dat <- matrix(NA,nrow=nrow(dat),ncol=bin_dim, dimnames=list(row.names(dat),paste(bin_cols,"binned",sep="_")))
   # Initialize with first binning step
-  step_bin_info <- quant_bin_1d(dat[,bin_cols[1]], nbins[1],output="both",jit)
+  step_bin_info <- quant_bin_1d(dat[,bin_cols[1]], nbins[1],output="both",jit[1])
   bin_bounds <- matrix(c(step_bin_info$bin_bounds[1:nbins[1]],
                          step_bin_info$bin_bounds[2:(nbins[1]+1)]),
                        nrow=nbins[1],byrow=FALSE )
@@ -70,7 +70,7 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit=0){
     # iterate through unique bins from prior step which are the {1,1+nbins[d],1+2*nbins[d],...} rows of the bin matrices
     for(b in seq(1,1+(stack_size-1)*nbins[d],by=nbins[d]) ){
       in_bin_b <- apply(matrix(bin_dat[,1:(d-1)],ncol=(d-1)),1,identical,y=bin_centers[b,-d])
-      step_bin_info <- quant_bin_1d(dat[in_bin_b,bin_cols[d]], nbins[d],output="both",jit)
+      step_bin_info <- quant_bin_1d(dat[in_bin_b,bin_cols[d]], nbins[d],output="both",jit[d])
       bin_bounds[b:(b+nbins[d]-1),c(2*d-1,2*d)] <- matrix(c(step_bin_info$bin_bounds[1:nbins[d]],
                                                             step_bin_info$bin_bounds[2:(nbins[d]+1)]),
                                                           nrow=nbins[d],byrow=FALSE)
@@ -85,13 +85,16 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit=0){
                 bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit)))
   } 
 }
-iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="both",jit=0.001)
+iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+                    nbins=c(3,5,2), output="both",jit=rep(0.001,3))
 
+iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+                    nbins=c(3,5,2), output="both")
 
 
 ### Iterative Quantile Binned Nearest Neighbors Regression
 # takes in data, response column and binning parameters
-iqnn <- function(dat, y, bin_cols, nbins, jit=0){
+iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols))){
   ## make bins
   iq_bin<- iterative_quant_bin(dat, bin_cols, nbins, output="both",jit)
   ## For each bin, find indeces from original data where bins match, take average y value
@@ -107,7 +110,8 @@ iqnn <- function(dat, y, bin_cols, nbins, jit=0){
   return(iq_bin$bin_def)
 }
 iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
-myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=.001)
+myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+             nbins=c(3,5,2), jit=rep(0.001,3))
 myiq
 
 
@@ -117,14 +121,14 @@ myiq
 # x = p-dimensional vector
 # bin_bounds = 2*p dimensional boundary matrix (like in iq-binning definition list)
 #!# need to adapt to allow bin allocations for observations outside of observed bins
-bin_index_finder <- function(x, bin_bounds, jit=0){ 
+bin_index_finder <- function(x, bin_bounds){ 
   p = length(x)
   xrep_mat = matrix(rep(x,nrow(bin_bounds)),ncol=3,byrow=TRUE)
   which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
 } 
-myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=.001)
+myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=rep(.001,3))
 new_row <- iris[1,c("Sepal.Length","Sepal.Width","Petal.Width")]
-new_row_index <- bin_index_finder(new_row, myiq$bin_bounds, myiq$jit)
+new_row_index <- bin_index_finder(new_row, myiq$bin_bounds)
 new_row
 myiq$bin_bounds[new_row_index,]
 myiq$bin_centers[new_row_index,]
@@ -135,8 +139,9 @@ myiq$bin_stats[new_row_index,]
 # iq_def= IQ bin definition list from iterative_quant_bin or iqnn
 # new_data = data frame with column names matching the binned columns from bin-training data
 # output matches format of iterative_quant_bin and inherets properties from iqnn if applicable
-iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="definition",jit=0.001)
-str(iqdef)
+iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+                              nbins=c(3,5,2), output="definition",jit=rep(.001,3))
+str(iq_def)
 bin_by_IQdef <- finction(iq_def, new_data){
   total_bins = nrow(iq_def$bin_centers)
   total_cols = length(iq_def$bin_cols)
@@ -146,8 +151,7 @@ bin_by_IQdef <- finction(iq_def, new_data){
   lapply(1:nrow(new_data), function(i){
     bin_index_finder(bin_dat$dat[i,iq_def$bin_cols],iq_def$bin_bounds)
   })
-  #!# identify bins for observations outside of "true" ranges (problem with jitter shrinking true range of data when shift inward)
-  
+
   for(i in 1:nrow(new_data)){
     dat_i <- bin_dat$dat[i,iq_def$bin_cols]
     
