@@ -123,33 +123,63 @@ myiq
 # x = p-dimensional vector
 # bin_bounds = 2*p dimensional boundary matrix (like in iq-binning definition list)
 #!# need to adapt to allow bin allocations for observations outside of observed bins
-bin_index_finder <- function(x, bin_bounds){ 
+bin_index_finder <- function(x, bin_bounds, nbins, strict=TRUE){ 
   p = length(x)
-  xrep_mat = matrix(rep(x,nrow(bin_bounds)),ncol=3,byrow=TRUE)
-  idx <- which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
-  if(length(idx)==0L) idx <- NA
+  b = nrow(bin_bounds)
+    if(strict==TRUE) {
+      xrep_mat = matrix(rep(x,b),ncol=p,byrow=TRUE)
+      idx <- which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
+      if(length(idx)==0L) idx <- NA
+      }
+    if(strict==FALSE) {
+      #!# put process for allocating outside bins
+      check_matrix <- matrix(rep(NA,b*p*2),ncol=p*2,byrow=TRUE)
+      for (d in 1:p){
+        blocks <- prod(nbins[1:d-1])
+        blocks_n <- b/blocks
+        subblocks <- prod(nbins[1:d])
+        subblocks_n <- b/subblocks
+        # rows with lowest bin in each strata from last dimension
+        cond_lower <- rep(seq(0,b-blocks_n,by=blocks_n),each=subblocks_n) + rep(seq(1,subblocks_n,by=1),blocks)
+        # rows with highest bin in each strata from last dimension
+        cond_upper <- rep(seq(0,b-blocks_n,by=blocks_n),each=subblocks_n) + rep(seq(blocks_n-subblocks_n+1, blocks_n,by=1),blocks)
+        
+        above_lb <- bin_bounds[,d*2-1] < as.numeric(x[d]) 
+        above_lb[cond_lower] <- TRUE
+        check_matrix[,d*2-1] <- above_lb
+        
+        below_ub <- as.numeric(x[d]) <= bin_bounds[,d*2]
+        below_ub[cond_upper] <- TRUE
+        check_matrix[,d*2] <- below_ub
+      }
+      idx <- which(rowSums(check_matrix)==p*2)
+      
+    }
   return(idx)
 } 
 myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=rep(.001,3))
 new_row <- iris[1,c("Sepal.Length","Sepal.Width","Petal.Width")]
-new_row_index <- bin_index_finder(new_row, myiq$bin_bounds)
+new_row_index <- bin_index_finder(new_row, myiq$bin_bounds, myiq$nbins)
 new_row
 myiq$bin_bounds[new_row_index,]
 myiq$bin_centers[new_row_index,]
 myiq$bin_stats[new_row_index,]
+
+bin_index_finder(c(5,7,7), myiq$bin_bounds, myiq$nbins, strict=TRUE)
+bin_index_finder(c(5,7,7), myiq$bin_bounds, myiq$nbins, strict=FALSE)
 
 
 ### Iterative Quantile Binning New Data from defined bins
 # iq_def= IQ bin definition list from iterative_quant_bin or iqnn
 # new_data = data frame with column names matching the binned columns from bin-training data
 # output matches format of iterative_quant_bin and inherets properties from iqnn if applicable
-bin_by_IQdef <- function(iq_def, new_data, output="data"){
+bin_by_IQdef <- function(iq_def, new_data, output="data", strict=TRUE){
   #!# need to introduce similar jitter to new data as in definition so "boundary" points allocated randomly
   total_bins = nrow(iq_def$bin_centers)
   total_cols = length(iq_def$bin_cols)
   # loop over each obs in new data, identify the bin indeces then return bin centers for associated bins
   bin_indeces <- sapply(1:nrow(new_data), function(i){
-    bin_index_finder(new_data[i,iq_def$bin_cols],iq_def$bin_bounds)
+    bin_index_finder(new_data[i,iq_def$bin_cols],iq_def$bin_bounds, iq_def$nbins, strict=strict)
   })
   
   if(output=="data") return(list(dat=new_data,bin_dat=iq_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces))
@@ -164,11 +194,13 @@ iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length"
                  nbins=c(3,5,2), jit=rep(0.001,3))
 test_data <- iris[test_index,]
 bin_by_IQdef(iqnn_mod, test_data, output="data")
+bin_by_IQdef(iqnn_mod, test_data, output="data", strict=FALSE)
+
 
 
 ### predict for new data from iqnn model
-predict_iqnn <- function(iqnn_mod,test_data, type="estimate"){
-  test_bin <- bin_by_IQdef(iqnn_mod, test_data, output="data")
+predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
+  test_bin <- bin_by_IQdef(iqnn_mod, test_data, output="data",strict=strict)
   if(type=="estimate") return(iqnn_mod$bin_stats$avg[test_bin$bin_indeces])
   if(type=="binsize") return(iqnn_mod$bin_stats$obs[test_bin$bin_indeces])
   if(type=="both") return(iqnn_mod$bin_stats[test_bin$bin_indeces,])
@@ -177,8 +209,12 @@ test_index <- c(1,2,51,52,101,102)
 iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
                  nbins=c(3,5,2), jit=rep(0.001,3))
 test_data <- iris[test_index,]
-predict_iqnn(iqnn_mod, test_data)
+predict_iqnn(iqnn_mod, test_data,strict=TRUE)
 predict_iqnn(iqnn_mod, test_data,type="binsize")
+predict_iqnn(iqnn_mod, test_data,strict=FALSE)
+predict_iqnn(iqnn_mod, test_data,type="binsize")
+
+
 
 ### Helper function for suggesting parameters for jittering number of bins in each dimension
 # based on number of ties and data resolution
