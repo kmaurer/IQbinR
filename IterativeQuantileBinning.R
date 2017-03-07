@@ -126,7 +126,9 @@ myiq
 bin_index_finder <- function(x, bin_bounds){ 
   p = length(x)
   xrep_mat = matrix(rep(x,nrow(bin_bounds)),ncol=3,byrow=TRUE)
-  which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
+  idx <- which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
+  if(length(idx)==0L) idx <- NA
+  return(idx)
 } 
 myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=rep(.001,3))
 new_row <- iris[1,c("Sepal.Length","Sepal.Width","Petal.Width")]
@@ -141,28 +143,46 @@ myiq$bin_stats[new_row_index,]
 # iq_def= IQ bin definition list from iterative_quant_bin or iqnn
 # new_data = data frame with column names matching the binned columns from bin-training data
 # output matches format of iterative_quant_bin and inherets properties from iqnn if applicable
-str(iq_def)
 bin_by_IQdef <- function(iq_def, new_data, output="data"){
+  #!# need to introduce similar jitter to new data as in definition so "boundary" points allocated randomly
   total_bins = nrow(iq_def$bin_centers)
   total_cols = length(iq_def$bin_cols)
   # loop over each obs in new data, identify the bin indeces then return bin centers for associated bins
   bin_indeces <- sapply(1:nrow(new_data), function(i){
     bin_index_finder(new_data[i,iq_def$bin_cols],iq_def$bin_bounds)
   })
-  if(output=="data") return(list(dat=new_data,bin_dat=iq_def$bin_centers[bin_indeces,]))
+  
+  if(output=="data") return(list(dat=new_data,bin_dat=iq_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces))
   if(output=="both"){
-    return(list(bin_dat=list(dat=new_data,bin_dat=iq_def$bin_centers[bin_indeces,]), 
+    return(list(bin_dat=list(dat=new_data,bin_dat=iq_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces), 
                 bin_def=iq_def))
   } 
 } 
+# Testing bin_by_IQdef
+test_index <- c(1,2,51,52,101,102)
+iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+                 nbins=c(3,5,2), jit=rep(0.001,3))
+test_data <- iris[test_index,]
+bin_by_IQdef(iqnn_mod, test_data, output="data")
 
-iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-                              nbins=c(3,5,2), output="definition",jit=rep(.001,3))
-new_data <- iris[c(1,2,51,52,101,102),]
-bin_by_IQdef(iq_def, new_data, output="data")
 
-### Cross Validation function for assessing 
+### predict for new data from iqnn model
+predict_iqnn <- function(iqnn_mod,test_data, type="estimate"){
+  test_bin <- bin_by_IQdef(iqnn_mod, test_data, output="data")
+  if(type=="estimate") return(iqnn_mod$bin_stats$avg[test_bin$bin_indeces])
+  if(type=="binsize") return(iqnn_mod$bin_stats$obs[test_bin$bin_indeces])
+  if(type=="both") return(iqnn_mod$bin_stats[test_bin$bin_indeces,])
+}
+test_index <- c(1,2,51,52,101,102)
+iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+                 nbins=c(3,5,2), jit=rep(0.001,3))
+test_data <- iris[test_index,]
+predict_iqnn(iqnn_mod, test_data)
+predict_iqnn(iqnn_mod, test_data,type="binsize")
 
+### Helper function for suggesting parameters for jittering number of bins in each dimension
+# based on number of ties and data resolution
+#!#
 
 #-----------------------------------------------------------------------------------------
 ### Break from function writing to applications testing
