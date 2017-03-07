@@ -91,6 +91,8 @@ iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Wid
 iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
                     nbins=c(3,5,2), output="both")
 
+iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+                    nbins=c(3,5,2), output="data")
 
 ### Iterative Quantile Binned Nearest Neighbors Regression
 # takes in data, response column and binning parameters
@@ -139,37 +141,25 @@ myiq$bin_stats[new_row_index,]
 # iq_def= IQ bin definition list from iterative_quant_bin or iqnn
 # new_data = data frame with column names matching the binned columns from bin-training data
 # output matches format of iterative_quant_bin and inherets properties from iqnn if applicable
-iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-                              nbins=c(3,5,2), output="definition",jit=rep(.001,3))
 str(iq_def)
-bin_by_IQdef <- finction(iq_def, new_data){
+bin_by_IQdef <- function(iq_def, new_data, output="data"){
   total_bins = nrow(iq_def$bin_centers)
   total_cols = length(iq_def$bin_cols)
-  bin_dat <- list(dat=as.data.frame(new_data),
-                  bin_dat=matrix(NA,nrow=nrow(new_data),ncol=total_cols))
-  # loop over each obs in new data, identify the bin and its attributes to add to the bin_data 
-  lapply(1:nrow(new_data), function(i){
-    bin_index_finder(bin_dat$dat[i,iq_def$bin_cols],iq_def$bin_bounds)
+  # loop over each obs in new data, identify the bin indeces then return bin centers for associated bins
+  bin_indeces <- sapply(1:nrow(new_data), function(i){
+    bin_index_finder(new_data[i,iq_def$bin_cols],iq_def$bin_bounds)
   })
-
-  for(i in 1:nrow(new_data)){
-    dat_i <- bin_dat$dat[i,iq_def$bin_cols]
-    
-    in_bin_int(dat_i[1], )
-    
-    }
-  }
-
-
-                  
-  if(!is.null(iq_def$bin_stats)){
-    #!# work to add predictions goes here
-  }           
-
-  
+  if(output=="data") return(list(dat=new_data,bin_dat=iq_def$bin_centers[bin_indeces,]))
+  if(output=="both"){
+    return(list(bin_dat=list(dat=new_data,bin_dat=iq_def$bin_centers[bin_indeces,]), 
+                bin_def=iq_def))
+  } 
 } 
 
-
+iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+                              nbins=c(3,5,2), output="definition",jit=rep(.001,3))
+new_data <- iris[c(1,2,51,52,101,102),]
+bin_by_IQdef(iq_def, new_data, output="data")
 
 ### Cross Validation function for assessing 
 
