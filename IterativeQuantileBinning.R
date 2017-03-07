@@ -11,12 +11,13 @@
 ## Quantile 1d Binning
 # used for binning the counts values by quantile
 # define vector of counts and number of bin
-# xs <- diamonds$price; nbin=4
+# xs <- ggplot2::diamonds$price; nbin=4
 quant_bin_1d <- function(xs, nbin, output="data",jit=0){
-  if(jit > 0) xs <- xs + runif(length(xs),-jit,jit)
+  if(jit > 0)  xs <- xs + runif(length(xs),-jit,jit)
   quants <- quantile(xs, seq(0, 1, by=1/(2*nbin)))
   bin_centers <- quants[seq(2,length(quants)-1, by=2)]
   bin_bounds <- quants[seq(1,length(quants)+1, by=2)]
+  if(jit > 0) bin_bounds[c(1,length(bin_bounds))] <- bin_bounds[c(1,length(bin_bounds))]+c(-jit,jit)
   data_bins <- rep(bin_centers[1],length(xs))
   if(output=="definition") {
     return(list(bin_centers=bin_centers,bin_bounds=bin_bounds))
@@ -78,8 +79,11 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit=0){
     }
   }
   if(output=="data") return(list(dat=dat,bin_dat=bin_dat))
-  if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins))
-  if(output=="both") return(list(bin_dat=list(dat=dat,bin_dat=bin_dat), bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins)))
+  if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins, jit=jit))
+  if(output=="both"){
+    return(list(bin_dat=list(dat=dat,bin_dat=bin_dat), 
+                bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit)))
+  } 
 }
 iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), output="both",jit=0.001)
 
@@ -113,14 +117,14 @@ myiq
 # x = p-dimensional vector
 # bin_bounds = 2*p dimensional boundary matrix (like in iq-binning definition list)
 #!# need to adapt to allow bin allocations for observations outside of observed bins
-bin_index_finder <- function(x, bin_bounds){ 
+bin_index_finder <- function(x, bin_bounds, jit=0){ 
   p = length(x)
   xrep_mat = matrix(rep(x,nrow(bin_bounds)),ncol=3,byrow=TRUE)
   which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
 } 
 myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=.001)
 new_row <- iris[1,c("Sepal.Length","Sepal.Width","Petal.Width")]
-new_row_index <- bin_index_finder(new_row, myiq$bin_bounds)
+new_row_index <- bin_index_finder(new_row, myiq$bin_bounds, myiq$jit)
 new_row
 myiq$bin_bounds[new_row_index,]
 myiq$bin_centers[new_row_index,]
@@ -136,7 +140,8 @@ str(iqdef)
 bin_by_IQdef <- finction(iq_def, new_data){
   total_bins = nrow(iq_def$bin_centers)
   total_cols = length(iq_def$bin_cols)
-  bin_dat <- list(dat=as.data.frame(new_data), bin_dat=matrix(NA,nrow=nrow(new_data),ncol=total_cols))
+  bin_dat <- list(dat=as.data.frame(new_data),
+                  bin_dat=matrix(NA,nrow=nrow(new_data),ncol=total_cols))
   # loop over each obs in new data, identify the bin and its attributes to add to the bin_data 
   lapply(1:nrow(new_data), function(i){
     bin_index_finder(bin_dat$dat[i,iq_def$bin_cols],iq_def$bin_bounds)
