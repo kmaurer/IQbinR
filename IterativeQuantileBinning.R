@@ -99,6 +99,7 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit = rep(0,
 # new_data = data frame with column names matching the binned columns from bin-training data
 # output matches format of iterative_quant_bin and inherets properties from iqnn if applicable
 bin_by_IQdef <- function(iq_def, new_data, output="data", strict=TRUE){
+  new_data <- as.data.frame(new_data)
   #!# need to introduce similar jitter to new data as in definition so "boundary" points allocated randomly
   # loop over each obs in new data, identify the bin indeces then return bin centers for associated bins
   bin_indeces <- sapply(1:nrow(new_data), function(i){
@@ -124,6 +125,7 @@ bin_by_IQdef <- function(iq_def, new_data, output="data", strict=TRUE){
 ### Iterative Quantile Binned Nearest Neighbors Regression
 # takes in data, response column and binning parameters
 iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols))){
+  dat <- as.data.frame(dat)
   ## make bins
   iq_bin<- iterative_quant_bin(dat, bin_cols, nbins, output="both",jit)
   ## For each bin, find indeces from original data where bins match, take average y value
@@ -132,7 +134,7 @@ iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols))){
   iq_bin$bin_def$bin_stats <- data.frame(avg = rep(NA,total_bins),
                                          obs = NA)
   for(b in 1:total_bins){
-    match_matrix <- iq_bin$bin_dat$bin_dat == matrix(rep(iq_bin$bin_def$bin_centers[b,],nrow(dat)),ncol=3,byrow=TRUE)
+    match_matrix <- iq_bin$bin_dat$bin_dat == matrix(rep(iq_bin$bin_def$bin_centers[b,],nrow(dat)),ncol=length(bin_cols),byrow=TRUE)
     temp_data <- dat[,y][match_matrix[,length(bin_cols)]]
     iq_bin$bin_def$bin_stats[b,] <- c(mean(temp_data,na.rm=TRUE),length(temp_data))
   }
@@ -140,7 +142,7 @@ iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols))){
   return(iq_bin$bin_def)
 }
 # iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
-# myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+# myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #              nbins=c(3,5,2), jit=rep(0.001,3))
 # myiq
 
@@ -148,6 +150,7 @@ iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols))){
 #--------------------------------------
 ### predict for new data from iqnn model
 predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
+  test_data <- as.data.frame(test_data)
   test_bin <- bin_by_IQdef(iqnn_mod, test_data, output="data",strict=strict)
   if(type=="estimate") return(iqnn_mod$bin_stats$avg[test_bin$bin_indeces])
   if(type=="binsize") return(iqnn_mod$bin_stats$obs[test_bin$bin_indeces])
@@ -166,7 +169,7 @@ predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
 #--------------------------------------
 ### Cross Validated predictions for iqnn models
 cv_pred_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE){
-  if(!is.data.frame(dat)) dat <- as.data.frame(dat)
+  dat <- as.data.frame(dat)
   if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(dat, cv_k)
   if(cv_method=="LOO") cv_cohorts <- 1:nrow(dat)
   cv_preds <- rep(NA,nrow(dat))
@@ -187,7 +190,7 @@ cv_pred_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE
 #--------------------------------------
 ### Cross Validation for assessment for iqnn models
 cv_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE){
-  if(!is.data.frame(dat)) dat <- as.data.frame(dat)
+  dat <- as.data.frame(dat)
   cv_preds <- cv_pred_iqnn(iqnn_mod, dat, cv_method, cv_k, strict)
   PRESS <- sum((dat[,iqnn_mod$y]-cv_preds)^2)
   MSE <- PRESS/nrow(dat)
