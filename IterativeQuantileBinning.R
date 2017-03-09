@@ -1,5 +1,8 @@
 ### iterative quantile binning functions
 
+# first source in all helper functions
+source("IterativeQuantileBinningSupportFunctions.R")
+
 ## Function List
 # quant_bin_1d for quantile binning in one dimension
 # make_stack_matrix helper funtion for iterative binner to create stacking J matrices
@@ -32,17 +35,6 @@ quant_bin_1d <- function(xs, nbin, output="data",jit=0){
 quant_bin_1d(ggplot2::diamonds$price,4,output="data")
 quant_bin_1d(ggplot2::diamonds$price,4,output="definition")
 quant_bin_1d(runif(1000,0,10),nbin=4,output="both")
-
-#--------------------------------------
-## function to make a matrix for duplicating the N rows of a matrix M times each
-# support funciton for IQ binning function
-#!# Update later for speed 
-make_stack_matrix <- function(N,M){ 
-  mat <- unname(model.matrix(~as.factor(rep(1:N,each=M))-(1)))
-  attributes(mat)[2:3]<-NULL
-  return(mat)
-} 
-make_stack_matrix(3,4)
 
 ### Iterative Quantile Binning
 # Input:
@@ -100,6 +92,7 @@ iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols))){
   ## make bins
   iq_bin<- iterative_quant_bin(dat, bin_cols, nbins, output="both",jit)
   ## For each bin, find indeces from original data where bins match, take average y value
+  iq_bin$bin_def$y <- y
   total_bins = nrow(iq_bin$bin_def$bin_centers)
   iq_bin$bin_def$bin_stats <- data.frame(avg = rep(NA,total_bins),
                                          obs = NA)
@@ -175,8 +168,6 @@ bin_index_finder(c(5,7,7), myiq$bin_bounds, myiq$nbins, strict=FALSE)
 # output matches format of iterative_quant_bin and inherets properties from iqnn if applicable
 bin_by_IQdef <- function(iq_def, new_data, output="data", strict=TRUE){
   #!# need to introduce similar jitter to new data as in definition so "boundary" points allocated randomly
-  total_bins = nrow(iq_def$bin_centers)
-  total_cols = length(iq_def$bin_cols)
   # loop over each obs in new data, identify the bin indeces then return bin centers for associated bins
   bin_indeces <- sapply(1:nrow(new_data), function(i){
     bin_index_finder(new_data[i,iq_def$bin_cols],iq_def$bin_bounds, iq_def$nbins, strict=strict)
@@ -197,7 +188,6 @@ bin_by_IQdef(iqnn_mod, test_data, output="data")
 bin_by_IQdef(iqnn_mod, test_data, output="data", strict=FALSE)
 
 
-
 ### predict for new data from iqnn model
 predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
   test_bin <- bin_by_IQdef(iqnn_mod, test_data, output="data",strict=strict)
@@ -216,8 +206,20 @@ predict_iqnn(iqnn_mod, test_data,type="binsize")
 
 
 ### K-fold Cross Validation for evaluating iqnn models
+predict_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE){
+  if(!is.data.frame(dat)) dat <- as.data.frame(dat)
+  if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(dat, cv_k)
+  if(cv_method=="LOO") cv_cohorts <- 1:nrow(dat)
+  cv_preds <- rep(NA,nrow(dat))
+  for(fold in 1:length(unique(cv_cohorts))){
+    test_index <- which(cv_cohorts==fold)
+    iqnn_mod <- iqnn(dat[-test_index,], y=iqnn_mod$y, bin_cols=iqnn_mod$bin_cols, 
+                     nbins=iqnn_mod$nbins, jit=iqnn_mod$jit)
+    cv_preds[test_index] <- predict_iqnn(iqnn_mod, dat[test_index,],strict=strict)
+  }
+  cv_preds
 
-
+}
 
 ### Helper function for suggesting parameters for jittering number of bins in each dimension
 # based on number of ties and data resolution
