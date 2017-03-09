@@ -205,8 +205,8 @@ predict_iqnn(iqnn_mod, test_data,strict=FALSE)
 predict_iqnn(iqnn_mod, test_data,type="binsize")
 
 
-### K-fold Cross Validation for evaluating iqnn models
-predict_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE){
+### Cross Validated predictions for iqnn models
+cv_pred_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE){
   if(!is.data.frame(dat)) dat <- as.data.frame(dat)
   if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(dat, cv_k)
   if(cv_method=="LOO") cv_cohorts <- 1:nrow(dat)
@@ -218,8 +218,25 @@ predict_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE
     cv_preds[test_index] <- predict_iqnn(iqnn_mod, dat[test_index,],strict=strict)
   }
   cv_preds
-
 }
+iqnn_mod <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+                 nbins=c(3,5,2), jit=rep(0.001,3))
+cv_pred_iqnn(iqnn_mod,iris, cv_method="kfold", cv_k=10, strict=FALSE)
+cv_pred_iqnn(iqnn_mod,iris, cv_method="LOO", strict=FALSE)
+
+### Cross Validation for assessment for iqnn models
+cv_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE){
+  if(!is.data.frame(dat)) dat <- as.data.frame(dat)
+  cv_preds <- cv_pred_iqnn(iqnn_mod, dat, cv_method, cv_k, strict)
+  PRESS <- sum((dat[,iqnn_mod$y]-cv_preds)^2)
+  MSE <- PRESS/nrow(dat)
+  RMSE <- sqrt(MSE)
+  c(PRESS=PRESS,MSE=MSE,RMSE=RMSE)
+}
+iqnn_mod <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+                 nbins=c(3,5,2), jit=rep(0.001,3))
+cv_iqnn(iqnn_mod,iris, cv_method="kfold", cv_k=10, strict=FALSE)
+cv_iqnn(iqnn_mod,iris, cv_method="LOO", strict=FALSE)
 
 ### Helper function for suggesting parameters for jittering number of bins in each dimension
 # based on number of ties and data resolution
