@@ -26,7 +26,7 @@ head(bb_players)
 
 # Total number of possible IQbin patterns 4 X variables: 
 #   for combination of p columns there exists p! combinations of iterative binning
-sum(choose(4,2:4)*factortbl_dfial(2:4))
+sum(choose(4,2:4)*factorial(2:4))
 
 # Check that we can fit models to batting career data
 iqdef <- iterative_quant_bin(dat=bb_players, bin_cols=c("b2","b3","hit","ab"),
@@ -78,16 +78,13 @@ head(cv_preds)
 
 #--------------------------------------
 ### Cross Validation for assessment for iqnn models
-cv_knn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE){
+cv_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute"){
   dat <- as.data.frame(dat)
-  cv_preds <- cv_knn.reg(iqnn_mod, dat, cv_method, cv_k, strict)
+  cv_preds <- cv_pred_knn(dat=dat, y_name=y_name, x_names=x_names, cv_method=cv_method, cv_k=cv_k, k=k, knn_algorithm = knn_algorithm)
   PRESS <- sum((dat[,iqnn_mod$y]-cv_preds)^2)
   MSE <- PRESS/nrow(dat)
   RMSE <- sqrt(MSE)
   c(PRESS=PRESS,MSE=MSE,RMSE=RMSE)
 }
-# iqnn_mod <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                  nbins=c(3,5,2), jit=rep(0.001,3))
-# cv_iqnn(iqnn_mod,iris, cv_method="kfold", cv_k=10, strict=FALSE)
-# cv_iqnn(iqnn_mod,iris, cv_method="LOO", strict=FALSE)
-
+cv_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), 
+            cv_method="kfold", cv_k = 20, k=5, knn_algorithm = "brute")
