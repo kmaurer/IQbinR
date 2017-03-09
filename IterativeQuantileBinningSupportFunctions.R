@@ -46,3 +46,7 @@ make_cv_cohorts <- function(dat,cv_K){
   return(cv_cohort)
 }
 
+#--------------------------------------
+### Helper function for suggesting parameters for jittering number of bins in each dimension
+# based on number of ties and data resolution
+#!#
