@@ -24,8 +24,7 @@ bin_index_finder <- function(x, bin_bounds, nbins, strict=TRUE){
     xrep_mat = matrix(rep(x,b),ncol=p,byrow=TRUE)
     idx <- which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
     if(length(idx)==0L) idx <- NA
-  }
-  if(strict==FALSE) {
+  }else{
     #!# put process for allocating outside bins
     check_matrix <- matrix(rep(NA,b*p*2),ncol=p*2,byrow=TRUE)
     for (d in 1:p){

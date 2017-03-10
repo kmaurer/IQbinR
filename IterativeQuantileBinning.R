@@ -93,24 +93,33 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit = rep(0,
 #                     nbins=c(3,5,2), output="definition")
 # 
 
+
 #--------------------------------------
 ### Adding Tolerance Buffer to outermost bins from Iterative Quantile Binning
 # iq_def = iq binning definition list
 # tol = vector of tolerance values to stretch each dimension for future binning
 stretch_iq_bins <- function(iq_def, tolerance){
-  b = nrow(iq_def$bin_bounds)
-  p = length(iq_def$nbins)
+  b = nrow(iq_def$bin_def$bin_bounds)
+  p = length(iq_def$bin_def$nbins)
   for (d in 1:p){
-    blocks <- prod(iq_def$nbins[1:d-1])
+    blocks <- prod(iq_def$bin_def$nbins[1:d-1])
     blocks_n <- b/blocks
-    subblocks <- prod(iq_def$nbins[1:d])
+    subblocks <- prod(iq_def$bin_def$nbins[1:d])
     subblocks_n <- b/subblocks
     # strec
-    iq_def$bin_bounds[seq(1,subblocks_n,by=1),2*d-1] <- iq_def$bin_bounds[seq(1,subblocks_n,by=1),2*d-1] - tolerance[d]
-    iq_def$bin_bounds[seq(blocks_n-subblocks_n+1, blocks_n,by=1),2*d] <- iq_def$bin_bounds[seq(blocks_n-subblocks_n+1, blocks_n,by=1),2*d] + tolerance[d]
+    iq_def$bin_def$bin_bounds[seq(1,subblocks_n,by=1),2*d-1] <- iq_def$bin_def$bin_bounds[seq(1,subblocks_n,by=1),2*d-1] - tolerance[d]
+    iq_def$bin_def$bin_bounds[seq(blocks_n-subblocks_n+1, blocks_n,by=1),2*d] <- iq_def$bin_def$bin_bounds[seq(blocks_n-subblocks_n+1, blocks_n,by=1),2*d] + tolerance[d]
   }
+  return(iq_def)
 }
+# iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                     nbins=c(3,5,2), output="definition")
+# iq_def$bin_bounds
 
+# iq_def <- iterative_quant_bin(sim_data[-test_index,], bin_cols=c("x1","x2","x3","x4"),
+#                               nbins=rep(4,4), jit=rep(0.001,4), output="both" )
+# iq_stretch <- stretch_iq_bins(iq_def, tolerance=rep(5,4))
+# iq_stretch$bin_def$bin_bounds
 
 
 #--------------------------------------
@@ -144,10 +153,12 @@ bin_by_IQdef <- function(iq_def, new_data, output="data", strict=TRUE){
 #--------------------------------------
 ### Iterative Quantile Binned Nearest Neighbors Regression
 # takes in data, response column and binning parameters
-iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols))){
+iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols)), stretch=FALSE, tolerance = rep(0,length(bin_cols)) ){
   dat <- as.data.frame(dat)
   ## make bins
-  iq_bin<- iterative_quant_bin(dat, bin_cols, nbins, output="both",jit)
+  iq_bin <- iterative_quant_bin(dat, bin_cols, nbins, output="both",jit)
+  # stretch bins if requested
+  if(stretch) iq_bin <- stretch_iq_bins(iq_bin, tolerance=tolerance)
   ## For each bin, find indeces from original data where bins match, take average y value
   iq_bin$bin_def$y <- y
   total_bins = nrow(iq_bin$bin_def$bin_centers)
@@ -161,10 +172,16 @@ iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols))){
   ## Return bin definition with predictions added
   return(iq_bin$bin_def)
 }
-# iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
+# # iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
 # myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #              nbins=c(3,5,2), jit=rep(0.001,3))
-# myiq
+# myiq$bin_bounds
+# 
+# myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#              nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.1,3))
+# myiq$bin_bounds
+
+
 
 
 #--------------------------------------
