@@ -89,8 +89,28 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit = rep(0,
 # iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
 #                     nbins=c(3,5,2), output="both")
 # 
-# iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                     nbins=c(3,5,2), output="data")
+# iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                     nbins=c(3,5,2), output="definition")
+# 
+
+#--------------------------------------
+### Adding Tolerance Buffer to outermost bins from Iterative Quantile Binning
+# iq_def = iq binning definition list
+# tol = vector of tolerance values to stretch each dimension for future binning
+stretch_iq_bins <- function(iq_def, tolerance){
+  b = nrow(iq_def$bin_bounds)
+  p = length(iq_def$nbins)
+  for (d in 1:p){
+    blocks <- prod(iq_def$nbins[1:d-1])
+    blocks_n <- b/blocks
+    subblocks <- prod(iq_def$nbins[1:d])
+    subblocks_n <- b/subblocks
+    # strec
+    iq_def$bin_bounds[seq(1,subblocks_n,by=1),2*d-1] <- iq_def$bin_bounds[seq(1,subblocks_n,by=1),2*d-1] - tolerance[d]
+    iq_def$bin_bounds[seq(blocks_n-subblocks_n+1, blocks_n,by=1),2*d] <- iq_def$bin_bounds[seq(blocks_n-subblocks_n+1, blocks_n,by=1),2*d] + tolerance[d]
+  }
+}
+
 
 
 #--------------------------------------

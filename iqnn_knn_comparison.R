@@ -136,7 +136,10 @@ Sys.time() - timer
 ###-------------------------------------------------------------------------
 library(mvtnorm)
 help(package="mvtnorm")
-n <- 1000000
+p = 4
+b = 6 
+k = 50
+n <- b^p*k*2
 
 sim_data <- data.frame(x1=rnorm(n),
                        x2=rnorm(n),
@@ -150,11 +153,12 @@ test_index <- 1:n/2
 timer <- Sys.time()
 knnTest <- knn.reg(train = sim_data[-test_index,c("x1","x2","x3","x4")],
                    test = sim_data[test_index,c("x1","x2","x3","x4")],
-                   y = sim_data$y[-test_index], k = 50, algorithm = "brute")
+                   y = sim_data$y[-test_index], k = k, algorithm = "brute")
 Sys.time() - timer
 
 timer <- Sys.time()
 iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=c("x1","x2","x3","x4"),
-                 nbins=rep(10,4), jit=rep(0.001,4))
-iqnn_preds <- predict_iqnn(iqnn_mod, sim_data[test_index,],strict=FALSE)
+                 nbins=rep(b,p), jit=rep(0.001,p))
+Sys.time() - timer
+iqnn_preds <- predict_iqnn(iqnn_mod, sim_data[test_index,],strict=TRUE)
 Sys.time() - timer
