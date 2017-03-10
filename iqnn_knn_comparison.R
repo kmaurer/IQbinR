@@ -11,6 +11,9 @@ library(tidyverse)
 baseball <- read.csv("http://kmaurer.github.io/documents/SLahman_Batting2014.csv")
 head(baseball)
 
+baseball <- na.omit(baseball %>%
+  select(playerID:HR))
+
 bb_players <- baseball %>%
   select(playerID:HR, -lgID) %>%
   mutate(hit_rate = H/G) %>%
@@ -28,15 +31,14 @@ head(bb_players)
 #   for combination of p columns there exists p! combinations of iterative binning
 sum(choose(4,2:4)*factorial(2:4))
 
-# Check that we can fit models to batting career data
-iqdef <- iterative_quant_bin(dat=bb_players, bin_cols=c("b2","b3","hit","ab"),
-                    nbins=c(2,2,2,2), jit=rep(0.001,4), output="both")
-
-iqnn_mod <- iqnn(dat=bb_players, y="hr", bin_cols=c("b2","b3","hit","ab"),
-                 nbins=c(2,2,2,2), jit=rep(0.001,4))
-cv_iqnn(iqnn_mod,bb_players, cv_method="kfold", cv_k=5, strict=FALSE)
-cv_iqnn(iqnn_mod,bb_players, cv_method="LOO", strict=FALSE)
-
+## Check that we can fit models to batting career data
+# iqdef <- iterative_quant_bin(dat=bb_players, bin_cols=c("b2","b3","hit","ab"),
+#                     nbins=c(2,2,2,2), jit=rep(0.001,4), output="both")
+# 
+# iqnn_mod <- iqnn(dat=bb_players, y="hr", bin_cols=c("b2","b3","hit","ab"),
+#                  nbins=c(2,2,2,2), jit=rep(0.001,4))
+# cv_iqnn(iqnn_mod,bb_players, cv_method="kfold", cv_k=5, strict=FALSE)
+# cv_iqnn(iqnn_mod,bb_players, cv_method="LOO", strict=FALSE)
 
 #### knn.reg
 # need standardized variables
@@ -76,6 +78,10 @@ head(cv_preds)
 # head(cv_preds)
 
 
+
+
+
+
 #--------------------------------------
 ### Cross Validation for assessment for iqnn models
 cv_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute"){
@@ -88,3 +94,42 @@ cv_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5, knn_
 }
 cv_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), 
             cv_method="kfold", cv_k = 20, k=5, knn_algorithm = "brute")
+
+
+
+#---------------------------------------------------------------------------------------------------
+# Timing simulations
+
+
+# from building model to predicting for new
+
+test_index <- 1:9585
+timer <- Sys.time()
+knnTest <- knn.reg(train = bb_players_st[-test_index,c("b2","b3","hit","ab")],
+                   test = bb_players_st[test_index,c("b2","b3","hit","ab")],
+                   y = bb_players_st$hr[-test_index], k = 5, algorithm = "brute")
+Sys.time() - timer
+
+timer <- Sys.time()
+iqnn_mod <- iqnn(bb_players_st[-test_index,], y="hr", bin_cols=c("b2","b3","hit","ab"),
+                 nbins=c(7,7,6,6), jit=rep(0.001,4))
+iqnn_preds <- predict_iqnn(iqnn_mod, bb_players_st[test_index,],strict=FALSE)
+Sys.time() - timer
+
+
+
+test_index <- 1:45000
+timer <- Sys.time()
+knnTest <- knn.reg(train = baseball[-test_index,c("X2B","H","AB")],
+                   test = baseball[test_index,c("X2B","H","AB")],
+                   y = baseball$HR[-test_index], k = 50, algorithm = "brute")
+Sys.time() - timer
+
+timer <- Sys.time()
+iqnn_mod <- iqnn(baseball[-test_index,], y="HR", bin_cols=c("X2B","H","AB"),
+                 nbins=c(9,9,9), jit=rep(0.001,3))
+iqnn_preds <- predict_iqnn(iqnn_mod, baseball[test_index,],strict=FALSE)
+Sys.time() - timer
+
+
+
