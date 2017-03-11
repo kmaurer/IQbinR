@@ -138,7 +138,7 @@ library(mvtnorm)
 help(package="mvtnorm")
 
 P=4
-B=3
+B=10
 ps = rep(2:P, each=(B-1))
 bs = rep(2:B, (P-1)) 
 
@@ -165,15 +165,15 @@ timer <- Sys.time()
 knnTest <- knn.reg(train = sim_data[-test_index,xcols],
                    test = sim_data[test_index,xcols],
                    y = sim_data$y[-test_index], k = k, algorithm = "brute")
-sim_times$knntime[sim] <- Sys.time() - timer
+sim_times$knntime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 # time the fitting of the iq bin model 
 iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
                  nbins=rep(b,p), jit=rep(0.001,p), stretch=TRUE, tolerance=rep(5,p))
-sim_times$iqfittime[sim] <- Sys.time() - timer
+sim_times$iqfittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 # time the prediction using iq bin model
 timer <- Sys.time()
 iqnn_preds <- predict_iqnn(iqnn_mod, sim_data[test_index,],strict=TRUE)
-sim_times$iqpredtime[sim] <- Sys.time() - timer
+sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 }
 
 write.csv(sim_times,"simulationTimes.csv", row.names=FALSE)
