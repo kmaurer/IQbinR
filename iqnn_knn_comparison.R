@@ -81,7 +81,7 @@ head(cv_preds)
 
 
 
-
+#!# FIX THIS FUNCTION 
 #--------------------------------------
 ### Cross Validation for assessment for iqnn models
 cv_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute"){
