@@ -103,7 +103,7 @@ cv_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
 
 # from building model to predicting for new
 
-test_index <- 1:9585
+test_index <- 1:8820
 timer <- Sys.time()
 knnTest <- knn.reg(train = bb_players_st[-test_index,c("b2","b3","hit","ab")],
                    test = bb_players_st[test_index,c("b2","b3","hit","ab")],

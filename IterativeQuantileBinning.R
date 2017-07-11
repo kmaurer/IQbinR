@@ -83,15 +83,15 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit = rep(0,
                 bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit)))
   } 
 }
-# iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+# iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="both",jit=rep(0.001,3))
 # 
-# iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+# iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="both")
 # 
 # iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="definition")
-# 
+
 
 
 #--------------------------------------
@@ -177,8 +177,8 @@ iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols)), stretch
 #              nbins=c(3,5,2), jit=rep(0.001,3))
 # myiq$bin_bounds
 # 
-# myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#              nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.1,3))
+myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+             nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.1,3))
 # myiq$bin_bounds
 
 
