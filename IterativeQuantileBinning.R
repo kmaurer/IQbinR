@@ -83,10 +83,10 @@ iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0
   bin_data <- merge(round_df(bin_data,6),round_df(bin_centers_idx,6), all.x=TRUE)
   
   
-  if(output=="data") return(list(data=data,bin_data=bin_data))
+  if(output=="data") return(bin_data)
   if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins, jit=jit))
   if(output=="both"){
-    return(list(bin_data=list(data=data,bin_data=bin_data), 
+    return(list(bin_data=bin_data, 
                 bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit)))
   } 
 }
@@ -119,8 +119,8 @@ stretch_iq_bins <- function(iq_def, tolerance){
   }
   return(iq_def)
 }
-# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                     nbins=c(3,5,2), output="definition")
+iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+                    nbins=c(3,5,2), output="definition")
 # iq_def$bin_bounds
 # 
 # iq_def <- iterative_quant_bin(sim_data[-test_index,], bin_cols=c("x1","x2","x3","x4"),
@@ -169,20 +169,15 @@ iqnn <- function(data, y, bin_cols, nbins, jit = rep(0,length(bin_cols)), stretc
   ## For each bin, find indeces from original data where bins match, take average y value
   iq_bin$bin_def$y <- y
   total_bins = nrow(iq_bin$bin_def$bin_centers)
-  iq_bin$bin_def$bin_stats <- data.frame(avg = rep(NA,total_bins),
-                                         obs = NA)
-  for(b in 1:total_bins){
-    match_matrix <- iq_bin$bin_data$bin_data == matrix(rep(iq_bin$bin_def$bin_centers[b,],nrow(data)),ncol=length(bin_cols),byrow=TRUE)
-    temp_data <- data[,y][match_matrix[,length(bin_cols)]]
-    iq_bin$bin_def$bin_stats[b,] <- c(mean(temp_data,na.rm=TRUE),length(temp_data))
-  }
+  iq_bin$bin_def$bin_stats <- data.frame(avg = sapply(1:total_bins, function(b) mean(data[iq_bin$bin_data$bin_index==b,y], na.rm=TRUE)),
+                                         obs = sapply(1:total_bins, function(b) sum(iq_bin$bin_data$bin_index==b)) )
   ## Return bin definition with predictions added
   return(iq_bin$bin_def)
 }
 # iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
-# myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#              nbins=c(3,5,2), jit=rep(0.001,3))
-# myiq$bin_bounds
+myiq <- iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+             nbins=c(3,5,2), jit=rep(0.001,3))
+myiq$bin_bounds
 # 
 # myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #              nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.1,3))
