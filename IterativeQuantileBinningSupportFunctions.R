@@ -96,6 +96,19 @@ make_cv_cohorts <- function(dat,cv_K){
   return(cv_cohort)
 }
 
+#' Create feature pair data frame
+#'
+#' @description Based on https://gist.github.com/avsmith/e6f4f654451da139230b to round all numeric variables
+#' @param x data frame 
+#' @param digits number of digits to round
+#' 
+round_df <- function(x, digits=2) {
+  numeric_columns <- sapply(x, class) == 'numeric'
+  x[numeric_columns] <-  round(x[numeric_columns], digits)
+  x
+}
+
+
 #--------------------------------------
 ### Helper function for suggesting parameters for jittering number of bins in each dimension
 # based on number of ties and data resolution

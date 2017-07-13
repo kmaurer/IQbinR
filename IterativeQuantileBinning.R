@@ -1,7 +1,7 @@
 ### iterative quantile binning functions
 
 # first source in all helper functions
-source("IterativeQuantileBinningSupportFunctions.R")
+# source("IterativeQuantileBinningSupportFunctions.R")
 
 ## Function List
 # quant_bin_1d for quantile binning in one dimensioncv_iqnn
@@ -76,6 +76,13 @@ iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0
       bin_data[in_bin_b,d] <- step_bin_info$bin_data
     }
   }
+  # add bin index column to bin_data
+  bin_centers_idx <- as.data.frame(bin_centers)
+  names(bin_centers_idx) <- colnames(bin_data)
+  bin_centers_idx$bin_index <- 1:nrow(bin_centers_idx)
+  bin_data <- merge(round_df(bin_data,6),round_df(bin_centers_idx,6), all.x=TRUE)
+  
+  
   if(output=="data") return(list(data=data,bin_data=bin_data))
   if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins, jit=jit))
   if(output=="both"){
@@ -83,8 +90,8 @@ iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0
                 bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit)))
   } 
 }
-# iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                     nbins=c(3,5,2), output="both",jit=rep(0.001,3))
+iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+                    nbins=c(3,5,2), output="both",jit=rep(0.001,3))
 
 # iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="both")
@@ -142,12 +149,12 @@ bin_by_IQdef <- function(iq_def, new_data, output="data", strict=TRUE){
   } 
 } 
 # # Testing bin_by_IQdef
-test_index <- c(1,2,51,52,101,102)
+# test_index <- c(1,2,51,52,101,102)
 # iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                  nbins=c(3,5,2), jit=rep(0.001,3))
-test_data <- iris[test_index,]
-bin_by_IQdef(iq_def=iqnn_mod, new_data=test_data, output="data")
-bin_by_IQdef(iq_def=iqnn_mod, new_data=test_data, output="data", strict=FALSE)
+# test_data <- iris[test_index,]
+# bin_by_IQdef(iq_def=iqnn_mod, new_data=test_data, output="data")
+# bin_by_IQdef(iq_def=iqnn_mod, new_data=test_data, output="data", strict=FALSE)
 
 
 #--------------------------------------
