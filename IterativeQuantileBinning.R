@@ -25,15 +25,15 @@ quant_bin_1d <- function(xs, nbin, output="data",jit=0){
   bin_centers <- quants[seq(2,length(quants)-1, by=2)]
   bin_bounds <- quants[seq(1,length(quants)+1, by=2)]
   if(jit > 0) bin_bounds[c(1,length(bin_bounds))] <- bin_bounds[c(1,length(bin_bounds))]+c(-jit,jit)
-  data_bins <- rep(bin_centers[1],length(xs))
+  bin_data <- rep(bin_centers[1],length(xs))
   if(output=="definition") {
     return(list(bin_centers=bin_centers,bin_bounds=bin_bounds))
   } else{
     for (i in 2:length(bin_centers)){
-      data_bins[bin_bounds[i] < xs] <- bin_centers[i]
+      bin_data[bin_bounds[i] < xs] <- bin_centers[i]
     } 
-    if(output=="data") return(data_bins)
-    if(output=="both") return(list(data_bins=data_bins,bin_centers=bin_centers,bin_bounds=bin_bounds))
+    if(output=="data") return(bin_data)
+    if(output=="both") return(list(bin_data=bin_data,bin_centers=bin_centers,bin_bounds=bin_bounds))
   }
 }
 # quant_bin_1d(ggplot2::diamonds$price,4,output="data")
@@ -44,21 +44,21 @@ quant_bin_1d <- function(xs, nbin, output="data",jit=0){
 #--------------------------------------
 ### Iterative Quantile Binning
 # Input:
-#   dat = data frame to be binned (will coerce matrix or tibble to simple data frame)
+#   data = data frame to be binned (will coerce matrix or tibble to simple data frame)
 #   bin_cols = vector of column names of variables to iteratively bin, ordered first to last
 #   nbins = vector of number of bins per step of iterative binning, ordered first to last
 #   jit = vector of margins for uniform jitter to each dimension to create seperability of tied obs due to finite precision
-iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit = rep(0,length(bin_cols))){
-  dat <- as.data.frame(dat)
+iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0,length(bin_cols))){
+  data <- as.data.frame(data)
   bin_dim <- length(bin_cols)
-  bin_dat <- matrix(NA,nrow=nrow(dat),ncol=bin_dim, dimnames=list(row.names(dat),paste(bin_cols,"binned",sep="_")))
+  bin_data <- matrix(NA,nrow=nrow(data),ncol=bin_dim, dimnames=list(row.names(data),paste(bin_cols,"binned",sep="_")))
   # Initialize with first binning step
-  step_bin_info <- quant_bin_1d(dat[,bin_cols[1]], nbins[1],output="both",jit[1])
+  step_bin_info <- quant_bin_1d(data[,bin_cols[1]], nbins[1],output="both",jit[1])
   bin_bounds <- matrix(c(step_bin_info$bin_bounds[1:nbins[1]],
                          step_bin_info$bin_bounds[2:(nbins[1]+1)]),
                        nrow=nbins[1],byrow=FALSE )
   bin_centers <- matrix(step_bin_info$bin_centers, nrow=nbins[1])
-  bin_dat[,1] <- step_bin_info$data_bins
+  bin_data[,1] <- step_bin_info$bin_data
   # Loop over remaining variables to use quantile binning WITHIN each of previous state bins
   for(d in 2:bin_dim){
     stack_size <- nrow(bin_centers)
@@ -67,29 +67,29 @@ iterative_quant_bin <- function(dat, bin_cols, nbins, output="data",jit = rep(0,
     bin_bounds <- cbind(stack_matrix %*% bin_bounds,matrix(rep(NA,2*stack_size*nbins[d]),ncol=2))
     # iterate through unique bins from prior step which are the {1,1+nbins[d],1+2*nbins[d],...} rows of the bin matrices
     for(b in seq(1,1+(stack_size-1)*nbins[d],by=nbins[d]) ){
-      in_bin_b <- apply(matrix(bin_dat[,1:(d-1)],ncol=(d-1)),1,identical,y=bin_centers[b,-d])
-      step_bin_info <- quant_bin_1d(dat[in_bin_b,bin_cols[d]], nbins[d],output="both",jit[d])
+      in_bin_b <- apply(matrix(bin_data[,1:(d-1)],ncol=(d-1)),1,identical,y=bin_centers[b,-d])
+      step_bin_info <- quant_bin_1d(data[in_bin_b,bin_cols[d]], nbins[d],output="both",jit[d])
       bin_bounds[b:(b+nbins[d]-1),c(2*d-1,2*d)] <- matrix(c(step_bin_info$bin_bounds[1:nbins[d]],
                                                             step_bin_info$bin_bounds[2:(nbins[d]+1)]),
                                                           nrow=nbins[d],byrow=FALSE)
       bin_centers[b:(b+nbins[d]-1),d] <- matrix(step_bin_info$bin_centers, nrow=nbins[d])
-      bin_dat[in_bin_b,d] <- step_bin_info$data_bins
+      bin_data[in_bin_b,d] <- step_bin_info$bin_data
     }
   }
-  if(output=="data") return(list(dat=dat,bin_dat=bin_dat))
+  if(output=="data") return(list(data=data,bin_data=bin_data))
   if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins, jit=jit))
   if(output=="both"){
-    return(list(bin_dat=list(dat=dat,bin_dat=bin_dat), 
+    return(list(bin_data=list(data=data,bin_data=bin_data), 
                 bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit)))
   } 
 }
-# iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+# iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="both",jit=rep(0.001,3))
-# 
-# iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+
+# iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="both")
 # 
-# iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="definition")
 
 
@@ -112,10 +112,10 @@ stretch_iq_bins <- function(iq_def, tolerance){
   }
   return(iq_def)
 }
-# iq_def <- iterative_quant_bin(dat=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="definition")
 # iq_def$bin_bounds
-
+# 
 # iq_def <- iterative_quant_bin(sim_data[-test_index,], bin_cols=c("x1","x2","x3","x4"),
 #                               nbins=rep(4,4), jit=rep(0.001,4), output="both" )
 # iq_stretch <- stretch_iq_bins(iq_def, tolerance=rep(5,4))
@@ -135,28 +135,28 @@ bin_by_IQdef <- function(iq_def, new_data, output="data", strict=TRUE){
     bin_index_finder(new_data[i,iq_def$bin_cols],iq_def$bin_bounds, iq_def$nbins, strict=strict)
   })
   
-  if(output=="data") return(list(dat=new_data,bin_dat=iq_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces))
+  if(output=="data") return(list(data=new_data,bin_data=iq_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces))
   if(output=="both"){
-    return(list(bin_dat=list(dat=new_data,bin_dat=iq_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces), 
+    return(list(bin_data=list(data=new_data,bin_data=iq_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces), 
                 bin_def=iq_def))
   } 
 } 
 # # Testing bin_by_IQdef
-# test_index <- c(1,2,51,52,101,102)
+test_index <- c(1,2,51,52,101,102)
 # iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                  nbins=c(3,5,2), jit=rep(0.001,3))
-# test_data <- iris[test_index,]
-# bin_by_IQdef(iqnn_mod, test_data, output="data")
-# bin_by_IQdef(iqnn_mod, test_data, output="data", strict=FALSE)
+test_data <- iris[test_index,]
+bin_by_IQdef(iq_def=iqnn_mod, new_data=test_data, output="data")
+bin_by_IQdef(iq_def=iqnn_mod, new_data=test_data, output="data", strict=FALSE)
 
 
 #--------------------------------------
 ### Iterative Quantile Binned Nearest Neighbors Regression
 # takes in data, response column and binning parameters
-iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols)), stretch=FALSE, tolerance = rep(0,length(bin_cols)) ){
-  dat <- as.data.frame(dat)
+iqnn <- function(data, y, bin_cols, nbins, jit = rep(0,length(bin_cols)), stretch=FALSE, tolerance = rep(0,length(bin_cols)) ){
+  data <- as.data.frame(data)
   ## make bins
-  iq_bin <- iterative_quant_bin(dat, bin_cols, nbins, output="both",jit)
+  iq_bin <- iterative_quant_bin(data, bin_cols, nbins, output="both",jit)
   # stretch bins if requested
   if(stretch) iq_bin <- stretch_iq_bins(iq_bin, tolerance=tolerance)
   ## For each bin, find indeces from original data where bins match, take average y value
@@ -165,20 +165,20 @@ iqnn <- function(dat, y, bin_cols, nbins, jit = rep(0,length(bin_cols)), stretch
   iq_bin$bin_def$bin_stats <- data.frame(avg = rep(NA,total_bins),
                                          obs = NA)
   for(b in 1:total_bins){
-    match_matrix <- iq_bin$bin_dat$bin_dat == matrix(rep(iq_bin$bin_def$bin_centers[b,],nrow(dat)),ncol=length(bin_cols),byrow=TRUE)
-    temp_data <- dat[,y][match_matrix[,length(bin_cols)]]
+    match_matrix <- iq_bin$bin_data$bin_data == matrix(rep(iq_bin$bin_def$bin_centers[b,],nrow(data)),ncol=length(bin_cols),byrow=TRUE)
+    temp_data <- data[,y][match_matrix[,length(bin_cols)]]
     iq_bin$bin_def$bin_stats[b,] <- c(mean(temp_data,na.rm=TRUE),length(temp_data))
   }
   ## Return bin definition with predictions added
   return(iq_bin$bin_def)
 }
-# # iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
+# iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
 # myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #              nbins=c(3,5,2), jit=rep(0.001,3))
 # myiq$bin_bounds
 # 
-myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-             nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.1,3))
+# myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#              nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.1,3))
 # myiq$bin_bounds
 
 
@@ -205,16 +205,16 @@ predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
 
 #--------------------------------------
 ### Cross Validated predictions for iqnn models
-cv_pred_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE){
-  dat <- as.data.frame(dat)
-  if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(dat, cv_k)
-  if(cv_method=="LOO") cv_cohorts <- 1:nrow(dat)
-  cv_preds <- rep(NA,nrow(dat))
+cv_pred_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=FALSE){
+  data <- as.data.frame(data)
+  if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(data, cv_k)
+  if(cv_method=="LOO") cv_cohorts <- 1:nrow(data)
+  cv_preds <- rep(NA,nrow(data))
   for(fold in 1:length(unique(cv_cohorts))){
     test_index <- which(cv_cohorts==fold)
-    iqnn_mod <- iqnn(dat[-test_index,], y=iqnn_mod$y, bin_cols=iqnn_mod$bin_cols, 
+    iqnn_mod <- iqnn(data[-test_index,], y=iqnn_mod$y, bin_cols=iqnn_mod$bin_cols, 
                      nbins=iqnn_mod$nbins, jit=iqnn_mod$jit)
-    cv_preds[test_index] <- predict_iqnn(iqnn_mod, dat[test_index,],strict=strict)
+    cv_preds[test_index] <- predict_iqnn(iqnn_mod, data[test_index,],strict=strict)
   }
   cv_preds
 }
@@ -226,11 +226,11 @@ cv_pred_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE
 
 #--------------------------------------
 ### Cross Validation for assessment for iqnn models
-cv_iqnn <- function(iqnn_mod, dat, cv_method="kfold", cv_k=10, strict=FALSE){
-  dat <- as.data.frame(dat)
-  cv_preds <- cv_pred_iqnn(iqnn_mod, dat, cv_method, cv_k, strict)
-  PRESS <- sum((dat[,iqnn_mod$y]-cv_preds)^2)
-  MSE <- PRESS/nrow(dat)
+cv_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=FALSE){
+  data <- as.data.frame(data)
+  cv_preds <- cv_pred_iqnn(iqnn_mod, data, cv_method, cv_k, strict)
+  PRESS <- sum((data[,iqnn_mod$y]-cv_preds)^2)
+  MSE <- PRESS/nrow(data)
   RMSE <- sqrt(MSE)
   c(PRESS=PRESS,MSE=MSE,RMSE=RMSE)
 }
