@@ -96,8 +96,8 @@ iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Wi
 # iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="both")
 # 
-# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                     nbins=c(3,5,2), output="definition")
+iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+                    nbins=c(3,5,2), output="both")
 
 
 
@@ -113,9 +113,13 @@ stretch_iq_bins <- function(iq_def, tolerance){
     blocks_n <- b/blocks
     subblocks <- prod(iq_def$bin_def$nbins[1:d])
     subblocks_n <- b/subblocks
-    # strec
-    iq_def$bin_def$bin_bounds[seq(1,subblocks_n,by=1),2*d-1] <- iq_def$bin_def$bin_bounds[seq(1,subblocks_n,by=1),2*d-1] - tolerance[d]
-    iq_def$bin_def$bin_bounds[seq(blocks_n-subblocks_n+1, blocks_n,by=1),2*d] <- iq_def$bin_def$bin_bounds[seq(blocks_n-subblocks_n+1, blocks_n,by=1),2*d] + tolerance[d]
+    # stretch the bins 
+    for(block in 1:blocks){
+      lowest_in_block <- seq(1+((block-1)*blocks_n),subblocks_n+((block-1)*blocks_n),by=1)
+      highest_in_block <- seq(blocks_n-subblocks_n+1+((block-1)*blocks_n), blocks_n+((block-1)*blocks_n),by=1)
+      iq_def$bin_def$bin_bounds[lowest_in_block,2*d-1] <- iq_def$bin_def$bin_bounds[lowest_in_block,2*d-1] - tolerance[d]
+      iq_def$bin_def$bin_bounds[highest_in_block,2*d] <- iq_def$bin_def$bin_bounds[highest_in_block,2*d] + tolerance[d]
+    }
   }
   return(iq_def)
 }
@@ -127,7 +131,12 @@ iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width"
 #                               nbins=rep(4,4), jit=rep(0.001,4), output="both" )
 # iq_stretch <- stretch_iq_bins(iq_def, tolerance=rep(5,4))
 # iq_stretch$bin_def$bin_bounds
+iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+                              nbins=c(3,2,2), output="both")
+stretch_iq_def <- stretch_iq_bins(iq_def, tolerance = c(1,1,1))
 
+iq_def$bin_def$bin_bounds
+stretch_iq_def$bin_def$bin_bounds
 
 #--------------------------------------
 ### Iterative Quantile Binning New Data from defined bins
