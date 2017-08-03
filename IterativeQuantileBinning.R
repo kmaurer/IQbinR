@@ -1,7 +1,7 @@
 ### iterative quantile binning functions
 
 # first source in all helper functions
-# source("IterativeQuantileBinningSupportFunctions.R")
+source("IterativeQuantileBinningSupportFunctions.R")
 
 ## Function List
 # quant_bin_1d for quantile binning in one dimensioncv_iqnn
@@ -90,14 +90,14 @@ iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0
                 bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit)))
   } 
 }
-iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-                    nbins=c(3,5,2), output="both",jit=rep(0.001,3))
+# iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                     nbins=c(3,5,2), output="both",jit=rep(0.001,3))
 
 # iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                     nbins=c(3,5,2), output="both")
 # 
-iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-                    nbins=c(3,5,2), output="both")
+# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                     nbins=c(3,5,2), output="both")
 
 
 
