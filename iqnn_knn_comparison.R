@@ -27,10 +27,6 @@ bb_players <- baseball %>%
 bb_players <- as.data.frame(na.omit(bb_players))
 head(bb_players)
 
-# Total number of possible IQbin patterns 4 X variables: 
-#   for combination of p columns there exists p! combinations of iterative binning
-sum(choose(4,2:4)*factorial(2:4))
-
 ## Check that we can fit models to batting career data
 # iqdef <- iterative_quant_bin(dat=bb_players, bin_cols=c("b2","b3","hit","ab"),
 #                     nbins=c(2,2,2,2), jit=rep(0.001,4), output="both")
@@ -70,31 +66,29 @@ cv_pred_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5,
   }
   cv_preds
 }
-cv_preds <- cv_pred_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), 
-           cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute")
-head(cv_preds)
-# cv_preds <- cv_knn.reg(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), 
+# cv_preds <- cv_pred_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
+#            cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute")
+# head(cv_preds)
+# cv_preds <- cv_pred_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
 #                        cv_method="LOO", k=5, knn_algorithm = "brute")
 # head(cv_preds)
 
-
-
-
-
-#!# FIX THIS FUNCTION 
 #--------------------------------------
-### Cross Validation for assessment for iqnn models
-cv_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute"){
-  dat <- as.data.frame(dat)
-  cv_preds <- cv_pred_knn(dat=dat, y_name=y_name, x_names=x_names, cv_method=cv_method, cv_k=cv_k, k=k, knn_algorithm = knn_algorithm)
-  PRESS <- sum((dat[,iqnn_mod$y]-cv_preds)^2)
-  MSE <- PRESS/nrow(dat)
-  RMSE <- sqrt(MSE)
-  c(PRESS=PRESS,MSE=MSE,RMSE=RMSE)
+### Tuning function for knn
+tune_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
+  if(!is.integer(k_values)) return(print("Please specify k_values as an integer vector of neightborhood sizes (k) to be tuned"))
+  cv_results <- data.frame(k=k_values,MSE = NA)
+  for(k_idx in 1:length(k_values)){
+    cv_preds <- cv_pred_knn(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=k_values[k_idx], knn_algorithm = "brute")
+    cv_results$MSE[k_idx] <- mean((dat[,y_name]-cv_preds)^2)
+  }
+  cv_results$RMSE <- sqrt(cv_results$MSE)
+  return(cv_results)
 }
-cv_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), 
-            cv_method="kfold", cv_k = 20, k=5, knn_algorithm = "brute")
-
+# timer <- Sys.time()
+# cv_tune_results <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
+#                        cv_method="LOO", k_values=1:50, knn_algorithm = "brute")
+# Sys.time()-timer
 
 
 #---------------------------------------------------------------------------------------------------
@@ -112,7 +106,7 @@ Sys.time() - timer
 
 timer <- Sys.time()
 iqnn_mod <- iqnn(bb_players_st[-test_index,], y="hr", bin_cols=c("b2","b3","hit","ab"),
-                 nbins=c(7,7,6,6), jit=rep(0.001,4))
+                 nbins=c(7,7,6,6), jit=rep(0.001,4), tolerance=rep(0.001,4))
 iqnn_preds <- predict_iqnn(iqnn_mod, bb_players_st[test_index,],strict=FALSE)
 Sys.time() - timer
 
@@ -137,7 +131,7 @@ Sys.time() - timer
 library(mvtnorm)
 help(package="mvtnorm")
 
-P=4
+P=5
 B=10
 ps = rep(2:P, each=(B-1))
 bs = rep(2:B, (P-1)) 
@@ -155,6 +149,7 @@ sim_data <- data.frame(x1=rnorm(n),
                        x2=rnorm(n),
                        x3=rnorm(n),
                        x4=rnorm(n),
+                       x5=rnorm(n),
                        y=rnorm(n,100,10))
 # rebuild column names to proper dimension 
 xcols <- paste0("x",1:p)
@@ -177,4 +172,4 @@ iqnn_preds <- predict_iqnn(iqnn_mod, sim_data[test_index,],strict=TRUE)
 sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 }
 
-write.csv(sim_times,"simulationTimes.csv", row.names=FALSE)
+#write.csv(sim_times,"simulationTimesNestedLists.csv", row.names=FALSE)

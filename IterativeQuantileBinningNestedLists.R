@@ -1,3 +1,5 @@
+### CODE DISCONTINUED -- ONLY KEEP IN CASE SECTIONS NEED TO CROSSCHECK LATER
+
 #--------------------------------------
 ### Iterative Quantile Binning version 2 with nested list structured bin definitions
 # Input:
@@ -5,7 +7,7 @@
 #   bin_cols = vector of column names of variables to iteratively bin, ordered first to last
 #   nbins = vector of number of bins per step of iterative binning, ordered first to last
 #   jit = vector of margins for uniform jitter to each dimension to create seperability of tied obs due to finite precision
-iterative_quant_bin2 <- function(dat, bin_cols, nbins, output="data",jit = rep(0,length(bin_cols))){
+iterative_quant_bin2 <- function(data, bin_cols, nbins, output="data",jit = rep(0,length(bin_cols))){
   data <- as.data.frame(data)
   bin_dim <- length(nbins)
   bin_data <- matrix(NA,nrow=nrow(data),ncol=bin_dim, dimnames=list(row.names(data),paste(bin_cols,"binned",sep="_")))
@@ -33,16 +35,19 @@ iterative_quant_bin2 <- function(dat, bin_cols, nbins, output="data",jit = rep(0
       bin_data[in_bin_b,d] <- step_bin_info$bin_data
     }
   }
+  
+  bin_list <- make_bin_list(bin_bounds,nbins)
   if(output=="data") return(list(dat=dat,bin_dat=bin_dat))
-  if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins, jit=jit))
+  if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins, jit=jit, bin_list=bin_list))
   if(output=="both"){
     return(list(bin_dat=list(dat=dat,bin_dat=bin_dat), 
-                bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit)))
+                bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit,bin_list=bin_list)))
   } 
 }
 
-iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+bin_def <- iterative_quant_bin2(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
                              nbins=c(3,5,2), output="definition",jit=rep(0.001,3))
+str(bin_def)
 
 
 make_bin_list <- function(bin_bounds,nbins){
@@ -75,19 +80,18 @@ make_bin_list <- function(bin_bounds,nbins){
   return(bin_list)
 }
 
-
 bin_list <- make_bin_list(iq_def$bin_bounds, iq_def$nbins)
 x<- iris[118,c(1,2,4)]
 
 
 
 
-bin_index_finder2 <- function(x, bin_list, nbins, strict=TRUE){ 
-  bin_dim = length(nbins)
-  nest_list <- bin_list[[1]]
+bin_index_finder2 <- function(x, bin_def, strict=TRUE){ 
+  bin_dim = length(bin_def$nbins)
+  nest_list <- bin_def$bin_list[[1]]
   if(strict==TRUE) {
     for(d in 1:bin_dim){
-      nest_index <- which(x[[d]] > nest_list[[nbins[d]+1]][,1] & x[[d]] < nest_list[[nbins[d]+1]][,2])
+      nest_index <- which(x[[d]] > nest_list[[bin_def$nbins[d]+1]][,1] & x[[d]] < nest_list[[bin_def$nbins[d]+1]][,2])
       nest_list <- nest_list[[nest_index]]
     }
     idx <- nest_list
@@ -99,8 +103,6 @@ bin_index_finder2 <- function(x, bin_list, nbins, strict=TRUE){
 
 
 ### Is it faster?
-
-
 baseball <- read.csv("http://kmaurer.github.io/documents/SLahman_Batting2014.csv")
 head(baseball)
 
@@ -120,7 +122,7 @@ bb_players <- baseball %>%
 bb_players <- as.data.frame(na.omit(bb_players))
 head(bb_players)
 
-iq_def <- iterative_quant_bin(dat=bb_players, bin_cols=c("b2","b3","hit","ab"),
+iq_def <- iterative_quant_bin2(dat=bb_players, bin_cols=c("b2","b3","hit","ab"),
                     nbins=c(7,7,6,6), jit=rep(0.001,4), output="definition")
 bin_list <- make_bin_list(iq_def$bin_bounds, iq_def$nbins)
 
@@ -130,6 +132,7 @@ for(i in 1:runs){
 bin_index_finder2(bb_players[1,c("b2","b3","hit","ab")], bin_list=bin_list, nbins=c(7,7,6,6), strict=TRUE)
 }
 Sys.time()-timer
+
 
 timer <- Sys.time()
 for(i in 1:runs){

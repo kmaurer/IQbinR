@@ -2,6 +2,70 @@
 # Move to this seperate file for organization that focuses on primary tasks
 
 #--------------------------------------
+make_bin_list <- function(bin_bounds,nbins){
+  bin_dim = length(nbins)
+  ### build nested list version of bin_bounds to speed up future searching for bins
+  lower_level_list <- list(NULL)
+  for(i in 1:nrow(bin_bounds)){
+    lower_level_list[[i]] <- i
+  } 
+  for(d in bin_dim:1){
+    # for each dimension from second lowest to highest, group up observations from lower_level_list into items in upper_level_list 
+    upper_level_list <- list(NULL)
+    upper_blocks <- ifelse(d==1,1,prod(nbins[1:(d-1)]))
+    lower_block_size <- nbins[d]
+    
+    upper_indeces <- prod(nbins[d:length(nbins)])
+    lower_indeces <- ifelse(d==bin_dim,1,prod(nbins[(d+1):bin_dim]))
+    
+    for(ul in 1:upper_blocks){
+      # create upper level groups 
+      upper_level_list[[ul]] <- list(NULL)
+      for(ll in 1:lower_block_size){
+        upper_level_list[[ul]][[ll]] <- lower_level_list[[(ul-1)*lower_block_size+ll]]
+      }
+      upper_level_list[[ul]][[lower_block_size+1]] <- bin_bounds[(ul-1)*upper_indeces + 1:lower_block_size*lower_indeces,(d-1)*2+1:2]
+    }
+    lower_level_list <- upper_level_list
+  }
+  bin_list <- lower_level_list
+  return(bin_list)
+}
+#---------------------------------------
+
+bin_index_finder_nest <- function(x, bin_def, strict=TRUE){ 
+  bin_dim = length(bin_def$nbins)
+  nest_list <- bin_def$bin_list[[1]]
+  x <- as.numeric(x)
+  if(strict==TRUE) {
+    for(d in 1:bin_dim){
+      nest_index <- which(x[[d]] > nest_list[[bin_def$nbins[d]+1]][,1] & x[[d]]<= nest_list[[bin_def$nbins[d]+1]][,2])
+      if( x[[d]] <= nest_list[[bin_def$nbins[d]+1]][1,1] ) nest_index <- 1
+      if(length(nest_index)==0) return(print("Observation outside of observed bins, set strict=FALSE "))
+      nest_list <- nest_list[[nest_index]]
+    }
+    idx <- nest_list
+  }else{
+    for(d in 1:bin_dim){
+      nest_index <- which(x[[d]] > nest_list[[bin_def$nbins[d]+1]][,1] & x[[d]] <= nest_list[[bin_def$nbins[d]+1]][,2])
+      if(length(nest_index)==0) nest_index <- 1 #Close the lower bound
+      if( x[[d]] <= nest_list[[bin_def$nbins[d]+1]][1,1] ) nest_index <- 1
+      if( x[[d]] > nest_list[[bin_def$nbins[d]+1]][bin_def$nbins[d],2] ) nest_index <- bin_def$nbins[d]
+      nest_list <- nest_list[[nest_index]]
+    }
+    idx <- nest_list
+  }
+  return(idx)
+} 
+# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                               nbins=c(3,2,2), output="both")
+# bin_by_IQdef(bin_def=iq_def$bin_def, new_data=test_data, output="data")
+# bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=TRUE)
+# bin_index_finder_nest(x=c(6,3,15),bin_def, strict=TRUE)
+# bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=FALSE)
+# bin_index_finder_nest(x=c(6,3,15),bin_def, strict=FALSE)
+
+#--------------------------------------
 ## function to make a matrix for duplicating the N rows of a matrix M times each
 # support funciton for IQ binning function
 #!# Update later for speed 
@@ -17,39 +81,39 @@ make_stack_matrix(3,4)
 # x = p-dimensional vector
 # bin_bounds = 2*p dimensional boundary matrix (like in iq-binning definition list)
 #!# need to adapt to allow bin allocations for observations outside of observed bins
-bin_index_finder <- function(x, bin_bounds, nbins, strict=TRUE){ 
-  p = length(x)
-  b = nrow(bin_bounds)
-  if(strict==TRUE) {
-    xrep_mat = matrix(rep(x,b),ncol=p,byrow=TRUE)
-    idx <- which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
-    if(length(idx)==0L) idx <- NA
-  }else{
-    #!# put process for allocating outside bins
-    check_matrix <- matrix(rep(NA,b*p*2),ncol=p*2,byrow=TRUE)
-    for (d in 1:p){
-      blocks <- prod(nbins[1:d-1])
-      blocks_n <- b/blocks
-      subblocks <- prod(nbins[1:d])
-      subblocks_n <- b/subblocks
-      # rows with lowest bin in each strata from last dimension
-      cond_lower <- rep(seq(0,b-blocks_n,by=blocks_n),each=subblocks_n) + rep(seq(1,subblocks_n,by=1),blocks)
-      # rows with highest bin in each strata from last dimension
-      cond_upper <- rep(seq(0,b-blocks_n,by=blocks_n),each=subblocks_n) + rep(seq(blocks_n-subblocks_n+1, blocks_n,by=1),blocks)
-      
-      above_lb <- bin_bounds[,d*2-1] < as.numeric(x[d]) 
-      above_lb[cond_lower] <- TRUE
-      check_matrix[,d*2-1] <- above_lb
-      
-      below_ub <- as.numeric(x[d]) <= bin_bounds[,d*2]
-      below_ub[cond_upper] <- TRUE
-      check_matrix[,d*2] <- below_ub
-    }
-    idx <- which(rowSums(check_matrix)==p*2)
-    
-  }
-  return(idx)
-} 
+# bin_index_finder <- function(x, bin_bounds, nbins, strict=TRUE){ 
+#   p = length(x)
+#   b = nrow(bin_bounds)
+#   if(strict==TRUE) {
+#     xrep_mat = matrix(rep(x,b),ncol=p,byrow=TRUE)
+#     idx <- which(rowSums(bin_bounds[,seq(1,2*p-1,by=2)] < xrep_mat & xrep_mat <= bin_bounds[,seq(2,2*p,by=2)])==p)
+#     if(length(idx)==0L) idx <- NA
+#   }else{
+#     #!# put process for allocating outside bins
+#     check_matrix <- matrix(rep(NA,b*p*2),ncol=p*2,byrow=TRUE)
+#     for (d in 1:p){
+#       blocks <- prod(nbins[1:d-1])
+#       blocks_n <- b/blocks
+#       subblocks <- prod(nbins[1:d])
+#       subblocks_n <- b/subblocks
+#       # rows with lowest bin in each strata from last dimension
+#       cond_lower <- rep(seq(0,b-blocks_n,by=blocks_n),each=subblocks_n) + rep(seq(1,subblocks_n,by=1),blocks)
+#       # rows with highest bin in each strata from last dimension
+#       cond_upper <- rep(seq(0,b-blocks_n,by=blocks_n),each=subblocks_n) + rep(seq(blocks_n-subblocks_n+1, blocks_n,by=1),blocks)
+#       
+#       above_lb <- bin_bounds[,d*2-1] < as.numeric(x[d]) 
+#       above_lb[cond_lower] <- TRUE
+#       check_matrix[,d*2-1] <- above_lb
+#       
+#       below_ub <- as.numeric(x[d]) <= bin_bounds[,d*2]
+#       below_ub[cond_upper] <- TRUE
+#       check_matrix[,d*2] <- below_ub
+#     }
+#     idx <- which(rowSums(check_matrix)==p*2)
+#     
+#   }
+#   return(idx)
+# } 
 # myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2), jit=rep(.001,3))
 # new_row <- iris[1,c("Sepal.Length","Sepal.Width","Petal.Width")]
 # new_row_index <- bin_index_finder(new_row, myiq$bin_bounds, myiq$nbins)

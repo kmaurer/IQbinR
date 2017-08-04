@@ -81,13 +81,13 @@ iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0
   names(bin_centers_idx) <- colnames(bin_data)
   bin_centers_idx$bin_index <- 1:nrow(bin_centers_idx)
   bin_data <- merge(round_df(bin_data,6),round_df(bin_centers_idx,6), all.x=TRUE)
-  
-  
-  if(output=="data") return(bin_data)
-  if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins, jit=jit))
+  # 
+  bin_list <- make_bin_list(bin_bounds,nbins)
+  if(output=="data") return(list(data=data,bin_data=bin_data))
+  if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins, jit=jit, bin_list=bin_list))
   if(output=="both"){
-    return(list(bin_data=bin_data, 
-                bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit)))
+    return(list(bin_data=list(data=data,bin_data=bin_data), 
+                bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit,bin_list=bin_list)))
   } 
 }
 # iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
@@ -121,39 +121,42 @@ stretch_iq_bins <- function(iq_def, tolerance){
       iq_def$bin_def$bin_bounds[highest_in_block,2*d] <- iq_def$bin_def$bin_bounds[highest_in_block,2*d] + tolerance[d]
     }
   }
+  iq_def$bin_def$bin_list <- make_bin_list(iq_def$bin_def$bin_bounds,iq_def$bin_def$nbins)
   return(iq_def)
 }
-iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-                    nbins=c(3,5,2), output="definition")
+# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                     nbins=c(3,5,2), output="definition")
 # iq_def$bin_bounds
 # 
 # iq_def <- iterative_quant_bin(sim_data[-test_index,], bin_cols=c("x1","x2","x3","x4"),
 #                               nbins=rep(4,4), jit=rep(0.001,4), output="both" )
 # iq_stretch <- stretch_iq_bins(iq_def, tolerance=rep(5,4))
-# iq_stretch$bin_def$bin_bounds
-iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-                              nbins=c(3,2,2), output="both")
-stretch_iq_def <- stretch_iq_bins(iq_def, tolerance = c(1,1,1))
-
-iq_def$bin_def$bin_bounds
-stretch_iq_def$bin_def$bin_bounds
+# # iq_stretch$bin_def$bin_bounds
+# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                               nbins=c(3,2,2), output="both")
+# stretch_iq_def <- stretch_iq_bins(iq_def, tolerance = c(1,1,1))
+# 
+# iq_def$bin_def$bin_bounds
+# stretch_iq_def$bin_def$bin_bounds
 
 #--------------------------------------
 ### Iterative Quantile Binning New Data from defined bins
 # iq_def= IQ bin definition list from iterative_quant_bin or iqnn
 # new_data = data frame with column names matching the binned columns from bin-training data
 # output matches format of iterative_quant_bin and inherets properties from iqnn if applicable
-bin_by_IQdef <- function(iq_def, new_data, output="data", strict=TRUE){
+bin_by_IQdef <- function(bin_def, new_data, output="data", strict=FALSE){
   new_data <- as.data.frame(new_data)
   #!# need to introduce similar jitter to new data as in definition so "boundary" points allocated randomly
+  #
   # loop over each obs in new data, identify the bin indeces then return bin centers for associated bins
   bin_indeces <- sapply(1:nrow(new_data), function(i){
-    bin_index_finder(new_data[i,iq_def$bin_cols],iq_def$bin_bounds, iq_def$nbins, strict=strict)
+    # bin_index_finder(new_data[i,iq_def$bin_cols],iq_def$bin_bounds, iq_def$nbins, strict=strict)
+    bin_index_finder_nest(new_data[i,bin_def$bin_cols],bin_def, strict=strict)
   })
   
-  if(output=="data") return(list(data=new_data,bin_data=iq_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces))
+  if(output=="data") return(list(data=new_data,bin_data=bin_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces))
   if(output=="both"){
-    return(list(bin_data=list(data=new_data,bin_data=iq_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces), 
+    return(list(bin_data=list(data=new_data,bin_data=bin_def$bin_centers[bin_indeces,],bin_indeces=bin_indeces), 
                 bin_def=iq_def))
   } 
 } 
@@ -162,8 +165,18 @@ bin_by_IQdef <- function(iq_def, new_data, output="data", strict=TRUE){
 # iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                  nbins=c(3,5,2), jit=rep(0.001,3))
 # test_data <- iris[test_index,]
-# bin_by_IQdef(iq_def=iqnn_mod, new_data=test_data, output="data")
-# bin_by_IQdef(iq_def=iqnn_mod, new_data=test_data, output="data", strict=FALSE)
+#
+# 
+# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                               nbins=c(3,2,2), output="both")
+# stretch_iq_def <- stretch_iq_bins(iq_def, tolerance = c(.1,.1,.1))
+# bin_by_IQdef(bin_def=stretch_iq_def$bin_def, new_data=test_data, output="data")
+# 
+# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                               nbins=c(3,2,2), output="both")
+# bin_by_IQdef(bin_def=iq_def$bin_def, new_data=test_data, output="data")
+# 
+# bin_by_IQdef(bin_def=iqnn_mod, new_data=test_data, output="data", strict=FALSE)
 
 
 #--------------------------------------
@@ -178,16 +191,17 @@ iqnn <- function(data, y, bin_cols, nbins, jit = rep(0,length(bin_cols)), stretc
   ## For each bin, find indeces from original data where bins match, take average y value
   iq_bin$bin_def$y <- y
   total_bins = nrow(iq_bin$bin_def$bin_centers)
-  iq_bin$bin_def$bin_stats <- data.frame(avg = sapply(1:total_bins, function(b) mean(data[iq_bin$bin_data$bin_index==b,y], na.rm=TRUE)),
-                                         obs = sapply(1:total_bins, function(b) sum(iq_bin$bin_data$bin_index==b)) )
+  iq_bin$bin_def$bin_stats <- data.frame(avg = sapply(1:total_bins, function(b) mean(data[iq_bin$bin_data$bin_data$bin_index==b,y], na.rm=TRUE)),
+                                         obs = sapply(1:total_bins, function(b) sum(iq_bin$bin_data$bin_data$bin_index==b)) )
   ## Return bin definition with predictions added
   return(iq_bin$bin_def)
 }
 # iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
-myiq <- iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-             nbins=c(3,5,2), jit=rep(0.001,3))
-myiq$bin_bounds
-# 
+# iqnn_mod <- iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#              nbins=c(3,5,2), jit=rep(0.001,3), tolerance = rep(0.001,3))
+# iqnn_mod <- iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                  nbins=c(3,5,2))
+# bin_by_IQdef(bin_def=iqnn_mod, new_data=test_data, output="data")
 # myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #              nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.1,3))
 # myiq$bin_bounds
@@ -197,7 +211,7 @@ myiq$bin_bounds
 
 #--------------------------------------
 ### predict for new data from iqnn model
-predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
+predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=TRUE){
   test_data <- as.data.frame(test_data)
   test_bin <- bin_by_IQdef(iqnn_mod, test_data, output="data",strict=strict)
   if(type=="estimate") return(iqnn_mod$bin_stats$avg[test_bin$bin_indeces])
@@ -206,17 +220,17 @@ predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
 }
 # test_index <- c(1,2,51,52,101,102)
 # iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                  nbins=c(3,5,2), jit=rep(0.001,3))
+#                  nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.2,3))
 # test_data <- iris[test_index,]
 # predict_iqnn(iqnn_mod, test_data,strict=TRUE)
-# predict_iqnn(iqnn_mod, test_data,type="binsize")
+# predict_iqnn(iqnn_mod, test_data,type="both")
 # predict_iqnn(iqnn_mod, test_data,strict=FALSE)
-# predict_iqnn(iqnn_mod, test_data,type="binsize")
+# predict_iqnn(iqnn_mod, test_data,type="estimate")
 
 
 #--------------------------------------
 ### Cross Validated predictions for iqnn models
-cv_pred_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=FALSE){
+cv_pred_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=TRUE){
   data <- as.data.frame(data)
   if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(data, cv_k)
   if(cv_method=="LOO") cv_cohorts <- 1:nrow(data)
@@ -229,7 +243,7 @@ cv_pred_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=FALS
   }
   cv_preds
 }
-# iqnn_mod <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), 
+# iqnn_mod <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                  nbins=c(3,5,2), jit=rep(0.001,3))
 # cv_pred_iqnn(iqnn_mod,iris, cv_method="kfold", cv_k=10, strict=FALSE)
 # cv_pred_iqnn(iqnn_mod,iris, cv_method="LOO", strict=FALSE)
