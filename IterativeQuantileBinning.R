@@ -50,6 +50,7 @@ quant_bin_1d <- function(xs, nbin, output="data",jit=0){
 #   jit = vector of margins for uniform jitter to each dimension to create seperability of tied obs due to finite precision
 iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0,length(bin_cols))){
   data <- as.data.frame(data)
+  # row.names(data) <- 1:nrow(data)
   bin_dim <- length(bin_cols)
   bin_data <- matrix(NA,nrow=nrow(data),ncol=bin_dim, dimnames=list(row.names(data),paste(bin_cols,"binned",sep="_")))
   # Initialize with first binning step
@@ -78,9 +79,13 @@ iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0
   }
   # add bin index column to bin_data
   bin_centers_idx <- as.data.frame(bin_centers)
+  bin_data_idx <- as.data.frame(bin_data)
   names(bin_centers_idx) <- colnames(bin_data)
   bin_centers_idx$bin_index <- 1:nrow(bin_centers_idx)
-  bin_data <- merge(round_df(bin_data,6),round_df(bin_centers_idx,6), all.x=TRUE)
+  bin_data_idx$order <- 1:nrow(bin_data_idx)
+  bin_data <- merge(round_df(bin_data_idx,10),round_df(bin_centers_idx,10), all.x=TRUE)
+  bin_data <- bin_data[order(bin_data$order),]
+  row.names(bin_data) <- 1:nrow(bin_data)
   # 
   bin_list <- make_bin_list(bin_bounds,nbins)
   if(output=="data") return(list(data=data,bin_data=bin_data))
@@ -191,6 +196,7 @@ iqnn <- function(data, y, bin_cols, nbins, jit = rep(0,length(bin_cols)), stretc
   ## For each bin, find indeces from original data where bins match, take average y value
   iq_bin$bin_def$y <- y
   total_bins = nrow(iq_bin$bin_def$bin_centers)
+  #!# broken line-up from bin_data to original data, lookup not working right. FIX!!!!!!
   iq_bin$bin_def$bin_stats <- data.frame(avg = sapply(1:total_bins, function(b) mean(data[iq_bin$bin_data$bin_data$bin_index==b,y], na.rm=TRUE)),
                                          obs = sapply(1:total_bins, function(b) sum(iq_bin$bin_data$bin_data$bin_index==b)) )
   ## Return bin definition with predictions added
@@ -230,36 +236,73 @@ predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=TRUE){
 
 #--------------------------------------
 ### Cross Validated predictions for iqnn models
-cv_pred_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=TRUE){
+cv_pred_iqnn <- function(data, y, bin_cols, nbins, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
+# cv_pred_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=TRUE){
   data <- as.data.frame(data)
   if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(data, cv_k)
   if(cv_method=="LOO") cv_cohorts <- 1:nrow(data)
   cv_preds <- rep(NA,nrow(data))
   for(fold in 1:length(unique(cv_cohorts))){
     test_index <- which(cv_cohorts==fold)
-    iqnn_mod <- iqnn(data[-test_index,], y=iqnn_mod$y, bin_cols=iqnn_mod$bin_cols, 
-                     nbins=iqnn_mod$nbins, jit=iqnn_mod$jit)
-    cv_preds[test_index] <- predict_iqnn(iqnn_mod, data[test_index,],strict=strict)
+    train_data_temp <- data[-test_index,]
+    row.names(train_data_temp) <- 1:nrow(train_data_temp)
+    iqnn_mod <- iqnn(train_data_temp, y=y, bin_cols=bin_cols, 
+                     nbins=nbins, jit=jit,stretch=stretch, tolerance=tolerance)
+    cv_preds[test_index] <- predict_iqnn(iqnn_mod, data[test_index,],strict=strict, type="estimate")
   }
   cv_preds
 }
-# iqnn_mod <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                  nbins=c(3,5,2), jit=rep(0.001,3))
-# cv_pred_iqnn(iqnn_mod,iris, cv_method="kfold", cv_k=10, strict=FALSE)
-# cv_pred_iqnn(iqnn_mod,iris, cv_method="LOO", strict=FALSE)
+# cv_pred_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#              nbins=c(3,5,2), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
+# cv_pred_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),nbins=c(3,5,2))
+# 
+# timer <- Sys.time()
+# cv_preds <- cv_pred_iqnn(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
+#                          nbins=c(5,5,5,5), jit=rep(0.0000001,4), 
+#                          strict=FALSE, cv_method="kfold", cv_k=5) 
+# Sys.time()-timer
+# mean((bb_players_st[,"hr"]-cv_preds)^2,na.rm=TRUE)
+# sqrt(mean((bb_players_st[,"hr"]-cv_preds)^2,na.rm=TRUE))
+#--------------------------------------
+### Tuning function for iqnn
+tune_iqnn <- function(data, y, bin_cols, nbins_range, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
+  if(cv_method=="LOO") cv_k <- nrow(data)
+  nbins_list <- make_nbins_list(nbins_range,length(bin_cols))
+  cv_results <- data.frame(bin_dims = sapply(nbins_list, function(x) paste(x,collapse="X")),
+                           nbins_total=NA,nn_equiv=NA, MSE=NA)
+  for(t in 1:length(nbins_list)){
+    cv_preds <- cv_pred_iqnn(data, y, bin_cols, nbins_list[[t]], jit, stretch, tolerance, strict, cv_method, cv_k)
+    cv_results$MSE[t] <- mean((data[,y]-cv_preds)^2)
+    cv_results$nbins_total[t] <- prod(nbins_list[[t]])
+    cv_results$nn_equiv[t] <- (cv_k-1)/cv_k*nrow(data)/prod(nbins_list[[t]])
+  }
+  cv_results$RMSE <- sqrt(cv_results$MSE)
+  return(cv_results)
+}
+# timer <- Sys.time()
+# cv_tune <- tune_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
+# cv_tune
+# Sys.time()-timer
 
+timer <- Sys.time()
+cv_tune <- tune_iqnn(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
+                      nbins_range=c(4,6), jit=rep(0.001,4), strict=FALSE, cv_method="kfold", cv_k=10) 
+cv_tune
+Sys.time()-timer
 
 #--------------------------------------
-### Cross Validation for assessment for iqnn models
-cv_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=FALSE){
-  data <- as.data.frame(data)
-  cv_preds <- cv_pred_iqnn(iqnn_mod, data, cv_method, cv_k, strict)
-  PRESS <- sum((data[,iqnn_mod$y]-cv_preds)^2)
-  MSE <- PRESS/nrow(data)
-  RMSE <- sqrt(MSE)
-  c(PRESS=PRESS,MSE=MSE,RMSE=RMSE)
+### Function to create list of nbins vectors to put into tuning iqnn 
+make_nbins_list <- function(nbin_range, p){
+  nbins_list <- list(rep(nbin_range[1],p))
+  counter = 1
+  for(i in 1:(nbin_range[2]-nbin_range[1])){
+    for(j in 1:p){
+      nbins_list[[counter+1]] <- nbins_list[[counter]]
+      nbins_list[[counter+1]][j] <- nbins_list[[counter+1]][j] + 1
+      counter <- counter+1
+    }
+  }
+  return(nbins_list)
 }
-# iqnn_mod <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                  nbins=c(3,5,2), jit=rep(0.001,3))
-# cv_iqnn(iqnn_mod,iris, cv_method="kfold", cv_k=10, strict=FALSE)
-# cv_iqnn(iqnn_mod,iris, cv_method="LOO", strict=FALSE)
+# make_nbins_list(c(2,3),3)

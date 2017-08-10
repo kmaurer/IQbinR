@@ -85,12 +85,19 @@ tune_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_value
   cv_results$RMSE <- sqrt(cv_results$MSE)
   return(cv_results)
 }
-# timer <- Sys.time()
-# cv_tune_results <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
-#                        cv_method="LOO", k_values=1:50, knn_algorithm = "brute")
-# Sys.time()-timer
+timer <- Sys.time()
+cv_tune_results <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), k_values=1:50, knn_algorithm = "brute")
+Sys.time()-timer
 
+timer <- Sys.time()
+cv_tune_results <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("hit","ab"), k_values=1:50, knn_algorithm = "brute")
+Sys.time()-timer
 
+head(cv_tune_results)
+
+ggplot() +
+  geom_point(aes(x=k,y=RMSE),data=cv_tune_results)
+# k=25 --> RMSE= 24.25
 #---------------------------------------------------------------------------------------------------
 # Timing simulations
 
