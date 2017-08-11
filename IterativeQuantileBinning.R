@@ -25,13 +25,10 @@ quant_bin_1d <- function(xs, nbin, output="data",jit=0){
   bin_centers <- quants[seq(2,length(quants)-1, by=2)]
   bin_bounds <- quants[seq(1,length(quants)+1, by=2)]
   if(jit > 0) bin_bounds[c(1,length(bin_bounds))] <- bin_bounds[c(1,length(bin_bounds))]+c(-jit,jit)
-  bin_data <- rep(bin_centers[1],length(xs))
   if(output=="definition") {
     return(list(bin_centers=bin_centers,bin_bounds=bin_bounds))
   } else{
-    for (i in 2:length(bin_centers)){
-      bin_data[bin_bounds[i] < xs] <- bin_centers[i]
-    } 
+    bin_data <- bin_centers[.bincode(xs,bin_bounds,T,T)]
     if(output=="data") return(bin_data)
     if(output=="both") return(list(bin_data=bin_data,bin_centers=bin_centers,bin_bounds=bin_bounds))
   }
@@ -39,6 +36,13 @@ quant_bin_1d <- function(xs, nbin, output="data",jit=0){
 # quant_bin_1d(ggplot2::diamonds$price,4,output="data")
 # quant_bin_1d(ggplot2::diamonds$price,4,output="definition")
 # quant_bin_1d(runif(1000,0,10),nbin=4,output="both")
+
+# Speed test
+# load("~/onePercentSample.Rdata")
+# timer <- Sys.time()
+# quant_bin_1d(onePercentSample$total_amount,100,output="data", jit=.00001)
+# Sys.time()-timer
+# Note: using .bincode() this take ~2 seconds instead of ~10 seconds with for loop overwrite from original
 
 
 #--------------------------------------
@@ -61,6 +65,7 @@ iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0
   bin_centers <- matrix(step_bin_info$bin_centers, nrow=nbins[1])
   bin_data[,1] <- step_bin_info$bin_data
   # Loop over remaining variables to use quantile binning WITHIN each of previous state bins
+  #!# At some stage need to think about restructuring how binning definition is structured, more included with nested lists perhaps or indexed dataframe with list columns of bin attributes
   for(d in 2:bin_dim){
     stack_size <- nrow(bin_centers)
     stack_matrix <- make_stack_matrix(stack_size,nbins[d])

@@ -14,7 +14,6 @@ make_bin_list <- function(bin_bounds,nbins){
     upper_level_list <- list(NULL)
     upper_blocks <- ifelse(d==1,1,prod(nbins[1:(d-1)]))
     lower_block_size <- nbins[d]
-    
     upper_indeces <- prod(nbins[d:length(nbins)])
     lower_indeces <- ifelse(d==bin_dim,1,prod(nbins[(d+1):bin_dim]))
     
@@ -24,7 +23,8 @@ make_bin_list <- function(bin_bounds,nbins){
       for(ll in 1:lower_block_size){
         upper_level_list[[ul]][[ll]] <- lower_level_list[[(ul-1)*lower_block_size+ll]]
       }
-      upper_level_list[[ul]][[lower_block_size+1]] <- bin_bounds[(ul-1)*upper_indeces + 1:lower_block_size*lower_indeces,(d-1)*2+1:2]
+      # upper_level_list[[ul]][[lower_block_size+1]] <- bin_bounds[(ul-1)*upper_indeces + 1:lower_block_size*lower_indeces,(d-1)*2+1:2]
+      upper_level_list[[ul]][[lower_block_size+1]] <- unique(as.vector(bin_bounds[(ul-1)*upper_indeces + 1:lower_block_size*lower_indeces,(d-1)*2+1:2]))
     }
     lower_level_list <- upper_level_list
   }
@@ -37,33 +37,27 @@ bin_index_finder_nest <- function(x, bin_def, strict=TRUE){
   bin_dim = length(bin_def$nbins)
   nest_list <- bin_def$bin_list[[1]]
   x <- as.numeric(x)
-  if(strict==TRUE) {
     for(d in 1:bin_dim){
-      nest_index <- which(x[[d]] > nest_list[[bin_def$nbins[d]+1]][,1] & x[[d]]<= nest_list[[bin_def$nbins[d]+1]][,2])
-      if( x[[d]] <= nest_list[[bin_def$nbins[d]+1]][1,1] ) nest_index <- 1
-      if(length(nest_index)==0) return(print("Observation outside of observed bins, set strict=FALSE "))
+      nest_index <- .bincode(x[[d]], nest_list[[bin_def$nbins[d]+1]],T,T)
+      if(strict == FALSE){
+        if( x[[d]] < min(nest_list[[bin_def$nbins[d]+1]]) ) nest_index <- 1
+        if( x[[d]] > max(nest_list[[bin_def$nbins[d]+1]]) ) nest_index <- bin_def$nbins[d]
+      }
+      # if(length(nest_index)==0) return(print("Observation outside of observed bins, set strict=FALSE "))
       nest_list <- nest_list[[nest_index]]
     }
     idx <- nest_list
-  }else{
-    for(d in 1:bin_dim){
-      nest_index <- which(x[[d]] > nest_list[[bin_def$nbins[d]+1]][,1] & x[[d]] <= nest_list[[bin_def$nbins[d]+1]][,2])
-      if(length(nest_index)==0) nest_index <- 1 #Close the lower bound
-      if( x[[d]] <= nest_list[[bin_def$nbins[d]+1]][1,1] ) nest_index <- 1
-      if( x[[d]] > nest_list[[bin_def$nbins[d]+1]][bin_def$nbins[d],2] ) nest_index <- bin_def$nbins[d]
-      nest_list <- nest_list[[nest_index]]
-    }
-    idx <- nest_list
-  }
   return(idx)
 } 
-# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                               nbins=c(3,2,2), output="both")
-# bin_by_IQdef(bin_def=iq_def$bin_def, new_data=test_data, output="data")
-# bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=TRUE)
-# bin_index_finder_nest(x=c(6,3,15),bin_def, strict=TRUE)
-# bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=FALSE)
-# bin_index_finder_nest(x=c(6,3,15),bin_def, strict=FALSE)
+test_index <- c(1,2,51,52,101,102)
+test_data <- iris[test_index,]
+iq_def <- iterative_quant_bin(data=iris[-test_index,], bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+                              nbins=c(3,2,2), output="both")
+bin_by_IQdef(bin_def=iq_def$bin_def, new_data=test_data, output="data")
+bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=TRUE)
+bin_index_finder_nest(x=c(6,3,15),bin_def, strict=TRUE)
+bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=FALSE)
+bin_index_finder_nest(x=c(6,3,15),bin_def, strict=FALSE)
 
 #--------------------------------------
 ## function to make a matrix for duplicating the N rows of a matrix M times each
