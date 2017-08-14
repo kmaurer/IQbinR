@@ -205,21 +205,72 @@ taxi <- onePercentSample %>%
 names(taxi)[1] <- "true_class"
 head(taxi)
 
-#--------------
+taxi_std <- taxi %>%
+  mutate(time = scale(time),
+         pickup_longitude = scale(pickup_longitude),
+         pickup_latitude = scale(pickup_latitude))
+head(taxi_std)
+
+set.seed(12345)
 test_index <- sample(1:sample_size,(sample_size/2))
+
+# Compare Regression
+#--------------
+# unstandardized
 timer <- Sys.time()
 knnTest <- knn.reg(train = taxi[-test_index,c("time","pickup_longitude","pickup_latitude")],
                    test = taxi[test_index,c("time","pickup_longitude","pickup_latitude")],
                    y = taxi$fare_amount[-test_index], k = 100, algorithm = "brute")
 Sys.time() - timer
 sqrt(mean((taxi[test_index,"fare_amount"]-knnTest$pred)^2))
+
+#standardized
+timer <- Sys.time()
+taxi_std <- taxi %>%
+  mutate(time = scale(time),
+         pickup_longitude = scale(pickup_longitude),
+         pickup_latitude = scale(pickup_latitude))
+knnTest <- knn.reg(train = taxi_std[-test_index,c("time","pickup_longitude","pickup_latitude")],
+                   test = taxi_std[test_index,c("time","pickup_longitude","pickup_latitude")],
+                   y = taxi_std$fare_amount[-test_index], k = 100, algorithm = "brute")
+Sys.time() - timer
+sqrt(mean((taxi_std[test_index,"fare_amount"]-knnTest$pred)^2))
+
 #--------------
 timer <- Sys.time()
 iqnn_mod <- iqnn(taxi[-test_index,], y="fare_amount", bin_cols=c("time","pickup_longitude","pickup_latitude"),
                  nbins=c(10,10,10), jit=rep(0.001,3))
 Sys.time() - timer
+
+timer <- Sys.time()
 iqnn_preds <- predict_iqnn(iqnn_mod, taxi[test_index,],strict=FALSE)
 Sys.time() - timer
 round(mean(iqnn_mod$bin_stats$obs)) #approx number of neightbors?
 sqrt(mean((taxi[test_index,"fare_amount"]-iqnn_preds)^2))
+#--------------
+
+
+
+# Compare classification
+#--------------
+test_index <- sample(1:sample_size,(sample_size/2))
+timer <- Sys.time()
+knnTest <- knn(train = taxi[-test_index,c("time","pickup_longitude","pickup_latitude")],
+                   test = taxi[test_index,c("time","pickup_longitude","pickup_latitude")],
+                   cl = taxi$true_class[-test_index], k = 12, algorithm = "brute")
+Sys.time() - timer
+head(knnTest)
+table(knnTest,taxi$true_class[test_index])
+1-sum(diag(table(knnTest,taxi$true_class[test_index])))/length(test_index)
+#--------------
+timer <- Sys.time()
+iqnn_mod <- iqnn(taxi[-test_index,], y="true_class",mod_type="class", bin_cols=c("time","pickup_longitude","pickup_latitude"),
+                 nbins=c(20,20,20), jit=rep(0.001,3))
+Sys.time() - timer
+timer <- Sys.time()
+iqnn_preds <- predict_iqnn(iqnn_mod, taxi[test_index,],strict=FALSE)
+Sys.time() - timer
+round(mean(iqnn_mod$bin_stats$obs)) #approx number of neightbors?
+table(iqnn_preds,taxi$true_class[test_index])
+1-sum(diag(table(iqnn_preds,taxi$true_class[test_index])))/length(test_index)
 #--------------
