@@ -187,7 +187,12 @@ bin_by_IQdef <- function(bin_def, new_data, output="data", strict=FALSE){
 # bin_by_IQdef(bin_def=iq_def$bin_def, new_data=test_data, output="data")
 # 
 # bin_by_IQdef(bin_def=iqnn_mod, new_data=test_data, output="data", strict=FALSE)
+#--------------------------------------
 
+majority_vote <- function(votes){
+  top_votes <- names(which.max(table(votes))) # collect top vote earner (ties allowed)
+  return(sample(top_votes,1)) # randomly select to break any ties for best
+}
 
 #--------------------------------------
 ### Iterative Quantile Binned Nearest Neighbors Regression
@@ -199,10 +204,10 @@ iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit = rep(0,length(bi
   iq_bin$bin_def$y <- y
   total_bins = nrow(iq_bin$bin_def$bin_centers)
   if(mod_type=="reg"){
-    iq_bin$bin_def$bin_stats <- data.frame(avg = sapply(1:total_bins, function(b) mean(data[iq_bin$bin_data$bin_data$bin_index==b,y], na.rm=TRUE)),
+    iq_bin$bin_def$bin_stats <- data.frame(pred = sapply(1:total_bins, function(b) mean(data[iq_bin$bin_data$bin_data$bin_index==b,y], na.rm=TRUE)),
                                          obs = sapply(1:total_bins, function(b) sum(iq_bin$bin_data$bin_data$bin_index==b)) )
   }else if(mod_type=="class"){
-    iq_bin$bin_def$bin_stats <- data.frame(elected = sapply(1:total_bins, function(b) majority_vote(data[iq_bin$bin_data$bin_data$bin_index==b,y])),
+    iq_bin$bin_def$bin_stats <- data.frame(pred = sapply(1:total_bins, function(b) majority_vote(data[iq_bin$bin_data$bin_data$bin_index==b,y])),
                                            obs = sapply(1:total_bins, function(b) sum(iq_bin$bin_data$bin_data$bin_index==b)) )
   }else{return(print("mod_type must be either 'reg' or 'class'"))}
   return(iq_bin$bin_def)
@@ -216,28 +221,36 @@ iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit = rep(0,length(bi
 # myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #              nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.1,3))
 # myiq$bin_bounds
+# iqnn_mod <- iqnn(data=iris, y="Species", mod_type="class", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                  nbins=c(3,5,2), jit=rep(0.001,3), tolerance = rep(0.001,3))
 
 
 
 
 #--------------------------------------
 ### predict for new data from iqnn model
-predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=TRUE){
+predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
   test_data <- as.data.frame(test_data)
   test_bin <- bin_by_IQdef(iqnn_mod, test_data, output="data",strict=strict)
-  if(type=="estimate") return(iqnn_mod$bin_stats$avg[test_bin$bin_indeces])
+  if(type=="estimate") return(iqnn_mod$bin_stats$pred[test_bin$bin_indeces])
   if(type=="binsize") return(iqnn_mod$bin_stats$obs[test_bin$bin_indeces])
   if(type=="both") return(iqnn_mod$bin_stats[test_bin$bin_indeces,])
 }
+## Test Regression
 # test_index <- c(1,2,51,52,101,102)
 # iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                  nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.2,3))
 # test_data <- iris[test_index,]
-# predict_iqnn(iqnn_mod, test_data,strict=TRUE)
-# predict_iqnn(iqnn_mod, test_data,type="both")
 # predict_iqnn(iqnn_mod, test_data,strict=FALSE)
-# predict_iqnn(iqnn_mod, test_data,type="estimate")
+# predict_iqnn(iqnn_mod, test_data,type="both")
 
+
+## Test Classifier
+# iqnn_mod <- iqnn(data=iris[-test_index,], y="Species", mod_type="class", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                  nbins=c(3,5,2), jit=rep(0.001,3), tolerance = rep(0.001,3))
+# test_data <- iris[test_index,]
+# predict_iqnn(iqnn_mod, test_data,strict=FALSE)
+# predict_iqnn(iqnn_mod, test_data,type="both",strict=FALSE)
 
 #--------------------------------------
 ### Cross Validated predictions for iqnn models
