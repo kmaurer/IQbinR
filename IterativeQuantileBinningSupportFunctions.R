@@ -49,15 +49,15 @@ bin_index_finder_nest <- function(x, bin_def, strict=TRUE){
     idx <- nest_list
   return(idx)
 } 
-test_index <- c(1,2,51,52,101,102)
-test_data <- iris[test_index,]
-iq_def <- iterative_quant_bin(data=iris[-test_index,], bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-                              nbins=c(3,2,2), output="both")
-bin_by_IQdef(bin_def=iq_def$bin_def, new_data=test_data, output="data")
-bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=TRUE)
-bin_index_finder_nest(x=c(6,3,15),bin_def, strict=TRUE)
-bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=FALSE)
-bin_index_finder_nest(x=c(6,3,15),bin_def, strict=FALSE)
+# test_index <- c(1,2,51,52,101,102)
+# test_data <- iris[test_index,]
+# iq_def <- iterative_quant_bin(data=iris[-test_index,], bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                               nbins=c(3,2,2), output="both")
+# bin_by_IQdef(bin_def=iq_def$bin_def, new_data=test_data, output="data")
+# bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=TRUE)
+# bin_index_finder_nest(x=c(6,3,15),bin_def, strict=TRUE)
+# bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=FALSE)
+# bin_index_finder_nest(x=c(6,3,15),bin_def, strict=FALSE)
 
 #--------------------------------------
 ## function to make a matrix for duplicating the N rows of a matrix M times each
@@ -120,26 +120,26 @@ make_stack_matrix(3,4)
 # bin_index_finder(c(5,7,7), myiq$bin_bounds, myiq$nbins, strict=FALSE)
 
 
-#--------------------------------------
-### function to suggesting best number of bins under contraints
-# Constraint 1: nbins_1=nbins_2=...=nbins_p
-# Constraint 2: each bin with <= k neighbors (conservative approx to knn)
-roots_for_nbins <- function(x, p, k){
-  nbin_opt <- x/k
-  rep(ceiling(nbin_opt^(1/p)),p)
-}
-# Test with goal to mimic 10-nn with p=3 dimensions
-roots_for_nbins(270,3,10)
-270/prod(roots_for_nbins(270,3,10))
-roots_for_nbins(122,3,10)
-122/prod(roots_for_nbins(122,3,10)) # very rough approx between 81 and 270 due to x^3*10
-
-### function to suggesting best number of bins under more appropriate contraints
-# Constraint 1: nbins_1>=nbins_2>=...>=nbins_p
-# Constraint 2: each bin with <= k neighbors (conservative approx to knn)
-approxknn_nbins <- function(x, p, k){
-  #!# work out code for repeatedly adding 1 to some nbins until tips over k per bin
-}
+# #--------------------------------------
+# ### function to suggesting best number of bins under contraints
+# # Constraint 1: nbins_1=nbins_2=...=nbins_p
+# # Constraint 2: each bin with <= k neighbors (conservative approx to knn)
+# roots_for_nbins <- function(x, p, k){
+#   nbin_opt <- x/k
+#   rep(ceiling(nbin_opt^(1/p)),p)
+# }
+# # Test with goal to mimic 10-nn with p=3 dimensions
+# roots_for_nbins(270,3,10)
+# 270/prod(roots_for_nbins(270,3,10))
+# roots_for_nbins(122,3,10)
+# 122/prod(roots_for_nbins(122,3,10)) # very rough approx between 81 and 270 due to x^3*10
+# 
+# ### function to suggesting best number of bins under more appropriate contraints
+# # Constraint 1: nbins_1>=nbins_2>=...>=nbins_p
+# # Constraint 2: each bin with <= k neighbors (conservative approx to knn)
+# approxknn_nbins <- function(x, p, k){
+#   #!# work out code for repeatedly adding 1 to some nbins until tips over k per bin
+# }
 
 #--------------------------------------
 ### CV cohort additions

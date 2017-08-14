@@ -27,6 +27,14 @@ bb_players <- baseball %>%
 bb_players <- as.data.frame(na.omit(bb_players))
 head(bb_players)
 
+# need standardized variables in knn, add to time taken for computation
+bb_players_st <- bb_players %>%
+  mutate(b2 = scale(b2),
+         b3 = scale(b3),
+         hit = scale(hit),
+         ab = scale(ab))
+head(bb_players_st)
+
 ## Check that we can fit models to batting career data
 # iqdef <- iterative_quant_bin(dat=bb_players, bin_cols=c("b2","b3","hit","ab"),
 #                     nbins=c(2,2,2,2), jit=rep(0.001,4), output="both")
@@ -37,14 +45,6 @@ head(bb_players)
 # cv_iqnn(iqnn_mod,bb_players, cv_method="LOO", strict=FALSE)
 
 #### knn.reg
-# need standardized variables
-bb_players_st <- bb_players %>%
-  mutate(b2 = scale(b2),
-         b3 = scale(b3),
-         hit = scale(hit),
-         ab = scale(ab))
-head(bb_players_st)
-
 test_index <- 1:100
 knnTest <- knn.reg(train = bb_players_st[-test_index,c("b2","b3","hit","ab")],
                    test = bb_players_st[test_index,c("b2","b3","hit","ab")],
@@ -86,11 +86,11 @@ tune_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_value
   return(cv_results)
 }
 timer <- Sys.time()
-cv_tune_results <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), k_values=1:50, knn_algorithm = "brute")
+tune_knn_results_2 <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), k_values=1:50, knn_algorithm = "brute")
 Sys.time()-timer
 
 timer <- Sys.time()
-cv_tune_results <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("hit","ab"), k_values=1:50, knn_algorithm = "brute")
+tune_knn_results_4 <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("hit","ab"), k_values=1:50, knn_algorithm = "brute")
 Sys.time()-timer
 
 head(cv_tune_results)
@@ -113,7 +113,7 @@ Sys.time() - timer
 
 timer <- Sys.time()
 iqnn_mod <- iqnn(bb_players_st[-test_index,], y="hr", bin_cols=c("b2","b3","hit","ab"),
-                 nbins=c(7,7,6,6), jit=rep(0.001,4), tolerance=rep(0.001,4))
+                 nbins=c(7,7,6,6), jit=rep(0.00001,4), tolerance=rep(0.0001,4))
 iqnn_preds <- predict_iqnn(iqnn_mod, bb_players_st[test_index,],strict=FALSE)
 Sys.time() - timer
 
@@ -143,7 +143,7 @@ B=10
 ps = rep(2:P, each=(B-1))
 bs = rep(2:B, (P-1)) 
 
-k = 50
+k = 5
 
 sim_times <- data.frame(knntime=NA, iqfittime=NA, iqpredtime=NA, size=NA)
 for(sim in 1:length(ps)){
@@ -162,12 +162,14 @@ sim_data <- data.frame(x1=rnorm(n),
 xcols <- paste0("x",1:p)
 
 test_index <- 1:n/2
-# time the knn predictions
-timer <- Sys.time()
-knnTest <- knn.reg(train = sim_data[-test_index,xcols],
-                   test = sim_data[test_index,xcols],
-                   y = sim_data$y[-test_index], k = k, algorithm = "brute")
-sim_times$knntime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+# # time the knn predictions
+# timer <- Sys.time()
+#!# need to add time taken for standardization
+# knnTest <- knn.reg(train = sim_data[-test_index,xcols],
+#                    test = sim_data[test_index,xcols],
+#                    y = sim_data$y[-test_index], k = k, algorithm = "brute")
+# sim_times$knntime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+
 # time the fitting of the iq bin model 
 timer <- Sys.time()
 iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
@@ -178,5 +180,46 @@ timer <- Sys.time()
 iqnn_preds <- predict_iqnn(iqnn_mod, sim_data[test_index,],strict=TRUE)
 sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 }
-
+sim_times
 #write.csv(sim_times,"simulationTimesNestedLists.csv", row.names=FALSE)
+
+
+
+#-----------------------------------------------------------------------------------------------
+### Testing with cabs data
+load("~/onePercentSample.Rdata")
+library(tidyverse)
+library(lubridate)
+
+sample_size <- 200000
+
+set.seed(12345)
+taxi <- onePercentSample %>%
+  select(payment_type,pickup_datetime,passenger_count,trip_distance,pickup_longitude,pickup_latitude,fare_amount,tip_amount) %>%
+  na.omit()  %>%
+  filter(payment_type %in% c("credit","cash")) %>%
+  sample_n(sample_size) %>% 
+  mutate(time = 60*60*hour(pickup_datetime) + 60*minute(pickup_datetime) + second(pickup_datetime),
+         wday = wday(pickup_datetime),
+         payment_type = factor(payment_type))
+names(taxi)[1] <- "true_class"
+head(taxi)
+
+#--------------
+test_index <- sample(1:sample_size,(sample_size/2))
+timer <- Sys.time()
+knnTest <- knn.reg(train = taxi[-test_index,c("time","pickup_longitude","pickup_latitude")],
+                   test = taxi[test_index,c("time","pickup_longitude","pickup_latitude")],
+                   y = taxi$fare_amount[-test_index], k = 100, algorithm = "brute")
+Sys.time() - timer
+sqrt(mean((taxi[test_index,"fare_amount"]-knnTest$pred)^2))
+#--------------
+timer <- Sys.time()
+iqnn_mod <- iqnn(taxi[-test_index,], y="fare_amount", bin_cols=c("time","pickup_longitude","pickup_latitude"),
+                 nbins=c(10,10,10), jit=rep(0.001,3))
+Sys.time() - timer
+iqnn_preds <- predict_iqnn(iqnn_mod, taxi[test_index,],strict=FALSE)
+Sys.time() - timer
+round(mean(iqnn_mod$bin_stats$obs)) #approx number of neightbors?
+sqrt(mean((taxi[test_index,"fare_amount"]-iqnn_preds)^2))
+#--------------

@@ -192,19 +192,19 @@ bin_by_IQdef <- function(bin_def, new_data, output="data", strict=FALSE){
 #--------------------------------------
 ### Iterative Quantile Binned Nearest Neighbors Regression
 # takes in data, response column and binning parameters
-iqnn <- function(data, y, bin_cols, nbins, jit = rep(0,length(bin_cols)), stretch=FALSE, tolerance = rep(0,length(bin_cols)) ){
+iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit = rep(0,length(bin_cols)), stretch=FALSE, tolerance = rep(0,length(bin_cols)) ){
   data <- as.data.frame(data)
-  ## make bins
   iq_bin <- iterative_quant_bin(data, bin_cols, nbins, output="both",jit)
-  # stretch bins if requested
   if(stretch) iq_bin <- stretch_iq_bins(iq_bin, tolerance=tolerance)
-  ## For each bin, find indeces from original data where bins match, take average y value
   iq_bin$bin_def$y <- y
   total_bins = nrow(iq_bin$bin_def$bin_centers)
-  #!# broken line-up from bin_data to original data, lookup not working right. FIX!!!!!!
-  iq_bin$bin_def$bin_stats <- data.frame(avg = sapply(1:total_bins, function(b) mean(data[iq_bin$bin_data$bin_data$bin_index==b,y], na.rm=TRUE)),
+  if(mod_type=="reg"){
+    iq_bin$bin_def$bin_stats <- data.frame(avg = sapply(1:total_bins, function(b) mean(data[iq_bin$bin_data$bin_data$bin_index==b,y], na.rm=TRUE)),
                                          obs = sapply(1:total_bins, function(b) sum(iq_bin$bin_data$bin_data$bin_index==b)) )
-  ## Return bin definition with predictions added
+  }else if(mod_type=="class"){
+    iq_bin$bin_def$bin_stats <- data.frame(elected = sapply(1:total_bins, function(b) majority_vote(data[iq_bin$bin_data$bin_data$bin_index==b,y])),
+                                           obs = sapply(1:total_bins, function(b) sum(iq_bin$bin_data$bin_data$bin_index==b)) )
+  }else{return(print("mod_type must be either 'reg' or 'class'"))}
   return(iq_bin$bin_def)
 }
 # iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
@@ -289,12 +289,12 @@ tune_iqnn <- function(data, y, bin_cols, nbins_range, jit=rep(0,length(bin_cols)
 #                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
 # cv_tune
 # Sys.time()-timer
-
-timer <- Sys.time()
-cv_tune <- tune_iqnn(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
-                      nbins_range=c(4,6), jit=rep(0.001,4), strict=FALSE, cv_method="kfold", cv_k=10) 
-cv_tune
-Sys.time()-timer
+# 
+# timer <- Sys.time()
+# cv_tune <- tune_iqnn(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
+#                       nbins_range=c(4,6), jit=rep(0.001,4), strict=FALSE, cv_method="kfold", cv_k=10) 
+# cv_tune
+# Sys.time()-timer
 
 #--------------------------------------
 ### Function to create list of nbins vectors to put into tuning iqnn 
