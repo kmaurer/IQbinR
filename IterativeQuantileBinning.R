@@ -254,7 +254,7 @@ predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
 
 #--------------------------------------
 ### Cross Validated predictions for iqnn models
-cv_pred_iqnn <- function(data, y, bin_cols, nbins, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
+cv_pred_iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
 # cv_pred_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=TRUE){
   data <- as.data.frame(data)
   if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(data, cv_k)
@@ -264,16 +264,24 @@ cv_pred_iqnn <- function(data, y, bin_cols, nbins, jit=rep(0,length(bin_cols)), 
     test_index <- which(cv_cohorts==fold)
     train_data_temp <- data[-test_index,]
     row.names(train_data_temp) <- 1:nrow(train_data_temp)
-    iqnn_mod <- iqnn(train_data_temp, y=y, bin_cols=bin_cols, 
+    iqnn_mod <- iqnn(train_data_temp, y=y, mod_type=mod_type, bin_cols=bin_cols, 
                      nbins=nbins, jit=jit,stretch=stretch, tolerance=tolerance)
     cv_preds[test_index] <- predict_iqnn(iqnn_mod, data[test_index,],strict=strict, type="estimate")
   }
+  if(mod_type=="class") cv_preds <- factor(cv_preds, labels=levels(data[,y]))
   cv_preds
 }
 # cv_pred_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #              nbins=c(3,5,2), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
 # cv_pred_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),nbins=c(3,5,2))
 # 
+# cv_preds <- cv_pred_iqnn(data=iris, y="Species",mod_type="class", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#              nbins=c(3,5,2), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
+# table(cv_preds, iris$Species)
+
+
+# cv_pred_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),nbins=c(3,5,2))
+
 # timer <- Sys.time()
 # cv_preds <- cv_pred_iqnn(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
 #                          nbins=c(5,5,5,5), jit=rep(0.0000001,4), 
@@ -283,13 +291,13 @@ cv_pred_iqnn <- function(data, y, bin_cols, nbins, jit=rep(0,length(bin_cols)), 
 # sqrt(mean((bb_players_st[,"hr"]-cv_preds)^2,na.rm=TRUE))
 #--------------------------------------
 ### Tuning function for iqnn
-tune_iqnn <- function(data, y, bin_cols, nbins_range, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
+tune_iqnn_reg <- function(data, y, bin_cols, nbins_range, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
   if(cv_method=="LOO") cv_k <- nrow(data)
   nbins_list <- make_nbins_list(nbins_range,length(bin_cols))
   cv_results <- data.frame(bin_dims = sapply(nbins_list, function(x) paste(x,collapse="X")),
                            nbins_total=NA,nn_equiv=NA, MSE=NA)
   for(t in 1:length(nbins_list)){
-    cv_preds <- cv_pred_iqnn(data, y, bin_cols, nbins_list[[t]], jit, stretch, tolerance, strict, cv_method, cv_k)
+    cv_preds <- cv_pred_iqnn(data, y, mod_type="reg", bin_cols, nbins_list[[t]], jit, stretch, tolerance, strict, cv_method, cv_k)
     cv_results$MSE[t] <- mean((data[,y]-cv_preds)^2)
     cv_results$nbins_total[t] <- prod(nbins_list[[t]])
     cv_results$nn_equiv[t] <- (cv_k-1)/cv_k*nrow(data)/prod(nbins_list[[t]])
@@ -298,13 +306,13 @@ tune_iqnn <- function(data, y, bin_cols, nbins_range, jit=rep(0,length(bin_cols)
   return(cv_results)
 }
 # timer <- Sys.time()
-# cv_tune <- tune_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+# cv_tune <- tune_iqnn_reg(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
 # cv_tune
 # Sys.time()-timer
 # 
 # timer <- Sys.time()
-# cv_tune <- tune_iqnn(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
+# cv_tune <- tune_iqnn_reg(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
 #                       nbins_range=c(4,6), jit=rep(0.001,4), strict=FALSE, cv_method="kfold", cv_k=10) 
 # cv_tune
 # Sys.time()-timer
