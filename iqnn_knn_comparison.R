@@ -300,7 +300,7 @@ levels(knnTest)
 knnTest <- factor(knnTest, levels=levels(cover_type_std$true_class))
 table(knnTest,cover_type_std$true_class[test_index])
 1-sum(diag(table(knnTest,cover_type_std$true_class[test_index])))/length(test_index)
-
+# 6.9 minutes, 20.8% error rate
 
 #--------------
 timer <- Sys.time()
@@ -315,9 +315,4 @@ round(mean(iqnn_mod$bin_stats$obs)) #approx number of neightbors?
 iqnn_preds <- factor(iqnn_preds, levels=levels(cover_type_std$true_class))
 table(iqnn_preds,cover_type_std$true_class[test_index])
 1-sum(diag(table(iqnn_preds,cover_type_std$true_class[test_index])))/length(test_index)
-
-# timer <- Sys.time()
-# cv_tune <- tune_iqnn_reg(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
-# cv_tune
-# Sys.time()-timer
+# 2.5 minutes build, .35minutes predict, 26.66% error rate
