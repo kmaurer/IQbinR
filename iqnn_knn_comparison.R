@@ -274,3 +274,50 @@ round(mean(iqnn_mod$bin_stats$obs)) #approx number of neightbors?
 table(iqnn_preds,taxi$true_class[test_index])
 1-sum(diag(table(iqnn_preds,taxi$true_class[test_index])))/length(test_index)
 #--------------
+
+# ------------------------------------------------------------------------------------------
+# Cover type classification 
+load(file="C:/Users/maurerkt/Documents/GitHub/BinStackedEnsemble/Data/cover_type.Rdata")
+
+head(cover_type)
+
+cover_type_std <- cover_type %>%
+  mutate(elevation=scale(elevation),
+         hori_dist_road=scale(hori_dist_road),
+         hori_dist_fire=scale(hori_dist_fire))
+# Compare classification
+
+
+#--------------
+sample_size <- nrow(cover_type)
+test_index <- sample(1:sample_size,(sample_size/2))
+timer <- Sys.time()
+knnTest <- knn(train = cover_type_std[-test_index,c("elevation","hori_dist_road","hori_dist_fire")],
+               test = cover_type_std[test_index,c("elevation","hori_dist_road","hori_dist_fire")],
+               cl = cover_type_std$true_class[-test_index], k = 100, algorithm = "brute")
+Sys.time() - timer
+levels(knnTest)
+knnTest <- factor(knnTest, levels=levels(cover_type_std$true_class))
+table(knnTest,cover_type_std$true_class[test_index])
+1-sum(diag(table(knnTest,cover_type_std$true_class[test_index])))/length(test_index)
+
+
+#--------------
+timer <- Sys.time()
+iqnn_mod <- iqnn(cover_type_std[-test_index,], y="true_class",mod_type="class", bin_cols=c("hori_dist_fire","elevation","hori_dist_road"),
+                 nbins=c(14,14,14), jit=rep(0.001,3))
+Sys.time() - timer
+
+timer <- Sys.time()
+iqnn_preds <- predict_iqnn(iqnn_mod, cover_type_std[test_index,],strict=FALSE)
+Sys.time() - timer
+round(mean(iqnn_mod$bin_stats$obs)) #approx number of neightbors?
+iqnn_preds <- factor(iqnn_preds, levels=levels(cover_type_std$true_class))
+table(iqnn_preds,cover_type_std$true_class[test_index])
+1-sum(diag(table(iqnn_preds,cover_type_std$true_class[test_index])))/length(test_index)
+
+# timer <- Sys.time()
+# cv_tune <- tune_iqnn_reg(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
+# cv_tune
+# Sys.time()-timer
