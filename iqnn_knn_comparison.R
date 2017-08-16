@@ -5,51 +5,7 @@ source("IterativeQuantileBinning.R")
 library(FNN)
 library(tidyverse)
 
-## Load up data for testing 
-# Baseball batting data from sean lahmann's database 
-# - http://www.seanlahman.com/baseball-archive/statistics/
-baseball <- read.csv("http://kmaurer.github.io/documents/SLahman_Batting2014.csv")
-head(baseball)
 
-baseball <- na.omit(baseball %>%
-  select(playerID:HR))
-
-bb_players <- baseball %>%
-  select(playerID:HR, -lgID) %>%
-  mutate(hit_rate = H/G) %>%
-  arrange(playerID, yearID) %>%
-  group_by(playerID) %>%
-  summarise(hr = sum(HR,na.rm=TRUE),
-            b2 = sum(X2B,na.rm=TRUE),
-            b3 = sum(X3B,na.rm=TRUE),
-            hit = sum(H,na.rm=TRUE),
-            ab = sum(AB,na.rm=TRUE))
-bb_players <- as.data.frame(na.omit(bb_players))
-head(bb_players)
-
-# need standardized variables in knn, add to time taken for computation
-bb_players_st <- bb_players %>%
-  mutate(b2 = scale(b2),
-         b3 = scale(b3),
-         hit = scale(hit),
-         ab = scale(ab))
-head(bb_players_st)
-
-## Check that we can fit models to batting career data
-# iqdef <- iterative_quant_bin(dat=bb_players, bin_cols=c("b2","b3","hit","ab"),
-#                     nbins=c(2,2,2,2), jit=rep(0.001,4), output="both")
-# 
-# iqnn_mod <- iqnn(dat=bb_players, y="hr", bin_cols=c("b2","b3","hit","ab"),
-#                  nbins=c(2,2,2,2), jit=rep(0.001,4))
-# cv_iqnn(iqnn_mod,bb_players, cv_method="kfold", cv_k=5, strict=FALSE)
-# cv_iqnn(iqnn_mod,bb_players, cv_method="LOO", strict=FALSE)
-
-#### knn.reg
-test_index <- 1:100
-knnTest <- knn.reg(train = bb_players_st[-test_index,c("b2","b3","hit","ab")],
-                   test = bb_players_st[test_index,c("b2","b3","hit","ab")],
-                   y = bb_players_st$hr[-test_index], k = 5, algorithm = "brute")
-knnTest$pred
 
 #--------------------------------------
 ### Cross Validated predictions for knn model using knn.reg from FNN package
@@ -73,66 +29,70 @@ cv_pred_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5,
 #                        cv_method="LOO", k=5, knn_algorithm = "brute")
 # head(cv_preds)
 
+
 #--------------------------------------
-### Tuning function for knn
-tune_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
+### Cross Validated predictions for knn model using knn.reg from FNN package
+cv_pred_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute"){
+  dat <- as.data.frame(dat)
+  if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(dat, cv_k)
+  if(cv_method=="LOO") cv_cohorts <- 1:nrow(dat)
+  cv_preds <- rep(NA,nrow(dat))
+  for(fold in 1:length(unique(cv_cohorts))){
+    test_index <- which(cv_cohorts==fold)
+    knn_mod <- knn(train=dat[-test_index,x_names], test=dat[test_index,x_names], 
+                       cl=dat[-test_index,y_name], k = k, algorithm = knn_algorithm)
+    cv_preds[test_index] <- as.character(knn_mod)
+  }
+  cv_preds <- factor(cv_preds, levels=levels(dat[,y_name]))
+  cv_preds
+}
+# cv_preds <- cv_pred_knn_class(dat=iris, y_name="Species", x_names=c("Petal.Length","Sepal.Length"),
+#                        cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute")
+# cv_preds
+#--------------------------------------
+### Tuning function for knn regression
+tune_knn_reg <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
   if(!is.integer(k_values)) return(print("Please specify k_values as an integer vector of neightborhood sizes (k) to be tuned"))
   cv_results <- data.frame(k=k_values,MSE = NA)
   for(k_idx in 1:length(k_values)){
-    cv_preds <- cv_pred_knn(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=k_values[k_idx], knn_algorithm = "brute")
+    cv_preds <- cv_pred_knn(dat, y_name, x_names, cv_method="kfold", cv_k = cv_k, k=k_values[k_idx], knn_algorithm = "brute")
     cv_results$MSE[k_idx] <- mean((dat[,y_name]-cv_preds)^2)
   }
   cv_results$RMSE <- sqrt(cv_results$MSE)
   return(cv_results)
 }
-timer <- Sys.time()
-tune_knn_results_2 <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), k_values=1:50, knn_algorithm = "brute")
-Sys.time()-timer
-
-timer <- Sys.time()
-tune_knn_results_4 <- tune_knn(dat=bb_players_st, y_name="hr", x_names=c("hit","ab"), k_values=1:50, knn_algorithm = "brute")
-Sys.time()-timer
-
-head(cv_tune_results)
-
-ggplot() +
-  geom_point(aes(x=k,y=RMSE),data=cv_tune_results)
+# timer <- Sys.time()
+# tune_knn_results_2 <- tune_knn_reg(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), k_values=1:50, knn_algorithm = "brute")
+# Sys.time()-timer
+# 
+# timer <- Sys.time()
+# tune_knn_results_4 <- tune_knn_reg(dat=bb_players_st, y_name="hr", x_names=c("hit","ab"), k_values=1:50, knn_algorithm = "brute")
+# Sys.time()-timer
+# 
+# head(cv_tune_results)
+# 
+# ggplot() +
+#   geom_point(aes(x=k,y=RMSE),data=cv_tune_results)
 # k=25 --> RMSE= 24.25
-#---------------------------------------------------------------------------------------------------
-# Timing simulations
 
-
-# from building model to predicting for new
-
-test_index <- 1:8820
-timer <- Sys.time()
-knnTest <- knn.reg(train = bb_players_st[-test_index,c("b2","b3","hit","ab")],
-                   test = bb_players_st[test_index,c("b2","b3","hit","ab")],
-                   y = bb_players_st$hr[-test_index], k = 5, algorithm = "brute")
-Sys.time() - timer
-
-timer <- Sys.time()
-iqnn_mod <- iqnn(bb_players_st[-test_index,], y="hr", bin_cols=c("b2","b3","hit","ab"),
-                 nbins=c(7,7,6,6), jit=rep(0.00001,4), tolerance=rep(0.0001,4))
-iqnn_preds <- predict_iqnn(iqnn_mod, bb_players_st[test_index,],strict=FALSE)
-Sys.time() - timer
-
-
-
-test_index <- 1:45000
-timer <- Sys.time()
-knnTest <- knn.reg(train = baseball[-test_index,c("X2B","H","AB")],
-                   test = baseball[test_index,c("X2B","H","AB")],
-                   y = baseball$HR[-test_index], k = 50, algorithm = "brute")
-Sys.time() - timer
-
-timer <- Sys.time()
-iqnn_mod <- iqnn(baseball[-test_index,], y="HR", bin_cols=c("X2B","H","AB"),
-                 nbins=c(9,9,9), jit=rep(0.001,3))
-iqnn_preds <- predict_iqnn(iqnn_mod, baseball[test_index,],strict=FALSE)
-Sys.time() - timer
-
-
+#--------------------------------------
+### Tuning function for knn classifier
+tune_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
+  if(!is.integer(k_values)) return(print("Please specify k_values as an integer vector of neightborhood sizes (k) to be tuned"))
+  cv_results <- data.frame(k=k_values,error = NA)
+  for(k_idx in 1:length(k_values)){
+    cv_preds <- cv_pred_knn_class(dat, y_name, x_names, cv_method="kfold", cv_k = cv_k, k=k_values[k_idx], knn_algorithm = "brute")
+    cv_results$error[k_idx] <- sum(cv_preds!=dat[,y_name]) / nrow(dat)
+  }
+  return(cv_results)
+}
+# timer <- Sys.time()
+# tune_iris <- tune_knn_class(dat=iris, y_name="Species", x_names=c("Petal.Length","Sepal.Length"),
+#                                cv_method="kfold", cv_k = nrow(iris), k_values=1:40, knn_algorithm = "brute")
+# Sys.time()-timer
+# tune_iris
+# 
+# tune_knn_class
 
 ###-------------------------------------------------------------------------
 library(mvtnorm)
@@ -183,7 +143,81 @@ sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 sim_times
 #write.csv(sim_times,"simulationTimesNestedLists.csv", row.names=FALSE)
 
+#------------------------------------------------------------------------------------------------------
+# Baseball batting data from sean lahmann's database 
+# - http://www.seanlahman.com/baseball-archive/statistics/
+baseball <- read.csv("http://kmaurer.github.io/documents/SLahman_Batting2014.csv")
+head(baseball)
 
+baseball <- na.omit(baseball %>%
+                      select(playerID:HR))
+
+bb_players <- baseball %>%
+  select(playerID:HR, -lgID) %>%
+  mutate(hit_rate = H/G) %>%
+  arrange(playerID, yearID) %>%
+  group_by(playerID) %>%
+  summarise(hr = sum(HR,na.rm=TRUE),
+            b2 = sum(X2B,na.rm=TRUE),
+            b3 = sum(X3B,na.rm=TRUE),
+            hit = sum(H,na.rm=TRUE),
+            ab = sum(AB,na.rm=TRUE))
+bb_players <- as.data.frame(na.omit(bb_players))
+head(bb_players)
+
+# need standardized variables in knn, add to time taken for computation
+bb_players_st <- bb_players %>%
+  mutate(b2 = scale(b2),
+         b3 = scale(b3),
+         hit = scale(hit),
+         ab = scale(ab))
+head(bb_players_st)
+
+## Check that we can fit models to batting career data
+# iqdef <- iterative_quant_bin(dat=bb_players, bin_cols=c("b2","b3","hit","ab"),
+#                     nbins=c(2,2,2,2), jit=rep(0.001,4), output="both")
+# 
+# iqnn_mod <- iqnn(dat=bb_players, y="hr", bin_cols=c("b2","b3","hit","ab"),
+#                  nbins=c(2,2,2,2), jit=rep(0.001,4))
+# cv_iqnn(iqnn_mod,bb_players, cv_method="kfold", cv_k=5, strict=FALSE)
+# cv_iqnn(iqnn_mod,bb_players, cv_method="LOO", strict=FALSE)
+
+#### knn.reg
+test_index <- 1:100
+knnTest <- knn.reg(train = bb_players_st[-test_index,c("b2","b3","hit","ab")],
+                   test = bb_players_st[test_index,c("b2","b3","hit","ab")],
+                   y = bb_players_st$hr[-test_index], k = 5, algorithm = "brute")
+knnTest$pred
+
+# from building model to predicting for new
+
+# Comparing times with baseball data
+test_index <- 1:8820
+timer <- Sys.time()
+knnTest <- knn.reg(train = bb_players_st[-test_index,c("b2","b3","hit","ab")],
+                   test = bb_players_st[test_index,c("b2","b3","hit","ab")],
+                   y = bb_players_st$hr[-test_index], k = 5, algorithm = "brute")
+Sys.time() - timer
+
+timer <- Sys.time()
+iqnn_mod <- iqnn(bb_players_st[-test_index,], y="hr", bin_cols=c("b2","b3","hit","ab"),
+                 nbins=c(7,7,6,6), jit=rep(0.00001,4), tolerance=rep(0.0001,4))
+iqnn_preds <- predict_iqnn(iqnn_mod, bb_players_st[test_index,],strict=FALSE)
+Sys.time() - timer
+
+
+test_index <- 1:45000
+timer <- Sys.time()
+knnTest <- knn.reg(train = baseball[-test_index,c("X2B","H","AB")],
+                   test = baseball[test_index,c("X2B","H","AB")],
+                   y = baseball$HR[-test_index], k = 50, algorithm = "brute")
+Sys.time() - timer
+
+timer <- Sys.time()
+iqnn_mod <- iqnn(baseball[-test_index,], y="HR", bin_cols=c("X2B","H","AB"),
+                 nbins=c(9,9,9), jit=rep(0.001,3))
+iqnn_preds <- predict_iqnn(iqnn_mod, baseball[test_index,],strict=FALSE)
+Sys.time() - timer
 
 #-----------------------------------------------------------------------------------------------
 ### Testing with cabs data
@@ -315,4 +349,34 @@ round(mean(iqnn_mod$bin_stats$obs)) #approx number of neightbors?
 iqnn_preds <- factor(iqnn_preds, levels=levels(cover_type_std$true_class))
 table(iqnn_preds,cover_type_std$true_class[test_index])
 1-sum(diag(table(iqnn_preds,cover_type_std$true_class[test_index])))/length(test_index)
-# 2.5 minutes build, .35minutes predict, 26.66% error rate
+# 2.5 minutes build, .35 minutes predict, 26.66% error rate
+
+
+# ------------------------------------------------------------------------------------------
+# abalone classification with cross validation
+library(data.table)
+abalone <- fread('https://archive.ics.uci.edu/ml/machine-learning-databases/abalone/abalone.data')
+abalone<-as.data.frame(abalone)
+names(abalone)[1]<-"true_class"
+abalone$true_class<-as.factor(abalone$true_class)
+# standardize
+abalone <- data.frame(true_class=abalone$true_class,sapply(abalone[,-1], scale))
+str(abalone)
+timer <- Sys.time()
+iqnn_preds <- cv_pred_iqnn(data=abalone, y="true_class",mod_type="class", bin_cols=c("V5","V8","V2"),
+                         nbins=c(5,5,5), jit=rep(0.0000001,3),
+                         strict=FALSE, cv_method="kfold", cv_k=100)
+iqnn_preds <- factor(iqnn_preds, levels=levels(abalone$true_class))
+table(iqnn_preds,abalone$true_class)
+1-sum(diag(table(iqnn_preds,abalone$true_class)))/nrow(abalone)
+Sys.time()-timer
+
+timer <- Sys.time()
+iqnn_preds <- cv_pred_knn_class(dat=abalone, y_name="true_class", x_names=c("V5","V8","V2"),
+                       cv_method="kfold", cv_k=100, k=33, knn_algorithm = "brute")
+iqnn_preds <- factor(iqnn_preds, levels=levels(abalone$true_class))
+table(iqnn_preds,abalone$true_class)
+1-sum(diag(table(iqnn_preds,abalone$true_class)))/nrow(abalone)
+Sys.time()-timer
+
+

@@ -289,33 +289,6 @@ cv_pred_iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit=rep(0,len
 # Sys.time()-timer
 # mean((bb_players_st[,"hr"]-cv_preds)^2,na.rm=TRUE)
 # sqrt(mean((bb_players_st[,"hr"]-cv_preds)^2,na.rm=TRUE))
-#--------------------------------------
-### Tuning function for iqnn
-tune_iqnn_reg <- function(data, y, bin_cols, nbins_range, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
-  if(cv_method=="LOO") cv_k <- nrow(data)
-  nbins_list <- make_nbins_list(nbins_range,length(bin_cols))
-  cv_results <- data.frame(bin_dims = sapply(nbins_list, function(x) paste(x,collapse="X")),
-                           nbins_total=NA,nn_equiv=NA, MSE=NA)
-  for(t in 1:length(nbins_list)){
-    cv_preds <- cv_pred_iqnn(data, y, mod_type="reg", bin_cols, nbins_list[[t]], jit, stretch, tolerance, strict, cv_method, cv_k)
-    cv_results$MSE[t] <- mean((data[,y]-cv_preds)^2)
-    cv_results$nbins_total[t] <- prod(nbins_list[[t]])
-    cv_results$nn_equiv[t] <- (cv_k-1)/cv_k*nrow(data)/prod(nbins_list[[t]])
-  }
-  cv_results$RMSE <- sqrt(cv_results$MSE)
-  return(cv_results)
-}
-# timer <- Sys.time()
-# cv_tune <- tune_iqnn_reg(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
-# cv_tune
-# Sys.time()-timer
-# 
-# timer <- Sys.time()
-# cv_tune <- tune_iqnn_reg(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
-#                       nbins_range=c(4,6), jit=rep(0.001,4), strict=FALSE, cv_method="kfold", cv_k=10) 
-# cv_tune
-# Sys.time()-timer
 
 #--------------------------------------
 ### Function to create list of nbins vectors to put into tuning iqnn 
@@ -332,3 +305,38 @@ make_nbins_list <- function(nbin_range, p){
   return(nbins_list)
 }
 # make_nbins_list(c(2,3),3)
+
+#--------------------------------------
+### Tuning function for iqnn regression
+tune_iqnn <- function(data, y, mod_type="reg", bin_cols, nbins_range, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
+  if(cv_method=="LOO") cv_k <- nrow(data)
+  nbins_list <- make_nbins_list(nbins_range,length(bin_cols))
+  cv_results <- data.frame(bin_dims = sapply(nbins_list, function(x) paste(x,collapse="X")))
+  for(t in 1:length(nbins_list)){
+    cv_preds <- cv_pred_iqnn(data, y, mod_type=mod_type, bin_cols, nbins_list[[t]], jit, stretch, tolerance, strict, cv_method, cv_k)
+    if(mod_type=="reg") cv_results$MSE[t] <- mean((data[,y]-cv_preds)^2)
+    if(mod_type=="class") cv_results$error[t] <- sum(cv_preds!=dat[,y_name]) / nrow(dat)
+    cv_results$nbins_total[t] <- prod(nbins_list[[t]])
+    cv_results$nn_equiv[t] <- (cv_k-1)/cv_k*nrow(data)/prod(nbins_list[[t]])
+  }
+  if(mod_type=="reg") cv_results$RMSE <- sqrt(cv_results$MSE)
+  return(cv_results)
+}
+# timer <- Sys.time()
+# cv_tune <- tune_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=nrow(iris))
+# cv_tune
+# Sys.time()-timer
+# 
+# timer <- Sys.time()
+# cv_tune <- tune_iqnn_reg(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
+#                       nbins_range=c(4,6), jit=rep(0.001,4), strict=FALSE, cv_method="kfold", cv_k=10) 
+# cv_tune
+# Sys.time()-timer
+# 
+# timer <- Sys.time()
+# cv_tune <- tune_iqnn(data=iris, y="Species", mod_type="class", bin_cols=c("Petal.Length","Sepal.Length"),
+#                       nbins_range=c(2,10), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=nrow(iris))
+# cv_tune
+# Sys.time()-timer
+
