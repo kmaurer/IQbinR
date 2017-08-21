@@ -1,7 +1,11 @@
 ### Comparison of knn and iqnn for regression setting
 
 # Load up functions and packages for iqnn and knn regression
-source("IterativeQuantileBinning.R")
+library(devtools)
+install_github(repo="kmaurer/iqbin")
+library(iqbin)
+help(package="iqbin")
+?iqnn
 library(FNN)
 library(tidyverse)
 
