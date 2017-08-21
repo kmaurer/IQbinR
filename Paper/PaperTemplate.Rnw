@@ -58,7 +58,7 @@ Write abstract here
 \end{abstract}
 
 \noindent%
-{\it Keywords:}  keywords go here!
+{\it Keywords:}  keywords go here! Non-parametric, Predictive Modeling, Partitioning, knn
 \vfill
 
 %-----------------------------------------------------------------------------------------------------
