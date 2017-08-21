@@ -1,7 +1,20 @@
 ### Helper functions for Iterative Quantile Binning Functions
-# Move to this seperate file for organization that focuses on primary tasks
 
 #--------------------------------------
+#' Convert bin bounds data frame into R-tree structure using nested lists
+#'
+#' @description Convert bin bounds data frame into R-tree structure using nested lists
+#'
+#' @param bin_bounds Data frame of bin bounds; one row per bin, columns for lower and upper bound on each dimension
+#' @param nbins number of bins in each dimension
+#' 
+#' @return R-tree nested list of bin boundaries
+#' @examples 
+#' iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                     nbins=c(3,2,2), output="definition",jit=rep(0.001,3))
+#' iq_def$bin_bounds
+#' make_bin_list(bin_bounds=iq_def$bin_bounds,nbins=c(3,2,2))
+
 make_bin_list <- function(bin_bounds,nbins){
   bin_dim = length(nbins)
   ### build nested list version of bin_bounds to speed up future searching for bins
@@ -31,7 +44,20 @@ make_bin_list <- function(bin_bounds,nbins){
   bin_list <- lower_level_list
   return(bin_list)
 }
-#---------------------------------------
+
+#--------------------------------------
+#' Find bin index from R-tree structure
+#'
+#' @description Use R-tree structure using from make_bin_list() function to find bin index for new observation
+#' @param x vector of input values for each of the binned dimensions
+#' @param bin_def Iterative quantile binning definition list
+#' @param strict TRUE/FALSE: If TRUE Observations must fall within existing bins to be assigned; if FALSE the outer bins in each dimension are unbounded to allow outlying values to be assigned.
+#' 
+#' @return bin index for new observation
+#' @examples 
+#' iq_def <- iterative_quant_bin(data=iris[-test_index,], bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                               nbins=c(3,2,2), output="both")
+#' bin_index_finder_nest(x=c(6,3,1.5),bin_def=iq_def$bin_def, strict=TRUE)
 
 bin_index_finder_nest <- function(x, bin_def, strict=TRUE){ 
   bin_dim = length(bin_def$nbins)
@@ -49,29 +75,110 @@ bin_index_finder_nest <- function(x, bin_def, strict=TRUE){
     idx <- nest_list
   return(idx)
 } 
-# test_index <- c(1,2,51,52,101,102)
-# test_data <- iris[test_index,]
-# iq_def <- iterative_quant_bin(data=iris[-test_index,], bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                               nbins=c(3,2,2), output="both")
-# bin_by_iq_def(bin_def=iq_def$bin_def, new_data=test_data, output="data")
-# bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=TRUE)
-# bin_index_finder_nest(x=c(6,3,15),bin_def, strict=TRUE)
-# bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=FALSE)
-# bin_index_finder_nest(x=c(6,3,15),bin_def, strict=FALSE)
 
 #--------------------------------------
-## function to make a matrix for duplicating the N rows of a matrix M times each
-# support funciton for IQ binning function
-#!# Update later for speed 
+#' Stack Matrix builder
+#'
+#' @description function to make a J matrix for duplicating the N rows of a matrix M times each. (support funciton for iterative_quant_bin function)
+#' @param N number of rows
+#' @param M number of duplicates
+#' 
+#' @return bin index for new observation
+#' @examples 
+#' make_stack_matrix(3,4)
+
 make_stack_matrix <- function(N,M){ 
   mat <- unname(model.matrix(~as.factor(rep(1:N,each=M))-(1)))
   attributes(mat)[2:3]<-NULL
   return(mat)
 } 
-make_stack_matrix(3,4)
 
 #--------------------------------------
-### Helper function for checking if a vector is in a p-dimensional bin, defined by 2*p boundaries
+#' CV cohort additions
+#'
+#' @description Create set of indeces for tracking observations to cv folds. Creates equally balanced folds
+#'
+#' @param dat data frame for cross validation
+#' @param cv_K number of folds needed in indexing
+#' 
+#' @return Vector of fold indeces
+#' @examples 
+#' make_cv_cohorts(iris,cv_K=10)
+make_cv_cohorts <- function(dat,cv_K){
+  if(nrow(dat) %% cv_K == 0){ # if perfectly divisible
+    cv_cohort <- sample(rep(1:cv_K, each=(nrow(dat)%/%cv_K)))
+  } else { # if not perfectly divisible
+    cv_cohort <- sample(c(rep(1:(nrow(dat) %% cv_K), each=(nrow(dat)%/%cv_K + 1)),
+                              rep((nrow(dat) %% cv_K + 1):cv_K,each=(nrow(dat)%/%cv_K)) ) )
+  }
+  return(cv_cohort)
+}
+
+#--------------------------------------
+#' Create data frame with rounded number of trailing digits
+#'
+#' @description Based on https://gist.github.com/avsmith/e6f4f654451da139230b to round all numeric variables
+#' @param x data frame 
+#' @param digits number of digits to round
+#' 
+#' @return data frame with rounded numeric variables
+#' @examples 
+#' round_df(head(faithful),digits=1)
+
+round_df <- function(x, digits=2) {
+  numeric_columns <- sapply(x, class) == 'numeric'
+  x[numeric_columns] <-  round(x[numeric_columns], digits)
+  x
+}
+
+#--------------------------------------
+#' Simple Majority Vote Counter
+#'
+#' @description Identify the maximum vote earners, then randomly pick winner if there is a tie to break
+#'
+#' @param votes character or factor vector
+#' votes <- c("a","a","a","b","b","c")
+#' majority_vote(votes)
+#' 
+majority_vote <- function(votes){
+  top_votes <- names(which.max(table(votes))) # collect top vote earner (ties allowed)
+  return(sample(top_votes,1)) # randomly select to break any ties for best
+}
+
+#--------------------------------------
+#' Function to create list of nbins vectors to put into tuning iqnn 
+#'
+#' @description create a list of nbins vectors, use progression that increases number of bins in each dimension while always staying balanced between dimensions
+#'
+#' @param nbin_range positive integer vector containing lower and upper bounds on number of bins in each dimension
+#' @param p number of binning dimensions
+#' 
+#' @return list of nbins vectors
+#' @examples 
+#' make_nbins_list(c(2,3),3)
+
+make_nbins_list <- function(nbin_range, p){
+  nbins_list <- list(rep(nbin_range[1],p))
+  counter = 1
+  for(i in 1:(nbin_range[2]-nbin_range[1])){
+    for(j in 1:p){
+      nbins_list[[counter+1]] <- nbins_list[[counter]]
+      nbins_list[[counter+1]][j] <- nbins_list[[counter+1]][j] + 1
+      counter <- counter+1
+    }
+  }
+  return(nbins_list)
+}
+
+#--------------------------------------
+### Helper function for suggesting parameters for jittering number of bins in each dimension
+# based on number of ties and data resolution
+#!#
+
+
+# OLD JUNK (may need for timing comparison of R-tree search to linear search later)
+#--------------------------------------
+### OLD Helper function for checking if a vector is in a p-dimensional bin, defined by 2*p boundaries
 # x = p-dimensional vector
 # bin_bounds = 2*p dimensional boundary matrix (like in iq-binning definition list)
 #!# need to adapt to allow bin allocations for observations outside of observed bins
@@ -141,75 +248,3 @@ make_stack_matrix(3,4)
 #   #!# work out code for repeatedly adding 1 to some nbins until tips over k per bin
 # }
 
-
-
-#--------------------------------------
-### CV cohort additions
-# use this function to add K grouping indeces
-make_cv_cohorts <- function(dat,cv_K){
-  if(nrow(dat) %% cv_K == 0){ # if perfectly divisible
-    cv_cohort <- sample(rep(1:cv_K, each=(nrow(dat)%/%cv_K)))
-  } else { # if not perfectly divisible
-    cv_cohort <- sample(c(rep(1:(nrow(dat) %% cv_K), each=(nrow(dat)%/%cv_K + 1)),
-                              rep((nrow(dat) %% cv_K + 1):cv_K,each=(nrow(dat)%/%cv_K)) ) )
-  }
-  return(cv_cohort)
-}
-
-#' Create feature pair data frame
-#'
-#' @description Based on https://gist.github.com/avsmith/e6f4f654451da139230b to round all numeric variables
-#' @param x data frame 
-#' @param digits number of digits to round
-#' 
-round_df <- function(x, digits=2) {
-  numeric_columns <- sapply(x, class) == 'numeric'
-  x[numeric_columns] <-  round(x[numeric_columns], digits)
-  x
-}
-
-
-#--------------------------------------
-#' Simple Majority Vote Counter
-#'
-#' @description Identify the maximum vote earners, then randomly pick winner if there is a tie to break
-#'
-#' @param votes character or factor vector
-#' votes <- c("a","a","a","b","b","c")
-#' majority_vote(votes)
-majority_vote <- function(votes){
-  top_votes <- names(which.max(table(votes))) # collect top vote earner (ties allowed)
-  return(sample(top_votes,1)) # randomly select to break any ties for best
-}
-
-
-
-#--------------------------------------
-#' Function to create list of nbins vectors to put into tuning iqnn 
-#'
-#' @description create a list of nbins vectors, use progression that increases number of bins in each dimension while always staying balanced between dimensions
-#'
-#' @param nbin_range positive integer vector containing lower and upper bounds on number of bins in each dimension
-#' @param p number of binning dimensions
-#' 
-#' @return list of nbins vectors
-#' @examples 
-#' make_nbins_list(c(2,3),3)
-
-make_nbins_list <- function(nbin_range, p){
-  nbins_list <- list(rep(nbin_range[1],p))
-  counter = 1
-  for(i in 1:(nbin_range[2]-nbin_range[1])){
-    for(j in 1:p){
-      nbins_list[[counter+1]] <- nbins_list[[counter]]
-      nbins_list[[counter+1]][j] <- nbins_list[[counter+1]][j] + 1
-      counter <- counter+1
-    }
-  }
-  return(nbins_list)
-}
-
-#--------------------------------------
-### Helper function for suggesting parameters for jittering number of bins in each dimension
-# based on number of ties and data resolution
-#!#
