@@ -53,7 +53,7 @@ bin_index_finder_nest <- function(x, bin_def, strict=TRUE){
 # test_data <- iris[test_index,]
 # iq_def <- iterative_quant_bin(data=iris[-test_index,], bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #                               nbins=c(3,2,2), output="both")
-# bin_by_IQdef(bin_def=iq_def$bin_def, new_data=test_data, output="data")
+# bin_by_iq_def(bin_def=iq_def$bin_def, new_data=test_data, output="data")
 # bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=TRUE)
 # bin_index_finder_nest(x=c(6,3,15),bin_def, strict=TRUE)
 # bin_index_finder_nest(x=c(6,3,1.5),bin_def, strict=FALSE)
@@ -141,6 +141,8 @@ make_stack_matrix(3,4)
 #   #!# work out code for repeatedly adding 1 to some nbins until tips over k per bin
 # }
 
+
+
 #--------------------------------------
 ### CV cohort additions
 # use this function to add K grouping indeces
@@ -166,6 +168,46 @@ round_df <- function(x, digits=2) {
   x
 }
 
+
+#--------------------------------------
+#' Simple Majority Vote Counter
+#'
+#' @description Identify the maximum vote earners, then randomly pick winner if there is a tie to break
+#'
+#' @param votes character or factor vector
+#' votes <- c("a","a","a","b","b","c")
+#' majority_vote(votes)
+majority_vote <- function(votes){
+  top_votes <- names(which.max(table(votes))) # collect top vote earner (ties allowed)
+  return(sample(top_votes,1)) # randomly select to break any ties for best
+}
+
+
+
+#--------------------------------------
+#' Function to create list of nbins vectors to put into tuning iqnn 
+#'
+#' @description create a list of nbins vectors, use progression that increases number of bins in each dimension while always staying balanced between dimensions
+#'
+#' @param nbin_range positive integer vector containing lower and upper bounds on number of bins in each dimension
+#' @param p number of binning dimensions
+#' 
+#' @return list of nbins vectors
+#' @examples 
+#' make_nbins_list(c(2,3),3)
+
+make_nbins_list <- function(nbin_range, p){
+  nbins_list <- list(rep(nbin_range[1],p))
+  counter = 1
+  for(i in 1:(nbin_range[2]-nbin_range[1])){
+    for(j in 1:p){
+      nbins_list[[counter+1]] <- nbins_list[[counter]]
+      nbins_list[[counter+1]][j] <- nbins_list[[counter+1]][j] + 1
+      counter <- counter+1
+    }
+  }
+  return(nbins_list)
+}
 
 #--------------------------------------
 ### Helper function for suggesting parameters for jittering number of bins in each dimension

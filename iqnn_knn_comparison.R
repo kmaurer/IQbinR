@@ -133,7 +133,7 @@ test_index <- 1:n/2
 # time the fitting of the iq bin model 
 timer <- Sys.time()
 iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
-                 nbins=rep(b,p), jit=rep(0.001,p), stretch=TRUE, tolerance=rep(5,p))
+                 nbins=rep(b,p), jit=rep(0.001,p), stretch=TRUE, tol=rep(5,p))
 sim_times$iqfittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 # time the prediction using iq bin model
 timer <- Sys.time()
@@ -201,7 +201,7 @@ Sys.time() - timer
 
 timer <- Sys.time()
 iqnn_mod <- iqnn(bb_players_st[-test_index,], y="hr", bin_cols=c("b2","b3","hit","ab"),
-                 nbins=c(7,7,6,6), jit=rep(0.00001,4), tolerance=rep(0.0001,4))
+                 nbins=c(7,7,6,6), jit=rep(0.00001,4), tol=rep(0.0001,4))
 iqnn_preds <- predict_iqnn(iqnn_mod, bb_players_st[test_index,],strict=FALSE)
 Sys.time() - timer
 

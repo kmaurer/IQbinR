@@ -119,11 +119,11 @@ iterative_quant_bin <- function(data, bin_cols, nbins,jit = rep(0,length(bin_col
 #' @examples 
 #' iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #'                               nbins=c(3,2,2), output="both")
-#' stretch_iq_def <- stretch_iq_bins(iq_def, tolerance = c(1,1,1))
+#' stretch_iq_def <- stretch_iq_bins(iq_def, tol = c(1,1,1))
 #' iq_def$bin_def$bin_bounds
 #' stretch_iq_def$bin_def$bin_bounds
 
-stretch_iq_bins <- function(iq_def, tolerance){
+stretch_iq_bins <- function(iq_def, tol){
   b = nrow(iq_def$bin_def$bin_bounds)
   p = length(iq_def$bin_def$nbins)
   for (d in 1:p){
@@ -135,8 +135,8 @@ stretch_iq_bins <- function(iq_def, tolerance){
     for(block in 1:blocks){
       lowest_in_block <- seq(1+((block-1)*blocks_n),subblocks_n+((block-1)*blocks_n),by=1)
       highest_in_block <- seq(blocks_n-subblocks_n+1+((block-1)*blocks_n), blocks_n+((block-1)*blocks_n),by=1)
-      iq_def$bin_def$bin_bounds[lowest_in_block,2*d-1] <- iq_def$bin_def$bin_bounds[lowest_in_block,2*d-1] - tolerance[d]
-      iq_def$bin_def$bin_bounds[highest_in_block,2*d] <- iq_def$bin_def$bin_bounds[highest_in_block,2*d] + tolerance[d]
+      iq_def$bin_def$bin_bounds[lowest_in_block,2*d-1] <- iq_def$bin_def$bin_bounds[lowest_in_block,2*d-1] - tol[d]
+      iq_def$bin_def$bin_bounds[highest_in_block,2*d] <- iq_def$bin_def$bin_bounds[highest_in_block,2*d] + tol[d]
     }
   }
   iq_def$bin_def$bin_list <- make_bin_list(iq_def$bin_def$bin_bounds,iq_def$bin_def$nbins)
@@ -158,9 +158,9 @@ stretch_iq_bins <- function(iq_def, tolerance){
 #' withhold_index <- c(1,2,51,52,101,102)
 #' iq_def <- iterative_quant_bin(data=iris[-withhold_index,], bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
 #'                               nbins=c(3,2,2), output="definition")
-#' bin_by_IQdef(bin_def=iq_def, new_data=iris[withhold_index,], output="data")
+#' bin_by_iq_def(bin_def=iq_def, new_data=iris[withhold_index,], output="data")
 
-bin_by_IQdef <- function(bin_def, new_data, output="data", strict=FALSE){
+bin_by_iq_def <- function(bin_def, new_data, output="data", strict=FALSE){
   new_data <- as.data.frame(new_data)
   #!# need to introduce similar jitter to new data as in definition so "boundary" points allocated randomly
   #
@@ -176,37 +176,31 @@ bin_by_IQdef <- function(bin_def, new_data, output="data", strict=FALSE){
                 bin_def=iq_def))
   } 
 } 
-# # Testing bin_by_IQdef
-# test_index <- c(1,2,51,52,101,102)
-# iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                  nbins=c(3,5,2), jit=rep(0.001,3))
-# test_data <- iris[test_index,]
-#
-# 
-# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                               nbins=c(3,2,2), output="both")
-# stretch_iq_def <- stretch_iq_bins(iq_def, tolerance = c(.1,.1,.1))
-# bin_by_IQdef(bin_def=stretch_iq_def$bin_def, new_data=test_data, output="data")
-# 
-# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                               nbins=c(3,2,2), output="both")
-# bin_by_IQdef(bin_def=iq_def$bin_def, new_data=test_data, output="data")
-# 
-# bin_by_IQdef(bin_def=iqnn_mod, new_data=test_data, output="data", strict=FALSE)
-#--------------------------------------
-
-majority_vote <- function(votes){
-  top_votes <- names(which.max(table(votes))) # collect top vote earner (ties allowed)
-  return(sample(top_votes,1)) # randomly select to break any ties for best
-}
 
 #--------------------------------------
-### Iterative Quantile Binned Nearest Neighbors Regression
-# takes in data, response column and binning parameters
-iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit = rep(0,length(bin_cols)), stretch=FALSE, tolerance = rep(0,length(bin_cols)) ){
+#' Iterative Quantile Binned Nearest Neighbors
+#'
+#' @description Function for creating iterative quantile nearest neighbors model. Bin the training data, then store the binning definitions and bin statistics to be used to estimate for future testing data.
+#'
+#' @param data Data frame containing the response variable and numeric input variables from the training data
+#' @param y Name of response variable column
+#' @param mod_type Depends on response variables type: "reg" creates iqnn-regression for predicting numeric values, "class" creates iqnn-classifier for predicting categorical values
+#' @param bin_cols vector of column names of variables to iteratively bin, ordered first to last
+#' @param nbins vector of number of bins per step of iterative binning, ordered first to last
+#' @param jit vector of margins for uniform jitter to each dimension to create seperability of tied obs due to finite precision
+#' @param stretch TRUE/FALSE if will bins be given tolerance buffer
+#' @param tol vector of tolerance values to stretch each dimension for future binning
+#' 
+#' @return list containing binned training data, binning definition, and bin statistics
+#' @examples 
+#' iqnn_mod <- iqnn(data=iris, y="Species", mod_type="class", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                  nbins=c(3,5,2), jit=rep(0.001,3), tol = rep(0.001,3))
+#' str(iqnn_mod)                
+
+iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit = rep(0,length(bin_cols)), stretch=FALSE, tol = rep(0,length(bin_cols)) ){
   data <- as.data.frame(data)
   iq_bin <- iterative_quant_bin(data, bin_cols, nbins, output="both",jit)
-  if(stretch) iq_bin <- stretch_iq_bins(iq_bin, tolerance=tolerance)
+  if(stretch) iq_bin <- stretch_iq_bins(iq_bin, tol=tol)
   iq_bin$bin_def$y <- y
   total_bins = nrow(iq_bin$bin_def$bin_centers)
   if(mod_type=="reg"){
@@ -218,108 +212,114 @@ iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit = rep(0,length(bi
   }else{return(print("mod_type must be either 'reg' or 'class'"))}
   return(iq_bin$bin_def)
 }
-# iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"), nbins=c(3,5,2))
-# iqnn_mod <- iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#              nbins=c(3,5,2), jit=rep(0.001,3), tolerance = rep(0.001,3))
-# iqnn_mod <- iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                  nbins=c(3,5,2))
-# bin_by_IQdef(bin_def=iqnn_mod, new_data=test_data, output="data")
-# myiq <- iqnn(iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#              nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.1,3))
-# myiq$bin_bounds
-# iqnn_mod <- iqnn(data=iris, y="Species", mod_type="class", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                  nbins=c(3,5,2), jit=rep(0.001,3), tolerance = rep(0.001,3))
-
-
-
 
 #--------------------------------------
-### predict for new data from iqnn model
+#' Predict for test data using iqnn model
+#'
+#' @description New observations selected from the same population as the data used to build bin definitions may fall just outside the bins. If we wish to include nearby values we can either allow outer bins to be extended (this function) or to leave the outer bins unbounded.
+#'
+#' @param iqnn_mod iterative quantile nearest neighbors model generated by the iqnn function
+#' @param test_data Data frame of test data to estimate response values for
+#' @param type output "estimate", "binsize", or "both"
+#' @param strict TRUE/FALSE: If TRUE Observations must fall within existing bins to be assigned; if FALSE the outer bins in each dimension are unbounded to allow outlying values to be assigned.
+#' 
+#' @return predicted responses, number of neighbors or both
+#' @examples 
+#' # Test Regression
+#' test_index <- c(1,2,51,52,101,102)
+#' iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                  nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tol=rep(.2,3))
+#' test_data <- iris[test_index,]
+#' predict_iqnn(iqnn_mod, test_data,strict=FALSE)
+#' predict_iqnn(iqnn_mod, test_data,strict=TRUE)
+#' predict_iqnn(iqnn_mod, test_data,type="both")
+#' 
+#' # Test Classifier
+#' iqnn_mod <- iqnn(data=iris[-test_index,], y="Species", mod_type="class", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                  nbins=c(3,5,2), jit=rep(0.001,3), tol = rep(0.001,3))
+#' test_data <- iris[test_index,]
+#' predict_iqnn(iqnn_mod, test_data,strict=FALSE)
+#' predict_iqnn(iqnn_mod, test_data,type="both",strict=FALSE)
+
 predict_iqnn <- function(iqnn_mod,test_data, type="estimate",strict=FALSE){
   test_data <- as.data.frame(test_data)
-  test_bin <- bin_by_IQdef(iqnn_mod, test_data, output="data",strict=strict)
+  #!# has bugs when strict=TRUE
+  test_bin <- bin_by_iq_def(iqnn_mod, test_data, output="data",strict=strict)
   if(type=="estimate") return(iqnn_mod$bin_stats$pred[test_bin$bin_indeces])
   if(type=="binsize") return(iqnn_mod$bin_stats$obs[test_bin$bin_indeces])
   if(type=="both") return(iqnn_mod$bin_stats[test_bin$bin_indeces,])
 }
-## Test Regression
-# test_index <- c(1,2,51,52,101,102)
-# iqnn_mod <- iqnn(iris[-test_index,], y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                  nbins=c(3,5,2), jit=rep(0.001,3), stretch=TRUE, tolerance=rep(.2,3))
-# test_data <- iris[test_index,]
-# predict_iqnn(iqnn_mod, test_data,strict=FALSE)
-# predict_iqnn(iqnn_mod, test_data,type="both")
-
-
-## Test Classifier
-# iqnn_mod <- iqnn(data=iris[-test_index,], y="Species", mod_type="class", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                  nbins=c(3,5,2), jit=rep(0.001,3), tolerance = rep(0.001,3))
-# test_data <- iris[test_index,]
-# predict_iqnn(iqnn_mod, test_data,strict=FALSE)
-# predict_iqnn(iqnn_mod, test_data,type="both",strict=FALSE)
 
 #--------------------------------------
-### Cross Validated predictions for iqnn models
-cv_pred_iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
-# cv_pred_iqnn <- function(iqnn_mod, data, cv_method="kfold", cv_k=10, strict=TRUE){
+#' Cross Validated predictions for iqnn models
+#'
+#' @description Cross-validate an iqnn specification using k-fold scheme on given data
+#'
+#' @param data Data frame containing the response variable and numeric input variables from the training data
+#' @param y Name of response variable column
+#' @param mod_type Depends on response variables type: "reg" creates iqnn-regression for predicting numeric values, "class" creates iqnn-classifier for predicting categorical values
+#' @param bin_cols vector of column names of variables to iteratively bin, ordered first to last
+#' @param nbins vector of number of bins per step of iterative binning, ordered first to last
+#' @param jit vector of margins for uniform jitter to each dimension to create seperability of tied obs due to finite precision
+#' @param stretch TRUE/FALSE if will bins be given tolerance buffer
+#' @param tol vector of tolerance values to stretch each dimension for future binning
+#' @param strict TRUE/FALSE: If TRUE Observations must fall within existing bins to be assigned; if FALSE the outer bins in each dimension are unbounded to allow outlying values to be assigned.
+#' @param cv_k integer specifying number of folds
+#' 
+#' @return cross validated predicted responses for all observations in data
+#' @examples 
+# cv_preds <- cv_pred_iqnn(data=iris, y="Species",mod_type="class", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#              nbins=c(3,5,2), jit=rep(0.001,3), strict=FALSE, cv_k=10)
+# table(cv_preds, iris$Species)
+
+cv_pred_iqnn <- function(data, y, mod_type="reg", bin_cols, nbins, jit=rep(0,length(bin_cols)), stretch=FALSE, tol=rep(0,length(bin_cols)), strict=FALSE, cv_k=10){
   data <- as.data.frame(data)
-  if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(data, cv_k)
-  if(cv_method=="LOO") cv_cohorts <- 1:nrow(data)
+  cv_cohorts <- make_cv_cohorts(data, cv_k)
   cv_preds <- rep(NA,nrow(data))
   for(fold in 1:length(unique(cv_cohorts))){
     test_index <- which(cv_cohorts==fold)
     train_data_temp <- data[-test_index,]
     row.names(train_data_temp) <- 1:nrow(train_data_temp)
     iqnn_mod <- iqnn(train_data_temp, y=y, mod_type=mod_type, bin_cols=bin_cols, 
-                     nbins=nbins, jit=jit,stretch=stretch, tolerance=tolerance)
+                     nbins=nbins, jit=jit,stretch=stretch, tol=tol)
     cv_preds[test_index] <- predict_iqnn(iqnn_mod, data[test_index,],strict=strict, type="estimate")
   }
   if(mod_type=="class") cv_preds <- factor(cv_preds, labels=levels(data[,y]))
   cv_preds
 }
-# cv_pred_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#              nbins=c(3,5,2), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
-# cv_pred_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),nbins=c(3,5,2))
-# 
-# cv_preds <- cv_pred_iqnn(data=iris, y="Species",mod_type="class", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#              nbins=c(3,5,2), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=10)
-# table(cv_preds, iris$Species)
-
-
-# cv_pred_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),nbins=c(3,5,2))
-
-# timer <- Sys.time()
-# cv_preds <- cv_pred_iqnn(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
-#                          nbins=c(5,5,5,5), jit=rep(0.0000001,4), 
-#                          strict=FALSE, cv_method="kfold", cv_k=5) 
-# Sys.time()-timer
-# mean((bb_players_st[,"hr"]-cv_preds)^2,na.rm=TRUE)
-# sqrt(mean((bb_players_st[,"hr"]-cv_preds)^2,na.rm=TRUE))
 
 #--------------------------------------
-### Function to create list of nbins vectors to put into tuning iqnn 
-make_nbins_list <- function(nbin_range, p){
-  nbins_list <- list(rep(nbin_range[1],p))
-  counter = 1
-  for(i in 1:(nbin_range[2]-nbin_range[1])){
-    for(j in 1:p){
-      nbins_list[[counter+1]] <- nbins_list[[counter]]
-      nbins_list[[counter+1]][j] <- nbins_list[[counter+1]][j] + 1
-      counter <- counter+1
-    }
-  }
-  return(nbins_list)
-}
-# make_nbins_list(c(2,3),3)
+#' Tuning function for iqnn model
+#'
+#' @description Identify optimal number of bins per dimension for iterative quantile nearest-neighbor model using k-fold cross validation
+#'
+#' @param data Data frame containing the response variable and numeric input variables from the training data
+#' @param y Name of response variable column
+#' @param mod_type Depends on response variables type: "reg" creates iqnn-regression for predicting numeric values, "class" creates iqnn-classifier for predicting categorical values
+#' @param bin_cols vector of column names of variables to iteratively bin, ordered first to last
+#' @param nbin_range positive integer vector containing lower and upper bounds on number of bins in each dimension
+#' @param jit vector of margins for uniform jitter to each dimension to create seperability of tied obs due to finite precision
+#' @param stretch TRUE/FALSE if will bins be given tolerance buffer
+#' @param tol vector of tolerance values to stretch each dimension for future binning
+#' @param strict TRUE/FALSE: If TRUE Observations must fall within existing bins to be assigned; if FALSE the outer bins in each dimension are unbounded to allow outlying values to be assigned.
+#' @param cv_k integer specifying number of folds
+#' 
+#' @return data frame with one row per binning specification with desriptive and performance statistics: bin dimensitions, number of bins, equivalent k-nearest neightbor size, performance (mean squared error or class error rate)
+#' @examples 
+#' # 10-fold CV
+#' cv_tune1 <- tune_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_k=10)
+#' cv_tune1
+#' # LOO CV
+#' cv_tune2 <- tune_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_k=nrow(iris))
+#' cv_tune2
 
-#--------------------------------------
-### Tuning function for iqnn regression
-tune_iqnn <- function(data, y, mod_type="reg", bin_cols, nbins_range, jit=rep(0,length(bin_cols)), stretch=FALSE, tolerance=rep(0,length(bin_cols)), strict=FALSE, cv_method="kfold", cv_k=10){
-  if(cv_method=="LOO") cv_k <- nrow(data)
+tune_iqnn <- function(data, y, mod_type="reg", bin_cols, nbins_range, jit=rep(0,length(bin_cols)), stretch=FALSE, tol=rep(0,length(bin_cols)), strict=FALSE, cv_k=10){
   nbins_list <- make_nbins_list(nbins_range,length(bin_cols))
   cv_results <- data.frame(bin_dims = sapply(nbins_list, function(x) paste(x,collapse="X")))
   for(t in 1:length(nbins_list)){
-    cv_preds <- cv_pred_iqnn(data, y, mod_type=mod_type, bin_cols, nbins_list[[t]], jit, stretch, tolerance, strict, cv_method, cv_k)
+    cv_preds <- cv_pred_iqnn(data, y, mod_type=mod_type, bin_cols, nbins_list[[t]], jit, stretch, tol, strict, cv_k)
     if(mod_type=="reg") cv_results$MSE[t] <- mean((data[,y]-cv_preds)^2)
     if(mod_type=="class") cv_results$error[t] <- sum(cv_preds!=dat[,y_name]) / nrow(dat)
     cv_results$nbins_total[t] <- prod(nbins_list[[t]])
@@ -328,21 +328,6 @@ tune_iqnn <- function(data, y, mod_type="reg", bin_cols, nbins_range, jit=rep(0,
   if(mod_type=="reg") cv_results$RMSE <- sqrt(cv_results$MSE)
   return(cv_results)
 }
-# timer <- Sys.time()
-# cv_tune <- tune_iqnn(data=iris, y="Petal.Length", bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                       nbins_range=c(2,5), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=nrow(iris))
-# cv_tune
-# Sys.time()-timer
-# 
-# timer <- Sys.time()
-# cv_tune <- tune_iqnn_reg(data=bb_players_st, y="hr", bin_cols=c("hit","ab","b2","b3"),
-#                       nbins_range=c(4,6), jit=rep(0.001,4), strict=FALSE, cv_method="kfold", cv_k=10) 
-# cv_tune
-# Sys.time()-timer
-# 
-# timer <- Sys.time()
-# cv_tune <- tune_iqnn(data=iris, y="Species", mod_type="class", bin_cols=c("Petal.Length","Sepal.Length"),
-#                       nbins_range=c(2,10), jit=rep(0.001,3), strict=FALSE, cv_method="kfold", cv_k=nrow(iris))
-# cv_tune
-# Sys.time()-timer
+
+
 
