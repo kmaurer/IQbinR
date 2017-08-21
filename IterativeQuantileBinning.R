@@ -1,24 +1,24 @@
 ### iterative quantile binning functions
-
 # first source in all helper functions
 source("IterativeQuantileBinningSupportFunctions.R")
-
-## Function List
-# quant_bin_1d for quantile binning in one dimensioncv_iqnn
-# iterative_quant_bin
-# bin_by_IQdef
-# iqnn
-# predict_iqnn
-# cv_pred_iqnn
-# make_stack_matrix helper funtion for iterative binner to create stacking J matrices
-
 # Note: a #!# tag will be added on items that need improved efficiency/clarity
 
 #--------------------------------------
-## Quantile 1d Binning
-# used for binning the counts values by quantile
-# define vector of counts and number of bin
-# xs <- ggplot2::diamonds$price; nbin=4
+#' One-Dimensional Empirical Quantile Binning
+#'
+#' @description used for binning the numeric values by empirical quantile
+#'
+#' @param xs Numeric vector of values to be binned
+#' @param nbin An integer defining the number of bins to partion the xs into
+#' @param output Output Structure: "data" for just the binned data,"definition" for a list of bin centers and boundaries, or "both" for list containing both data and definition
+#' @param jit non-negative value to specify a random uniform jitter to the observed values prior to partitioning by quantiles.
+#' 
+#' @return output as specified
+#' @examples
+#' quant_bin_1d(ggplot2::diamonds$price,4,output="data")
+#' quant_bin_1d(ggplot2::diamonds$price,4,output="definition")
+#' quant_bin_1d(runif(1000,0,10),nbin=4,output="both")
+
 quant_bin_1d <- function(xs, nbin, output="data",jit=0){
   if(jit > 0)  xs <- xs + runif(length(xs),-jit,jit)
   quants <- quantile(xs, seq(0, 1, by=1/(2*nbin)))
@@ -33,10 +33,6 @@ quant_bin_1d <- function(xs, nbin, output="data",jit=0){
     if(output=="both") return(list(bin_data=bin_data,bin_centers=bin_centers,bin_bounds=bin_bounds))
   }
 }
-# quant_bin_1d(ggplot2::diamonds$price,4,output="data")
-# quant_bin_1d(ggplot2::diamonds$price,4,output="definition")
-# quant_bin_1d(runif(1000,0,10),nbin=4,output="both")
-
 # Speed test
 # load("~/onePercentSample.Rdata")
 # timer <- Sys.time()
@@ -46,13 +42,23 @@ quant_bin_1d <- function(xs, nbin, output="data",jit=0){
 
 
 #--------------------------------------
-### Iterative Quantile Binning
-# Input:
-#   data = data frame to be binned (will coerce matrix or tibble to simple data frame)
-#   bin_cols = vector of column names of variables to iteratively bin, ordered first to last
-#   nbins = vector of number of bins per step of iterative binning, ordered first to last
-#   jit = vector of margins for uniform jitter to each dimension to create seperability of tied obs due to finite precision
-iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0,length(bin_cols))){
+#' Iterative Quantile Binning
+#'
+#' @description used for binning the numeric values by empirical quantile
+#'
+#' @param data data frame to be binned (will coerce matrix or tibble to simple data frame)
+#' @param bin_cols vector of column names of variables to iteratively bin, ordered first to last
+#' @param nbins vector of number of bins per step of iterative binning, ordered first to last
+#' @param jit vector of margins for uniform jitter to each dimension to create seperability of tied obs due to finite precision
+#' @param output Output Structure: "data" for just the binned data,"definition" for a list of bin centers and boundaries, or "both" for list containing both data and definition
+#' 
+#' @return output as specified
+#' @examples 
+#' iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                     nbins=c(3,5,2), output="both",jit=rep(0.001,3))
+#' iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                     nbins=c(3,5,2), output="both")
+iterative_quant_bin <- function(data, bin_cols, nbins,jit = rep(0,length(bin_cols)), output="data"){
   data <- as.data.frame(data)
   # row.names(data) <- 1:nrow(data)
   bin_dim <- length(bin_cols)
@@ -94,27 +100,29 @@ iterative_quant_bin <- function(data, bin_cols, nbins, output="data",jit = rep(0
   # 
   bin_list <- make_bin_list(bin_bounds,nbins)
   if(output=="data") return(list(data=data,bin_data=bin_data))
-  if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds,bin_cols=bin_cols, nbins=nbins, jit=jit, bin_list=bin_list))
+  if(output=="definition") return(list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit, bin_list=bin_list))
   if(output=="both"){
     return(list(bin_data=list(data=data,bin_data=bin_data), 
-                bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit,bin_list=bin_list)))
+                bin_def=list(bin_centers=bin_centers, bin_bounds=bin_bounds, bin_cols=bin_cols, nbins=nbins, jit=jit, bin_list=bin_list)))
   } 
 }
-# iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                     nbins=c(3,5,2), output="both",jit=rep(0.001,3))
-
-# iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                     nbins=c(3,5,2), output="both")
-# 
-# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                     nbins=c(3,5,2), output="both")
-
-
 
 #--------------------------------------
-### Adding Tolerance Buffer to outermost bins from Iterative Quantile Binning
-# iq_def = iq binning definition list
-# tol = vector of tolerance values to stretch each dimension for future binning
+#' Adding Tolerance Buffer to outermost bins from Iterative Quantile Binning
+#'
+#' @description New observations selected from the same population as the data used to build bin definitions may fall just outside the bins. If we wish to include nearby values we can either allow outer bins to be extended (this function) or to leave the outer bins unbounded.
+#'
+#' @param iq_def  iterative quantile binning definition list
+#' @param tol vector of tolerance values to stretch each dimension for future binning
+#' 
+#' @return updated binning definition with bins extended by tolerance values
+#' @examples 
+#' iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                               nbins=c(3,2,2), output="both")
+#' stretch_iq_def <- stretch_iq_bins(iq_def, tolerance = c(1,1,1))
+#' iq_def$bin_def$bin_bounds
+#' stretch_iq_def$bin_def$bin_bounds
+
 stretch_iq_bins <- function(iq_def, tolerance){
   b = nrow(iq_def$bin_def$bin_bounds)
   p = length(iq_def$bin_def$nbins)
@@ -134,26 +142,24 @@ stretch_iq_bins <- function(iq_def, tolerance){
   iq_def$bin_def$bin_list <- make_bin_list(iq_def$bin_def$bin_bounds,iq_def$bin_def$nbins)
   return(iq_def)
 }
-# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                     nbins=c(3,5,2), output="definition")
-# iq_def$bin_bounds
-# 
-# iq_def <- iterative_quant_bin(sim_data[-test_index,], bin_cols=c("x1","x2","x3","x4"),
-#                               nbins=rep(4,4), jit=rep(0.001,4), output="both" )
-# iq_stretch <- stretch_iq_bins(iq_def, tolerance=rep(5,4))
-# # iq_stretch$bin_def$bin_bounds
-# iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#                               nbins=c(3,2,2), output="both")
-# stretch_iq_def <- stretch_iq_bins(iq_def, tolerance = c(1,1,1))
-# 
-# iq_def$bin_def$bin_bounds
-# stretch_iq_def$bin_def$bin_bounds
 
 #--------------------------------------
-### Iterative Quantile Binning New Data from defined bins
-# iq_def= IQ bin definition list from iterative_quant_bin or iqnn
-# new_data = data frame with column names matching the binned columns from bin-training data
-# output matches format of iterative_quant_bin and inherets properties from iqnn if applicable
+#' Iterative Quantile Binning New Data from defined bins
+#'
+#' @description New observations selected from the same population as the data used to build bin definitions may fall just outside the bins. If we wish to include nearby values we can either allow outer bins to be extended (this function) or to leave the outer bins unbounded.
+#'
+#' @param iq_def Iterative quantile binning definition list
+#' @param new_data Data frame with column names matching the binned columns from bin-training data
+#' @param output Matches format of iterative_quant_bin and inherets properties from iqnn if applicable {"data","both"}
+#' @param strict TRUE/FALSE: If TRUE Observations must fall within existing bins to be assigned; if FALSE the outer bins in each dimension are unbounded to allow outlying values to be assigned.
+#' 
+#' @return updated binning definition with bins extended by tolerance values
+#' @examples 
+#' withhold_index <- c(1,2,51,52,101,102)
+#' iq_def <- iterative_quant_bin(data=iris[-withhold_index,], bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                               nbins=c(3,2,2), output="definition")
+#' bin_by_IQdef(bin_def=iq_def, new_data=iris[withhold_index,], output="data")
+
 bin_by_IQdef <- function(bin_def, new_data, output="data", strict=FALSE){
   new_data <- as.data.frame(new_data)
   #!# need to introduce similar jitter to new data as in definition so "boundary" points allocated randomly
