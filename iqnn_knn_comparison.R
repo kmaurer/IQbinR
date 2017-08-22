@@ -102,18 +102,20 @@ tune_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k
 library(mvtnorm)
 help(package="mvtnorm")
 
-P=5
+P=4
 B=10
 ps = rep(2:P, each=(B-1))
 bs = rep(2:B, (P-1)) 
 
-k = 5
+k = 50
 
-sim_times <- data.frame(knntime=NA, iqfittime=NA, iqpredtime=NA, size=NA)
+sim_times <- data.frame(knntime=NA, iqfittime=NA, iqpredtime=NA, size=NA, b=NA,p=NA)
 for(sim in 1:length(ps)){
 p= ps[sim]
 b= bs[sim]
 n <- b^p*k*2
+sim_times[sim,"b"] <- b
+sim_times[sim,"p"] <- p
 sim_times[sim,"size"] <- n
 # sim data to proper size
 sim_data <- data.frame(x1=rnorm(n),
@@ -126,28 +128,28 @@ sim_data <- data.frame(x1=rnorm(n),
 xcols <- paste0("x",1:p)
 
 test_index <- 1:n/2
-# # time the knn predictions
+# # # time the knn predictions
 # timer <- Sys.time()
-#!# need to add time taken for standardization
+# #!# need to add time taken for standardization
 # knnTest <- knn.reg(train = sim_data[-test_index,xcols],
 #                    test = sim_data[test_index,xcols],
-#                    y = sim_data$y[-test_index], k = k, algorithm = "brute")
+#                    y = sim_data$y[-test_index], k = k, algorithm = "cover_tree")
 # sim_times$knntime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 
-# time the fitting of the iq bin model 
-timer <- Sys.time()
-iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
-                 nbins=rep(b,p), jit=rep(0.001,p), stretch=TRUE, tol=rep(5,p))
-sim_times$iqfittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
-# time the prediction using iq bin model
-timer <- Sys.time()
-iqnn_preds <- predict_iqnn(iqnn_mod, sim_data[test_index,],strict=TRUE)
-sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+# # time the fitting of the iq bin model 
+# timer <- Sys.time()
+# iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
+#                  nbins=rep(b,p), jit=rep(0.001,p), stretch=TRUE, tol=rep(5,p))
+# sim_times$iqfittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+# # time the prediction using iq bin model
+# timer <- Sys.time()
+# iqnn_preds <- predict_iqnn(iqnn_mod, sim_data[test_index,],strict=TRUE)
+# sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 }
 sim_times
-#write.csv(sim_times,"simulationTimesNestedLists.csv", row.names=FALSE)
+# write.csv(sim_times,"simulationTimesNestedLists2.csv", row.names=FALSE)
 
-#------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------
 # Baseball batting data from sean lahmann's database 
 # - http://www.seanlahman.com/baseball-archive/statistics/
 baseball <- read.csv("http://kmaurer.github.io/documents/SLahman_Batting2014.csv")
