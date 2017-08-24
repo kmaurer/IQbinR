@@ -102,50 +102,66 @@ tune_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k
 library(mvtnorm)
 help(package="mvtnorm")
 
-P=4
-B=10
-ps = rep(2:P, each=(B-1))
-bs = rep(2:B, (P-1)) 
-
-k = 50
-
-sim_times <- data.frame(knntime=NA, iqfittime=NA, iqpredtime=NA, size=NA, b=NA,p=NA)
-for(sim in 1:length(ps)){
-p= ps[sim]
-b= bs[sim]
-n <- b^p*k*2
-sim_times[sim,"b"] <- b
-sim_times[sim,"p"] <- p
-sim_times[sim,"size"] <- n
-# sim data to proper size
-sim_data <- data.frame(x1=rnorm(n),
-                       x2=rnorm(n),
-                       x3=rnorm(n),
-                       x4=rnorm(n),
-                       x5=rnorm(n),
-                       y=rnorm(n,100,10))
-# rebuild column names to proper dimension 
-xcols <- paste0("x",1:p)
-
-test_index <- 1:n/2
-# # # time the knn predictions
-# timer <- Sys.time()
-# #!# need to add time taken for standardization
-# knnTest <- knn.reg(train = sim_data[-test_index,xcols],
-#                    test = sim_data[test_index,xcols],
-#                    y = sim_data$y[-test_index], k = k, algorithm = "cover_tree")
-# sim_times$knntime[sim] <- as.numeric(Sys.time() - timer,units="mins")
-
-# # time the fitting of the iq bin model 
-# timer <- Sys.time()
-# iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
-#                  nbins=rep(b,p), jit=rep(0.001,p), stretch=TRUE, tol=rep(5,p))
-# sim_times$iqfittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
-# # time the prediction using iq bin model
-# timer <- Sys.time()
-# iqnn_preds <- predict_iqnn(iqnn_mod, sim_data[test_index,],strict=TRUE)
-# sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+# simulate data from different numbers of dimensions, bins per dimension and neighborhood size
+ps = 2:4 # number of dimensions
+bs = 2:10 # number of bins per dimension
+ks = c(1,10,100) # number in iq-neighborhood
+combinations <- expand.grid(ps,bs,ks)
+names(combinations) <- c("b","p","k")
+sim_times <- data.frame(combinations, 
+                        n = NA, knntime_brute=NA,
+                        knntime_cover=NA, knntime_kd=NA,iqnntime_total=NA,
+                        iqfittime=NA, iqpredtime=NA)
+for(sim in 1:nrow(sim_times)){
+  p = sim_times$p[sim]
+  b = sim_times$b[sim]
+  k = sim_times$k[sim]
+  
+  # sim data with number of observations to align number of bins with knn sizes
+  n <- b^p*k*2 
+  sim_times$n[sim] <- n
+  sim_data <- data.frame(sapply(1:p, function(x) rnorm(n)),
+                            y=rnorm(n,100,10))
+  # rebuild column names to proper dimension 
+  xcols <- names(sim_data)[1:p]
+  
+  test_index <- 1:n/2
+  #-------
+  # time the knn predictions with brute force
+  timer <- Sys.time()
+  #!# need to add time taken for standardization?
+  knnTest <- knn.reg(train = sim_data[-test_index,xcols],
+                     test = sim_data[test_index,xcols],
+                     y = sim_data$y[-test_index], k = k, algorithm = "brute")
+  sim_times$knntime_brute[sim] <- as.numeric(Sys.time() - timer,units="mins")
+  #-------  
+  # time the knn predictions with cover tree
+  timer <- Sys.time()
+  knnTest <- knn.reg(train = sim_data[-test_index,xcols],
+                     test = sim_data[test_index,xcols],
+                     y = sim_data$y[-test_index], k = k, algorithm = "cover_tree")
+  sim_times$knntime_cover[sim] <- as.numeric(Sys.time() - timer,units="mins")
+  #-------  
+  # time the knn predictions with kd_tree
+  timer <- Sys.time()
+  knnTest <- knn.reg(train = sim_data[-test_index,xcols],
+                     test = sim_data[test_index,xcols],
+                     y = sim_data$y[-test_index], k = k, algorithm = "kd_tree")
+  sim_times$knntime_kd[sim] <- as.numeric(Sys.time() - timer,units="mins")
+  #-------
+  # time the fitting of the iq bin model
+  timer <- Sys.time()
+  iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
+                   nbins=rep(b,p), jit=rep(0.001,p), stretch=TRUE, tol=rep(5,p))
+  sim_times$iqfittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+  # time the prediction using iq bin model
+  timer <- Sys.time()
+  iqnn_preds <- iqnn_predict(iqnn_mod, sim_data[test_index,],strict=TRUE)
+  sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
 }
+
+sim_times$iqnntime_total <- sim_times$iqfittime + sim_times$iqpredtime
+
 sim_times
 # write.csv(sim_times,"simulationTimesNestedLists2.csv", row.names=FALSE)
 
