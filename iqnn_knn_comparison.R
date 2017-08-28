@@ -104,14 +104,15 @@ help(package="mvtnorm")
 
 # simulate data from different numbers of dimensions, bins per dimension and neighborhood size
 ps = 2:4 # number of dimensions
-bs = 2:10 # number of bins per dimension
+bs = 2:10# number of bins per dimension
 ks = c(1,10,100) # number in iq-neighborhood
 combinations <- expand.grid(ps,bs,ks)
-names(combinations) <- c("b","p","k")
+names(combinations) <- c("p","b","k")
 sim_times <- data.frame(combinations, 
                         n = NA, knntime_brute=NA,
                         knntime_cover=NA, knntime_kd=NA,iqnntime_total=NA,
                         iqfittime=NA, iqpredtime=NA)
+set.seed(12345)
 for(sim in 1:nrow(sim_times)){
   p = sim_times$p[sim]
   b = sim_times$b[sim]
@@ -137,14 +138,14 @@ for(sim in 1:nrow(sim_times)){
   #-------  
   # time the knn predictions with cover tree
   timer <- Sys.time()
-  knnTest <- knn.reg(train = sim_data[-test_index,xcols],
+  knnTest2 <- knn.reg(train = sim_data[-test_index,xcols],
                      test = sim_data[test_index,xcols],
                      y = sim_data$y[-test_index], k = k, algorithm = "cover_tree")
   sim_times$knntime_cover[sim] <- as.numeric(Sys.time() - timer,units="mins")
   #-------  
   # time the knn predictions with kd_tree
   timer <- Sys.time()
-  knnTest <- knn.reg(train = sim_data[-test_index,xcols],
+  knnTest3 <- knn.reg(train = sim_data[-test_index,xcols],
                      test = sim_data[test_index,xcols],
                      y = sim_data$y[-test_index], k = k, algorithm = "kd_tree")
   sim_times$knntime_kd[sim] <- as.numeric(Sys.time() - timer,units="mins")
@@ -158,13 +159,27 @@ for(sim in 1:nrow(sim_times)){
   timer <- Sys.time()
   iqnn_preds <- iqnn_predict(iqnn_mod, sim_data[test_index,],strict=TRUE)
   sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+  print(paste("completed p =",p,", b =",b,", k =",k),sep="")
 }
 
 sim_times$iqnntime_total <- sim_times$iqfittime + sim_times$iqpredtime
 
 sim_times
-# write.csv(sim_times,"simulationTimesNestedLists2.csv", row.names=FALSE)
+# write.csv(sim_times,"simulationTimesBruteCoverKdIqnn.csv", row.names=FALSE)
 
+library(tidyverse)
+sim_plot_data <- sim_times %>%
+  # select(-iqfittime,-iqpredtime) %>%
+  gather(key="type",value="time",knntime_brute:iqpredtime) %>%
+  filter(p==4, b>=9)
+head(sim_plot_data)
+
+ggplot()+
+  geom_line(aes(x=k, y=time,color=type),
+            size=2,data=sim_plot_data) +
+  facet_grid(p~b)+
+  # scale_y_continuous(trans="log10")+
+  scale_x_continuous(trans="log10")
 # ------------------------------------------------------------------------------------------------------
 # Baseball batting data from sean lahmann's database 
 # - http://www.seanlahman.com/baseball-archive/statistics/
