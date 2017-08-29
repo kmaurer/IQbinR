@@ -9,7 +9,13 @@ help(package="iqbin")
 library(FNN)
 library(tidyverse)
 
-
+library(RANN)
+kdtree_nn_predict <- function(train,test,k=10){
+  nearest <- nn2(data=train,query=test, k=k)
+  sapply(1:nrow(test), function(x) {
+    mean(train[nearest$nn.idx[x,],1])
+  })
+}
 
 #--------------------------------------
 ### Cross Validated predictions for knn model using knn.reg from FNN package
@@ -104,7 +110,7 @@ help(package="mvtnorm")
 
 # simulate data from different numbers of dimensions, bins per dimension and neighborhood size
 ps = 2:4 # number of dimensions
-bs = 2:10# number of bins per dimension
+bs = 2:10 # number of bins per dimension
 ks = c(1,10,100) # number in iq-neighborhood
 combinations <- expand.grid(ps,bs,ks)
 names(combinations) <- c("p","b","k")
@@ -145,9 +151,9 @@ for(sim in 1:nrow(sim_times)){
   #-------  
   # time the knn predictions with kd_tree
   timer <- Sys.time()
-  knnTest3 <- knn.reg(train = sim_data[-test_index,xcols],
-                     test = sim_data[test_index,xcols],
-                     y = sim_data$y[-test_index], k = k, algorithm = "kd_tree")
+  knnTest3 <- kdtree_nn_predict(train = sim_data[-test_index,xcols],
+                                test = sim_data[test_index,xcols],
+                                k=k)
   sim_times$knntime_kd[sim] <- as.numeric(Sys.time() - timer,units="mins")
   #-------
   # time the fitting of the iq bin model
