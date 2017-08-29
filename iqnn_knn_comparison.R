@@ -110,7 +110,7 @@ help(package="mvtnorm")
 
 # simulate data from different numbers of dimensions, bins per dimension and neighborhood size
 ps = 2:4 # number of dimensions
-bs = 2:10 # number of bins per dimension
+bs = 11:12 # number of bins per dimension
 ks = c(1,10,100) # number in iq-neighborhood
 combinations <- expand.grid(ps,bs,ks)
 names(combinations) <- c("p","b","k")
@@ -141,7 +141,7 @@ for(sim in 1:nrow(sim_times)){
                      test = sim_data[test_index,xcols],
                      y = sim_data$y[-test_index], k = k, algorithm = "brute")
   sim_times$knntime_brute[sim] <- as.numeric(Sys.time() - timer,units="mins")
-  #-------  
+  #-------
   # time the knn predictions with cover tree
   timer <- Sys.time()
   knnTest2 <- knn.reg(train = sim_data[-test_index,xcols],
@@ -173,6 +173,7 @@ sim_times$iqnntime_total <- sim_times$iqfittime + sim_times$iqpredtime
 sim_times
 # write.csv(sim_times,"simulationTimesBruteCoverKdIqnn.csv", row.names=FALSE)
 
+sim_times <- read.csv("simulationTimesBruteCoverKdIqnn.csv")
 library(tidyverse)
 sim_plot_data <- sim_times %>%
   # select(-iqfittime,-iqpredtime) %>%
@@ -184,7 +185,7 @@ ggplot()+
   geom_line(aes(x=k, y=time,color=type),
             size=2,data=sim_plot_data) +
   facet_grid(p~b)+
-  # scale_y_continuous(trans="log10")+
+  scale_y_continuous(trans="log10")+
   scale_x_continuous(trans="log10")
 # ------------------------------------------------------------------------------------------------------
 # Baseball batting data from sean lahmann's database 
