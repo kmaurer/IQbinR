@@ -4,7 +4,7 @@ kdtree_nn_predict <- function(train,test,y,mod_type="class",k=10){
   nearest <- nn2(data=train,query=test, k=k)
   if(mod_type=="class"){
     preds <- sapply(1:nrow(test), function(x) {
-      iqbin::majority_vote(train[nearest$nn.idx[x,],y])
+      iqbin::majority_vote(as.character(train[nearest$nn.idx[x,],y]))
     })
   } else {
     preds <- sapply(1:nrow(test), function(x) {
@@ -101,11 +101,30 @@ tune_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k
 # 
 # tune_knn_class
 
+#--------------------------------------
+#helper function to standardize and drop non-numeric/constant-valued input variables
+clean_data_for_iqnn_knn <- function(data,y){
+  # Fix accidental spaces before some column names
+  names(data) <- stringr::str_replace_all(names(data)," ","")
+  names(data) <- stringr::str_replace_all(names(data),"-","_")
+  # Drop Rows with Missing Values
+  data <- na.omit(data)
+  # keep only numeric input columns
+  keeper_cols <- sapply(data, is.numeric)
+  keeper_cols[which(names(data)==y)] <- TRUE
+  data <- data[,keeper_cols]
+  # Convert to standardized values for each input variable
+  data[,(names(data)!=y)] <- sapply(data[,(names(data)!=y)], function(x) as.numeric(scale(x)))
+  # Drop columns with Missing Values
+  data <- data[,sapply(data, function(x) !all(duplicated(x)[-1L]))]
+  return(data)
+}
 
 #--------------------------------------
 ### knn_cv_predict with output as list containing predictions AND timing values for fitting and predicting
-knn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, knn_algorithm = "brute"){
+knn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, knn_algorithm = "brute", seed=sample(1:100000, 1)){
   data <- as.data.frame(data)
+  set.seed(seed)
   cv_cohorts <- make_cv_cohorts(data, cv_k)
   cv_preds <- factor(rep(NA,nrow(data)),levels=levels(data[,y]))
   time_knn <- 0
@@ -127,8 +146,9 @@ knn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, knn_algorithm = 
 
 #--------------------------------------
 ### kdtree_nn_cv_pred with output as list containing predictions AND timing values for fitting and predicting
-kdtree_nn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5){
-  data <- as.data.frame(data)
+kdtree_nn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, eps = 0, seed=sample(1:100000, 1)){
+  data <- as.data.frame(data)  
+  set.seed(seed)
   cv_cohorts <- make_cv_cohorts(data, cv_k)
   cv_preds <- factor(rep(NA,nrow(data)),levels=levels(data[,y]))
   time_knn <- 0
@@ -150,8 +170,10 @@ kdtree_nn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5){
 ### iqnn_cv_predict with output as list containing predictions AND timing values for fitting and predicting
 iqnn_cv_predict_timer <- function(data, y, mod_type = "reg", bin_cols, nbins, 
                                   jit = rep(0,length(bin_cols)), stretch = FALSE, 
-                                  tol = rep(0, length(bin_cols)), strict = FALSE, cv_k = 10) {
+                                  tol = rep(0, length(bin_cols)), strict = FALSE, cv_k = 10,
+                                  seed=sample(1:100000, 1)) {
   data <- as.data.frame(data)
+  set.seed(seed)
   cv_cohorts <- make_cv_cohorts(data, cv_k)
   cv_preds <- factor(rep("NA", nrow(data)), levels(data[, y]))
   time_fit <- 0

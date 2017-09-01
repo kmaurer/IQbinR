@@ -14,6 +14,7 @@ library(randomForest)
 library(RANN)
 library(mvtnorm)
 
+setwd("~/GitHub/iqnnProject")
 source("iqnn_knn_comparison_functions.R")
 
 #---------------------------------------------------------------------------
@@ -103,98 +104,92 @@ ggplot()+
 
 setwd("C:\\Users\\maurerkt\\Google Drive\\AFRLSFFP\\Fall2017\\mediumDatasets")
 
+# "mediumDatasets" attributes
 medium_sets <- c("abalone","banana","marketing","optdigits","satimage","waveform")
 responses <- c("Sex","Class","Sex","Class","Class","Class")
-
 sizes <- c(4174,5300,6876,5620,6435,5000)
-quant_cols <- c(7,2,12,64,36,40)
 
-results <- data.frame(data_name=medium_sets,obs = NA, nn_size = NA, cv_accuracy = NA, 
-                      time_fit = NA, time_pred = NA)
-results_iqnn <- results
-results_knn <- results
-results_knn_cover <- results
-results_knn_kd <- results
+nreps <- 10 # number of times to run k-fold comparisons
+results <- data.frame(data_name=rep(medium_sets,each=nreps),obs = NA, nn_size = NA, cv_accuracy = NA, 
+                      time_fit = NA, time_pred = NA, seed = NA)
+results_all_list <- list(results_iqnn=results, results_knn=results,
+                         results_knn_cover=results, results_knn_kd=results)
 
-# P <- 3 # max number of dimensions for inputs
-# B <- 10 # bins per dimension
-max_p <- 2
+max_p <- 2 # max number of dimensions for inputs
 cv_k <- 10 # cv folds
 k <- 3 # knn size
 
-# Loop over all data sets, record accuracies and times. 
+
+# Loop over all data sets and repetitions to record accuracies and times. 
 for(set in 1:6){
-  # load data
+  ## load and clean data in preparation for testing speed/accuracy with k-fold CV process
   data <- RWeka::read.arff(paste0(medium_sets[set],".arff"))
   # name of response variable
   y <- responses[set]
-  # Fix accidental spaces before some column names
-  names(data) <- stringr::str_replace_all(names(data)," ","")
-  names(data) <- stringr::str_replace_all(names(data),"-","_")
-  # Drop Rows with Missing Values
-  data <- na.omit(data)
-  # keep only numeric input columns
-  keeper_cols <- sapply(data, is.numeric)
-  keeper_cols[which(names(data)==y)] <- TRUE
-  data <- data[,keeper_cols]
-  # Find names in order of importance for randomForest (heuristic for doing variable selection)
+  # use helper function to standardize and drop non-numeric/constant-valued input variables
+  data <- clean_data_for_iqnn_knn(data,y)
+
+  ## Variable selection
+  # Find column names in order of importance for randomForest (heuristic for doing variable selection)
   myforest <- randomForest(as.formula(paste0("as.factor(as.character(",y,"))~ .")) , data=sample_n(data,1000))
   important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
-  
+  # allow a cap to be put on number of variables considered
   p <- min(length(important_cols),max_p)
   
-  # nbins <- rep(B,min(ncol(data)-1,P))
-  # bin_cols <- important_cols[min(ncol(data)-1,P)]
+  ## Parameterize for binning to best match k-nn structure specified with n, k, p, and cv_k
   train_n <- nrow(data)*((cv_k-1)/cv_k)
   nbins <- find_bin_root(n=train_n,k=k,p=p)
   bin_cols <- important_cols[1:p]
   
-  # find 10-fold CV predictions, Record time/accuracy for each
-  set.seed(12345)
-  iqnnmod <- iqnn_cv_predict_timer(data=data, y=y, mod_type="class", bin_cols=bin_cols,
-                                   nbins=nbins, jit=rep(0.001,length(nbins)), strict=FALSE, cv_k=cv_k)
-  results_iqnn$obs[set] <- nrow(data)
-  results_iqnn$nn_size[set] <- train_n/prod(nbins)
-  results_iqnn$cv_accuracy[set] <- sum(iqnnmod$preds==data[,y])/nrow(data)
-  results_iqnn$time_fit[set] <- iqnnmod$time_fit
-  results_iqnn$time_pred[set] <- iqnnmod$pred_time
-  
-  # find closest equivalent number of neighbors
-  # k <- round(nrow(data)*(cv_k-1)/cv_k / prod(nbins) )
-  set.seed(12345)
-  knnmod <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k, knn_algorithm = "brute")
-  results_knn$obs[set] <- nrow(data)
-  results_knn$nn_size[set] <- k
-  results_knn$cv_accuracy[set] <- sum(knnmod$preds==data[,y])/nrow(data)
-  results_knn$time_fit[set] <- knnmod$time_fit
-  results_knn$time_pred[set] <- knnmod$pred_time
-  
-  set.seed(12345)
-  knnmod_cover <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k, knn_algorithm = "cover_tree")
-  results_knn_cover$obs[set] <- nrow(data)
-  results_knn_cover$nn_size[set] <- k
-  results_knn_cover$cv_accuracy[set] <- sum(knnmod_cover$preds==data[,y])/nrow(data)
-  results_knn_cover$time_fit[set] <- knnmod_cover$time_fit
-  results_knn_cover$time_pred[set] <- knnmod_cover$pred_time
-  
-  set.seed(12345)
-  knnmod_kd <- kdtree_nn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k)
-  results_knn_kd$obs[set] <- nrow(data)
-  results_knn_kd$nn_size[set] <- k
-  results_knn_kd$cv_accuracy[set] <- sum(knnmod_kd$preds==data[,y])/nrow(data)
-  results_knn_kd$time_fit[set] <- knnmod_kd$time_fit
-  results_knn_kd$time_pred[set] <- knnmod_kd$pred_time
+  ## Compare knn/iqnn method timing and accuracy with k-fold CV
+  # pick order for methods at random
+  method_order <- sample(1:4)
+
+  # loop over nreps for each method
+  for(rep in 1:nreps){
+    # set seed for CV partitioning so that each method uses same train/test splits
+    seed <- sample(1:100000,1)
+    # seed <-  12345 # fixed value to check if all reps identical predictions made **Confirmed as identical for accuracy**
+    for(method in method_order){
+      # find 10-fold CV predictions, Record time/accuracy for each
+      if(method==1){
+        pred_times <- iqnn_cv_predict_timer(data=data, y=y, mod_type="class", bin_cols=bin_cols,
+                                            nbins=nbins, jit=rep(0.001,length(nbins)), strict=FALSE, 
+                                            cv_k=cv_k, seed=seed)
+      } else if(method==2){
+        pred_times <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,
+                                        knn_algorithm = "brute", seed=seed)
+      } else if(method==3){
+        pred_times <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,
+                                        knn_algorithm = "cover_tree", seed=seed)
+      } else {
+        # pred_times <- kdtree_nn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,
+        #                                       eps=1, seed=seed)
+        pred_times <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,
+                                        knn_algorithm = "kd_tree", seed=seed)
+      }
+      # store results in proper mehtod/set/rep values
+      results_all_list[[method]]$obs[(set-1)*nreps + rep] <- nrow(data)
+      results_all_list[[method]]$nn_size[(set-1)*nreps + rep] <- k
+      results_all_list[[method]]$cv_accuracy[(set-1)*nreps + rep] <- sum(pred_times$preds==data[,y])/nrow(data)
+      results_all_list[[method]]$time_fit[(set-1)*nreps + rep] <- pred_times$time_fit
+      results_all_list[[method]]$time_pred[(set-1)*nreps + rep] <- pred_times$pred_time
+      results_all_list[[method]]$seed[(set-1)*nreps + rep] <- seed
+    }
+  }
 }
-results_iqnn
-results_knn
-results_knn_cover
-results_knn_kd
+str(results_all_list)
 
-results_all <- data.frame(rbind(results_iqnn, results_knn,results_knn_cover,results_knn_kd),
-                          type=rep(c("iqnn","knn","knn_cover","knn_kd"),each=6)) %>%
-  gather(key="metric",value="value",cv_accuracy:time_pred)
-results_all
+# Combine into data frame for plots
+results_all <- data.frame(do.call("rbind", results_all_list),
+                          type=rep(c("iqnn","knn","knn_cover","knn_kd"),each=nrow(results_all_list$results_iqnn))) %>%
+  gather(key="metric",value="value",cv_accuracy:time_pred) %>% 
+  group_by(data_name,obs,nn_size,type,metric) %>%
+  summarize(value=mean(value,na.rm=TRUE)) %>%
+  as.data.frame()
+head(results_all)
 
+# plot the accuracy/fit time/prediction time
 ggplot()+
   geom_hline(yintercept = 0)+
   geom_line(aes(x=data_name, y=value,color=type, group=type),size=1, data=results_all)+
