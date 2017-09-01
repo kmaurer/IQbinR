@@ -3,110 +3,20 @@
 # Load up functions and packages for iqnn and knn regression
 library(devtools)
 install_github(repo="kmaurer/iqbin")
+
 library(iqbin)
 help(package="iqbin")
 ?iqnn
+
 library(FNN)
 library(tidyverse)
-
+library(randomForest)
 library(RANN)
-kdtree_nn_predict <- function(train,test,k=10){
-  nearest <- nn2(data=train,query=test, k=k)
-  sapply(1:nrow(test), function(x) {
-    mean(train[nearest$nn.idx[x,],1])
-  })
-}
-
-#--------------------------------------
-### Cross Validated predictions for knn model using knn.reg from FNN package
-cv_pred_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute"){
-  dat <- as.data.frame(dat)
-  if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(dat, cv_k)
-  if(cv_method=="LOO") cv_cohorts <- 1:nrow(dat)
-  cv_preds <- rep(NA,nrow(dat))
-  for(fold in 1:length(unique(cv_cohorts))){
-    test_index <- which(cv_cohorts==fold)
-    knn_mod <- knn.reg(train=dat[-test_index,x_names], test=dat[test_index,x_names], 
-                       y=dat[-test_index,y_name], k = k, algorithm = knn_algorithm)
-    cv_preds[test_index] <- knn_mod$pred
-  }
-  cv_preds
-}
-# cv_preds <- cv_pred_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
-#            cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute")
-# head(cv_preds)
-# cv_preds <- cv_pred_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
-#                        cv_method="LOO", k=5, knn_algorithm = "brute")
-# head(cv_preds)
-
-
-#--------------------------------------
-### Cross Validated predictions for knn model using knn.reg from FNN package
-cv_pred_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute"){
-  dat <- as.data.frame(dat)
-  if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(dat, cv_k)
-  if(cv_method=="LOO") cv_cohorts <- 1:nrow(dat)
-  cv_preds <- rep(NA,nrow(dat))
-  for(fold in 1:length(unique(cv_cohorts))){
-    test_index <- which(cv_cohorts==fold)
-    knn_mod <- knn(train=dat[-test_index,x_names], test=dat[test_index,x_names], 
-                       cl=dat[-test_index,y_name], k = k, algorithm = knn_algorithm)
-    cv_preds[test_index] <- as.character(knn_mod)
-  }
-  cv_preds <- factor(cv_preds, levels=levels(dat[,y_name]))
-  cv_preds
-}
-# cv_preds <- cv_pred_knn_class(dat=iris, y_name="Species", x_names=c("Petal.Length","Sepal.Length"),
-#                        cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute")
-# cv_preds
-#--------------------------------------
-### Tuning function for knn regression
-tune_knn_reg <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
-  if(!is.integer(k_values)) return(print("Please specify k_values as an integer vector of neightborhood sizes (k) to be tuned"))
-  cv_results <- data.frame(k=k_values,MSE = NA)
-  for(k_idx in 1:length(k_values)){
-    cv_preds <- cv_pred_knn(dat, y_name, x_names, cv_method="kfold", cv_k = cv_k, k=k_values[k_idx], knn_algorithm = "brute")
-    cv_results$MSE[k_idx] <- mean((dat[,y_name]-cv_preds)^2)
-  }
-  cv_results$RMSE <- sqrt(cv_results$MSE)
-  return(cv_results)
-}
-# timer <- Sys.time()
-# tune_knn_results_2 <- tune_knn_reg(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), k_values=1:50, knn_algorithm = "brute")
-# Sys.time()-timer
-# 
-# timer <- Sys.time()
-# tune_knn_results_4 <- tune_knn_reg(dat=bb_players_st, y_name="hr", x_names=c("hit","ab"), k_values=1:50, knn_algorithm = "brute")
-# Sys.time()-timer
-# 
-# head(cv_tune_results)
-# 
-# ggplot() +
-#   geom_point(aes(x=k,y=RMSE),data=cv_tune_results)
-# k=25 --> RMSE= 24.25
-
-#--------------------------------------
-### Tuning function for knn classifier
-tune_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
-  if(!is.integer(k_values)) return(print("Please specify k_values as an integer vector of neightborhood sizes (k) to be tuned"))
-  cv_results <- data.frame(k=k_values,error = NA)
-  for(k_idx in 1:length(k_values)){
-    cv_preds <- cv_pred_knn_class(dat, y_name, x_names, cv_method="kfold", cv_k = cv_k, k=k_values[k_idx], knn_algorithm = "brute")
-    cv_results$error[k_idx] <- sum(cv_preds!=dat[,y_name]) / nrow(dat)
-  }
-  return(cv_results)
-}
-# timer <- Sys.time()
-# tune_iris <- tune_knn_class(dat=iris, y_name="Species", x_names=c("Petal.Length","Sepal.Length"),
-#                                cv_method="kfold", cv_k = nrow(iris), k_values=1:40, knn_algorithm = "brute")
-# Sys.time()-timer
-# tune_iris
-# 
-# tune_knn_class
-
-###-------------------------------------------------------------------------
 library(mvtnorm)
-help(package="mvtnorm")
+
+source("iqnn_knn_comparison_functions.R")
+
+#---------------------------------------------------------------------------
 
 # simulate data from different numbers of dimensions, bins per dimension and neighborhood size
 ps = 2:4 # number of dimensions
@@ -187,6 +97,114 @@ ggplot()+
   facet_grid(p~b)+
   scale_y_continuous(trans="log10")+
   scale_x_continuous(trans="log10")
+
+###-----------------------------------------------------------------------------------------------------
+# Compare using Walter "medium data sets"
+
+setwd("C:\\Users\\maurerkt\\Google Drive\\AFRLSFFP\\Fall2017\\mediumDatasets")
+
+medium_sets <- c("abalone","banana","marketing","optdigits","satimage","waveform")
+responses <- c("Sex","Class","Sex","Class","Class","Class")
+
+sizes <- c(4174,5300,6876,5620,6435,5000)
+quant_cols <- c(7,2,12,64,36,40)
+
+results <- data.frame(data_name=medium_sets,obs = NA, nn_size = NA, cv_accuracy = NA, 
+                      time_fit = NA, time_pred = NA)
+results_iqnn <- results
+results_knn <- results
+results_knn_cover <- results
+results_knn_kd <- results
+
+# P <- 3 # max number of dimensions for inputs
+# B <- 10 # bins per dimension
+max_p <- 2
+cv_k <- 10 # cv folds
+k <- 3 # knn size
+
+# Loop over all data sets, record accuracies and times. 
+for(set in 1:6){
+  # load data
+  data <- RWeka::read.arff(paste0(medium_sets[set],".arff"))
+  # name of response variable
+  y <- responses[set]
+  # Fix accidental spaces before some column names
+  names(data) <- stringr::str_replace_all(names(data)," ","")
+  names(data) <- stringr::str_replace_all(names(data),"-","_")
+  # Drop Rows with Missing Values
+  data <- na.omit(data)
+  # keep only numeric input columns
+  keeper_cols <- sapply(data, is.numeric)
+  keeper_cols[which(names(data)==y)] <- TRUE
+  data <- data[,keeper_cols]
+  # Find names in order of importance for randomForest (heuristic for doing variable selection)
+  myforest <- randomForest(as.formula(paste0("as.factor(as.character(",y,"))~ .")) , data=sample_n(data,1000))
+  important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
+  
+  p <- min(length(important_cols),max_p)
+  
+  # nbins <- rep(B,min(ncol(data)-1,P))
+  # bin_cols <- important_cols[min(ncol(data)-1,P)]
+  train_n <- nrow(data)*((cv_k-1)/cv_k)
+  nbins <- find_bin_root(n=train_n,k=k,p=p)
+  bin_cols <- important_cols[1:p]
+  
+  # find 10-fold CV predictions, Record time/accuracy for each
+  set.seed(12345)
+  iqnnmod <- iqnn_cv_predict_timer(data=data, y=y, mod_type="class", bin_cols=bin_cols,
+                                   nbins=nbins, jit=rep(0.001,length(nbins)), strict=FALSE, cv_k=cv_k)
+  results_iqnn$obs[set] <- nrow(data)
+  results_iqnn$nn_size[set] <- train_n/prod(nbins)
+  results_iqnn$cv_accuracy[set] <- sum(iqnnmod$preds==data[,y])/nrow(data)
+  results_iqnn$time_fit[set] <- iqnnmod$time_fit
+  results_iqnn$time_pred[set] <- iqnnmod$pred_time
+  
+  # find closest equivalent number of neighbors
+  # k <- round(nrow(data)*(cv_k-1)/cv_k / prod(nbins) )
+  set.seed(12345)
+  knnmod <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k, knn_algorithm = "brute")
+  results_knn$obs[set] <- nrow(data)
+  results_knn$nn_size[set] <- k
+  results_knn$cv_accuracy[set] <- sum(knnmod$preds==data[,y])/nrow(data)
+  results_knn$time_fit[set] <- knnmod$time_fit
+  results_knn$time_pred[set] <- knnmod$pred_time
+  
+  set.seed(12345)
+  knnmod_cover <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k, knn_algorithm = "cover_tree")
+  results_knn_cover$obs[set] <- nrow(data)
+  results_knn_cover$nn_size[set] <- k
+  results_knn_cover$cv_accuracy[set] <- sum(knnmod_cover$preds==data[,y])/nrow(data)
+  results_knn_cover$time_fit[set] <- knnmod_cover$time_fit
+  results_knn_cover$time_pred[set] <- knnmod_cover$pred_time
+  
+  set.seed(12345)
+  knnmod_kd <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k, knn_algorithm = "kd_tree")
+  results_knn_kd$obs[set] <- nrow(data)
+  results_knn_kd$nn_size[set] <- k
+  results_knn_kd$cv_accuracy[set] <- sum(knnmod_kd$preds==data[,y])/nrow(data)
+  results_knn_kd$time_fit[set] <- knnmod_kd$time_fit
+  results_knn_kd$time_pred[set] <- knnmod_kd$pred_time
+}
+results_iqnn
+results_knn
+results_knn_cover
+results_knn_kd
+
+results_all <- data.frame(rbind(results_iqnn, results_knn,results_knn_cover,results_knn_kd),
+                          type=rep(c("iqnn","knn","knn_cover","knn_kd"),each=6)) %>%
+  gather(key="metric",value="value",cv_accuracy:time_pred)
+results_all
+
+ggplot()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(x=data_name, y=value,color=type, group=type),size=1, data=results_all)+
+  facet_grid(metric ~ ., scales="free_y") +
+  theme_bw()+
+  labs(title="3-NN Classifier (brute force) vs IQNN Classifier (~3 per bin)",
+       subtitle="test accuracy / Preprocess Fit Time (sec) / Predict Time (sec)")
+
+
+
 # ------------------------------------------------------------------------------------------------------
 # Baseball batting data from sean lahmann's database 
 # - http://www.seanlahman.com/baseball-archive/statistics/
