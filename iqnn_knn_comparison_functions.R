@@ -1,10 +1,17 @@
 # Functions used in iqnn_knn_comparison.R
 
-kdtree_nn_predict <- function(train,test,k=10){
+kdtree_nn_predict <- function(train,test,y,mod_type="class",k=10){
   nearest <- nn2(data=train,query=test, k=k)
-  sapply(1:nrow(test), function(x) {
-    mean(train[nearest$nn.idx[x,],1])
-  })
+  if(mod_type=="class"){
+    preds <- sapply(1:nrow(test), function(x) {
+      iqbin::majority_vote(train[nearest$nn.idx[x,],y])
+    })
+  } else {
+    preds <- sapply(1:nrow(test), function(x) {
+      mean(train[nearest$nn.idx[x,],y])
+    })
+  }
+  return(preds)
 }
 
 #--------------------------------------
@@ -94,6 +101,7 @@ tune_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k
 # 
 # tune_knn_class
 
+
 #--------------------------------------
 ### knn_cv_predict with output as list containing predictions AND timing values for fitting and predicting
 knn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, knn_algorithm = "brute"){
@@ -112,6 +120,27 @@ knn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, knn_algorithm = 
   timer <- Sys.time()
   knn_mod <- knn(train=data[-test_index,x_names], test=data[1,x_names], 
                  cl=data[-test_index,y], k = k, algorithm = knn_algorithm) 
+  time_fit <- cv_k * difftime(Sys.time(),timer,units="secs")
+  
+  return(list(preds=cv_preds,time_fit=time_fit, pred_time=time_knn-time_fit))
+}
+
+#--------------------------------------
+### kdtree_nn_cv_pred with output as list containing predictions AND timing values for fitting and predicting
+kdtree_nn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5){
+  data <- as.data.frame(data)
+  cv_cohorts <- make_cv_cohorts(data, cv_k)
+  cv_preds <- factor(rep(NA,nrow(data)),levels=levels(data[,y]))
+  time_knn <- 0
+  for(fold in 1:length(unique(cv_cohorts))){
+    test_index <- which(cv_cohorts==fold)
+    timer <- Sys.time()
+    kd_mod <- kdtree_nn_predict(data[-test_index, ],data[test_index, ],y=y,k=k)
+    time_knn <- time_knn + difftime(Sys.time(),timer,units="secs")
+    cv_preds[test_index] <- kd_mod
+  }
+  timer <- Sys.time()
+  kd_mod <- kdtree_nn_predict(data[-test_index, ],data[1, ],y=y,k=k)
   time_fit <- cv_k * difftime(Sys.time(),timer,units="secs")
   
   return(list(preds=cv_preds,time_fit=time_fit, pred_time=time_knn-time_fit))

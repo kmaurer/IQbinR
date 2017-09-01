@@ -178,7 +178,7 @@ for(set in 1:6){
   results_knn_cover$time_pred[set] <- knnmod_cover$pred_time
   
   set.seed(12345)
-  knnmod_kd <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k, knn_algorithm = "kd_tree")
+  knnmod_kd <- kdtree_nn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k)
   results_knn_kd$obs[set] <- nrow(data)
   results_knn_kd$nn_size[set] <- k
   results_knn_kd$cv_accuracy[set] <- sum(knnmod_kd$preds==data[,y])/nrow(data)
