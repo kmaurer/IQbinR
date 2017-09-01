@@ -109,7 +109,7 @@ medium_sets <- c("abalone","banana","marketing","optdigits","satimage","waveform
 responses <- c("Sex","Class","Sex","Class","Class","Class")
 sizes <- c(4174,5300,6876,5620,6435,5000)
 
-nreps <- 10 # number of times to run k-fold comparisons
+nreps <- 1000 # number of times to run k-fold comparisons
 results <- data.frame(data_name=rep(medium_sets,each=nreps),obs = NA, nn_size = NA, cv_accuracy = NA, 
                       time_fit = NA, time_pred = NA, seed = NA)
 results_all_list <- list(results_iqnn=results, results_knn=results,
@@ -142,13 +142,14 @@ for(set in 1:6){
   bin_cols <- important_cols[1:p]
   
   ## Compare knn/iqnn method timing and accuracy with k-fold CV
-  # pick order for methods at random
-  method_order <- sample(1:4)
+
 
   # loop over nreps for each method
   for(rep in 1:nreps){
     # set seed for CV partitioning so that each method uses same train/test splits
     seed <- sample(1:100000,1)
+    # pick order for methods at random
+    method_order <- sample(1:4)
     # seed <-  12345 # fixed value to check if all reps identical predictions made **Confirmed as identical for accuracy**
     for(method in method_order){
       # find 10-fold CV predictions, Record time/accuracy for each
