@@ -109,6 +109,8 @@ medium_sets <- c("abalone","banana","marketing","optdigits","satimage","waveform
 responses <- c("Sex","Class","Sex","Class","Class","Class")
 sizes <- c(4174,5300,6876,5620,6435,5000)
 
+
+
 nreps <- 1000 # number of times to run k-fold comparisons
 results <- data.frame(data_name=rep(medium_sets,each=nreps),obs = NA, nn_size = NA, cv_accuracy = NA, 
                       time_fit = NA, time_pred = NA, seed = NA)
@@ -180,7 +182,7 @@ for(set in 1:6){
   }
 }
 Sys.time() - big_timer
-str(results_all_list)
+str(results_all_lsist)
 
 # Save it
 # save(results_all_list, file="iqnn_knn_comparisons.Rdata")
@@ -191,17 +193,28 @@ results_all <- data.frame(do.call("rbind", results_all_list),
   gather(key="metric",value="value",cv_accuracy:time_pred) %>% 
   group_by(data_name,obs,nn_size,type,metric) %>%
   summarize(value=mean(value,na.rm=TRUE)) %>%
-  as.data.frame()
+  as.data.frame() %>%
+  mutate(data_name = factor(data_name, levels=medium_sets[order(sizes)]),
+         metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)")))
 head(results_all)
+levels(results_all$metric_pretty)
+
+label_data <- arrange(unique(results_all[,c("metric_pretty","data_name")]),data_name)
+label_data$n <- NA
+label_data[label_data$metric_pretty=="Prediction Time (sec)",]$n <- paste0("n=",sort(sizes))
+label_data
 
 # plot the accuracy/fit time/prediction time
 ggplot()+
   geom_hline(yintercept = 0)+
   geom_line(aes(x=data_name, y=value,color=type, group=type),size=1, data=results_all)+
-  facet_grid(metric ~ ., scales="free_y") +
+  facet_grid(metric_pretty ~ ., scales="free_y") +
   theme_bw()+
   labs(title="3-NN Classifier (brute force) vs IQNN Classifier (~3 per bin)",
-       subtitle="test accuracy / Preprocess Fit Time (sec) / Predict Time (sec)")
+       subtitle="Based on averages across 1000 repetitions of 10-fold CV",
+       x="Data Set", y="", 
+       caption="Data Source: UCI Machine Learning Data Repository")+
+  geom_text(aes(x=data_name, label=n), y=.2,data=label_data)
 
 
 # ------------------------------------------------------------------------------------------------------
