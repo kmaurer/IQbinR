@@ -107,15 +107,15 @@ clean_data_for_iqnn_knn <- function(data,y){
   # Fix accidental spaces before some column names
   names(data) <- stringr::str_replace_all(names(data)," ","")
   names(data) <- stringr::str_replace_all(names(data),"-","_")
-  # Drop Rows with Missing Values
-  data <- na.omit(data)
   # keep only numeric input columns
   keeper_cols <- sapply(data, is.numeric)
   keeper_cols[which(names(data)==y)] <- TRUE
   data <- data[,keeper_cols]
+  # Drop Rows with Missing Values
+  data <- na.omit(data)
   # Convert to standardized values for each input variable
   data[,(names(data)!=y)] <- sapply(data[,(names(data)!=y)], function(x) as.numeric(scale(x)))
-  # Drop columns with Missing Values
+  # Drop columns with Missing Values (ie columns with no variability that lead to NA's when the scale function divided by sd=0)
   data <- data[,sapply(data, function(x) !all(duplicated(x)[-1L]))]
   return(data)
 }

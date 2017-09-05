@@ -121,6 +121,31 @@ max_p <- 2 # max number of dimensions for inputs
 cv_k <- 10 # cv folds
 k <- 3 # knn size
 
+
+
+
+# # Loop over all data sets to clean and save to CSV for walter
+# for(set in 1:6){
+#   ## load and clean data in preparation for testing speed/accuracy with k-fold CV process
+#   data <- RWeka::read.arff(paste0(medium_sets[set],".arff"))
+#   # name of response variable
+#   y <- responses[set]
+#   # use helper function to standardize and drop non-numeric/constant-valued input variables
+#   data <- clean_data_for_iqnn_knn(data,y)
+#   
+#   ## Variable selection
+#   # Find column names in order of importance for randomForest (heuristic for doing variable selection)
+#   myforest <- randomForest::randomForest(as.formula(paste0("as.factor(as.character(",y,"))~ .")) , data=sample_n(data,1000))
+#   important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
+#   # allow a cap to be put on number of variables considered
+#   p <- min(length(important_cols),max_p)
+#   
+#   clean_data <- data[,c(y,important_cols[1:p])]
+#   # write.csv(clean_data,paste0("cleaned_",medium_sets[set],".csv"),row.names=FALSE)
+# }
+
+
+
 big_timer <- Sys.time()
 # Loop over all data sets and repetitions to record accuracies and times. 
 for(set in 1:6){
