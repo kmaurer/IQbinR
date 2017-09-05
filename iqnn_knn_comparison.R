@@ -186,16 +186,19 @@ str(results_all_lsist)
 
 # Save it
 # save(results_all_list, file="iqnn_knn_comparisons.Rdata")
+load(file="iqnn_knn_comparisons.Rdata")
+
 
 # Combine into data frame for plots
 results_all <- data.frame(do.call("rbind", results_all_list),
-                          type=rep(c("iqnn","knn","knn_cover","knn_kd"),each=nrow(results_all_list$results_iqnn))) %>%
+                          type=rep(c("iqnn","knn - brute ","knn - cover tree","knn - kd tree"),each=nrow(results_all_list$results_iqnn))) %>%
   gather(key="metric",value="value",cv_accuracy:time_pred) %>% 
   group_by(data_name,obs,nn_size,type,metric) %>%
   summarize(value=mean(value,na.rm=TRUE)) %>%
   as.data.frame() %>%
   mutate(data_name = factor(data_name, levels=medium_sets[order(sizes)]),
-         metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)")))
+         metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)")),
+         metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)"))) 
 head(results_all)
 levels(results_all$metric_pretty)
 
@@ -210,12 +213,39 @@ ggplot()+
   geom_line(aes(x=data_name, y=value,color=type, group=type),size=1, data=results_all)+
   facet_grid(metric_pretty ~ ., scales="free_y") +
   theme_bw()+
-  labs(title="3-NN Classifier (brute force) vs IQNN Classifier (~3 per bin)",
+  labs(title="3-NN Classifier vs IQNN Classifier (~3 per bin)",
        subtitle="Based on averages across 1000 repetitions of 10-fold CV",
        x="Data Set", y="", 
        caption="Data Source: UCI Machine Learning Data Repository")+
   geom_text(aes(x=data_name, label=n), y=.2,data=label_data)
 
+
+
+walter_data <- read.csv("resultsToShare.csv")
+head(walter_data)
+
+results_instance_selection <- walter_data %>%
+  select(Dataset,TSSMethod,TestAccuracy,TimeReduce,TimePredict) %>%
+  mutate(TestAccuracy=TestAccuracy/100) %>%
+  gather(key="metric",value="value",TestAccuracy:TimePredict) %>%
+  mutate(data_name = factor(Dataset, levels=medium_sets[order(sizes)]),
+         metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Prediction Time (sec)","Preprocess Time (sec)")),
+         metric_pretty = factor(metric_pretty, levels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)")))
+  
+head(results_instance_selection)
+levels(results_instance_selection$metric_pretty)
+
+ggplot()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(x=data_name, y=value,color=type, group=type),size=1, data=results_all)+
+  geom_line(aes(x=data_name, y=value,color=TSSMethod, group=TSSMethod),size=1, data=results_instance_selection)+
+  facet_grid(metric_pretty ~ ., scales="free_y")+
+  theme_bw()+
+  labs(title="3-NN, Instance Selection and IQNN Classifier (~3 per bin)",
+       # subtitle="Based on averages across 1000 repetitions of 10-fold CV",
+       x="Data Set", y="", 
+       caption="Data Source: UCI Machine Learning Data Repository")+
+  geom_text(aes(x=data_name, label=n), y=.2,data=label_data)
 
 # ------------------------------------------------------------------------------------------------------
 # Baseball batting data from sean lahmann's database 
