@@ -119,7 +119,7 @@ max_p <- 2 # max number of dimensions for inputs
 cv_k <- 10 # cv folds
 k <- 3 # knn size
 
-
+big_timer <- Sys.time()
 # Loop over all data sets and repetitions to record accuracies and times. 
 for(set in 1:6){
   ## load and clean data in preparation for testing speed/accuracy with k-fold CV process
@@ -179,7 +179,11 @@ for(set in 1:6){
     }
   }
 }
+Sys.time() - big_timer
 str(results_all_list)
+
+# Save it
+# save(results_all_list, file="iqnn_knn_comparisons.Rdata")
 
 # Combine into data frame for plots
 results_all <- data.frame(do.call("rbind", results_all_list),
@@ -198,7 +202,6 @@ ggplot()+
   theme_bw()+
   labs(title="3-NN Classifier (brute force) vs IQNN Classifier (~3 per bin)",
        subtitle="test accuracy / Preprocess Fit Time (sec) / Predict Time (sec)")
-
 
 
 # ------------------------------------------------------------------------------------------------------
