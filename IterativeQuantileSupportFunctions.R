@@ -55,8 +55,8 @@ make_bin_list <- function(bin_bounds,nbins){
 #' 
 #' @return bin index for new observation
 #' @examples 
-#' iq_def <- iterative_quant_bin(data=iris[-test_index,], bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
-#'                               nbins=c(3,2,2), output="both")
+#' iq_def <- iterative_quant_bin(data=iris, bin_cols=c("Sepal.Length","Sepal.Width","Petal.Width"),
+#'                                nbins=c(3,2,2), output="both")
 #' bin_index_finder_nest(x=c(6,3,1.5),bin_def=iq_def$bin_def, strict=TRUE)
 
 bin_index_finder_nest <- function(x, bin_def, strict=TRUE){ 
