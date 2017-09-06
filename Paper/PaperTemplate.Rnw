@@ -23,6 +23,17 @@
 \newcommand{\blind}{0}
 \newcommand{\ktm}[1]{{\color{red} #1}} %red comments: 
 
+<<setup,echo=F,include=F,eval=T>>=
+options(scipen=5, digits=5)
+
+# libraries
+
+# source in functions
+
+# Load all data
+
+@
+
 %-----------------------------------------------------------------------------------------------------
 %%%% Document
 %-----------------------------------------------------------------------------------------------------
@@ -58,7 +69,7 @@ Write abstract here
 \end{abstract}
 
 \noindent%
-{\it Keywords:}  keywords go here! Non-parametric, Predictive Modeling, Partitioning, knn
+{\it Keywords:} Non-parametric, Predictive Modeling, Partitioning, knn, R-Trees
 \vfill
 
 %-----------------------------------------------------------------------------------------------------
@@ -69,17 +80,10 @@ Write abstract here
 \section{Introduction}
 \label{Intro}
 
-<<setup,echo=F,include=F,eval=T>>=
-options(scipen=5, digits=5)
+The nearest-neighbor search is a classic problem in computer science that has applications within many other fields.\textbf{examples and citations here}. Within statistical learning the k-nearest neighbors search is used as the non-parametric method for gathering training observations used to predict for both regression and classifier models. The 
+basic mechanism for k-nearest neighbor (KNN) models to use numeric feature variables to calculate distances between a new query observation and all the observations in the training data, then create a prediction based on the responses from the k training observations with the smallest distances from the query point \textbf{add knn citation here}; most typically using an average of response values for KNN regressions, and the most common class for KNN classifiers \textbf{general KNN learning citation}. 
 
-# libraries
-
-# source in functions
-
-# Load all data
-
-@
-
+Given the rapid growth in data sizes and availability, it is important to consider how the computational requirements of a statistical learning method scale with increase training and test data sizes. KNN models rely on calulation of distances between the $n$ observations in the training set for each new query observation, which can be solved in O(n) time through a brute force approach. This can clearly become computationally demanding when training data size increases. The computational demands are compounded when using KNN models to predict for large test data sets. In a test set with $m$ observations, every new query requires recalulation of distances; solved by brute force in O(nm) time. Algorithms have been developed to improve the speed at which queries are able to run by pre-processing the training data to develop more efficient structures for finding the nearest neighbors. textbf{Cover-tree and kd-tree descriptions + citations}
 
 \section{Binning Algorithms}
 \label{GenBinning}
