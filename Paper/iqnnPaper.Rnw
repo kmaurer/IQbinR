@@ -1,0 +1,159 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{graphicx,psfrag,epsf,float,wrapfig,subfig,tabularx,ulem}
+\usepackage{enumerate}
+\usepackage{natbib}
+\usepackage{url} % not crucial - just used below for the URL 
+
+% DON'T change margins - should be 1 inch all around.
+\addtolength{\oddsidemargin}{-.5in}%
+\addtolength{\evensidemargin}{-.5in}%
+\addtolength{\textwidth}{1in}%
+\addtolength{\textheight}{1.3in}%
+\addtolength{\topmargin}{-.8in}%
+
+ \usepackage[utf8]{inputenc}
+ \usepackage{fullpage}
+ %\graphicspath{{figure/}}
+ %\usepackage{csquotes}
+ \usepackage{color}
+ \usepackage{hyperref}
+ \usepackage{mathrsfs}
+ 
+\newcommand{\blind}{0}
+\newcommand{\ktm}[1]{{\color{red} #1}} %red comments: 
+
+<<setup,echo=F,include=F,eval=T>>=
+options(scipen=5, digits=5)
+
+# libraries
+
+# source in functions
+
+# Load all data
+
+@
+
+%-----------------------------------------------------------------------------------------------------
+%%%% Document
+%-----------------------------------------------------------------------------------------------------
+\begin{document}
+
+\def\spacingset#1{\renewcommand{\baselinestretch}%
+{#1}\small\normalsize} \spacingset{1}
+
+%-----------------------------------------------------------------------------------------------------
+%%% Title
+%-----------------------------------------------------------------------------------------------------
+\if0\blind
+{
+%opening
+\title{Title}
+\author{author names}
+  \maketitle
+} \fi
+
+\if1\blind
+{
+\title{Binning Strategies and Related Loss for Binned Scatterplots of Large Data}
+\author{Author A$^1$, Author B$^{2,3}$, Author C$^2$\\$^1$Affiliation X \\$^2$Affiliation Y \\$^3$Affiliation Z}
+  \maketitle
+} \fi
+
+%-----------------------------------------------------------------------------------------------------
+%%% Abstract
+%-----------------------------------------------------------------------------------------------------
+\bigskip
+\begin{abstract}
+Write abstract here 
+\end{abstract}
+
+\noindent%
+{\it Keywords:} Non-parametric, Predictive Modeling, Partitioning, knn, R-Trees
+\vfill
+
+%-----------------------------------------------------------------------------------------------------
+% Intro
+%-----------------------------------------------------------------------------------------------------
+\newpage
+\spacingset{1.45} % DON'T change the spacing!
+\section{Introduction}
+\label{Intro}
+
+The nearest-neighbor search is a classic problem in computer science that has applications within many other fields.\ktm{(example citations)}. Within statistical learning the k-nearest neighbors search is used as the non-parametric method for gathering training observations used to predict for both regression and classifier models. The basic mechanism for k-nearest neighbor (KNN) models is to use numeric feature variables to calculate distances between a new query observation and all the observations in the training data, then create a prediction based on the responses from the k training observations with the smallest distances from the query point \ktm{(add knn citation)}; most typically using an average of response values for KNN regressions, and the most common class for KNN classifiers \ktm{(general KNN learning citation)}. 
+
+Given the rapid growth in data sizes and availability, it is important to consider how the computational requirements of a statistical learning method scale with increase training and test data sizes. KNN models rely on calculation of distances between the $n$ observations in the training set for each new query observation, which can be solved in O(n) time through a brute force approach. This can clearly become computationally demanding when either the training data size increases. The computational demands are compounded when using KNN models to predict for large test data sets. In a test set with $m$ observations, every new query requires recalulation of distances; solved by brute force in O(nm) time. 
+
+Algorithms have been developed to improve the speed at which queries are able to run by pre-processing the training data to develop more efficient structures for finding the nearest neighbors. Branch-and-Bound R-Tree \ktm{(Roussopoulos, Kelley and Vincent	1995)}.  kd-tree \ktm{(Arya and Mount	1993; Arya, Mount, Netanyahu, Silverman and Wu	1998)}. Cover-trees \ktm{(Beygelzimer, Kakade, Langford	2006)}.  
+
+\section{Binning Algorithms}
+\label{GenBinning}
+
+Binning algorithms used in making distributional approximations can be traced back to Pearson's work with the binomial approximation to the normal, where he mentions the need to define an origin and binwidth for segmenting the normal distribution \citep{Pearson1895}. \ktm{Sturges followed with an early work in formalizing histograms specification \citep{sturges1926choice}.}  More recently Scott has presented discussion on the importance of binning specification in the creation of histograms to appropriately display one dimensional density approximations \citep{scott1979}. \citet{scott1992} extends to the properties of multivariate binning strategies.
+
+For the univariate case with observations, $x_i$ for $i \in \{1,\dots,n\}$, binning algorithms require a set of bin centers $x_j^\ast$ for $j \in \{1,\dots,J\}$ and a binning function $b_X(.) : x_i \rightarrow x^\ast_j$ that maps observations to  bin centers. \ktm{What we will refer to as} \textit{general rectangular binning} accomplishes this by defining a sequence of $J$ adjacent intervals, $(\beta_{j-1},\beta_{j}]$ for $j \in \{1,\dots,J\}$, which span over the range of the data. Note that half open intervals are used such that any observation falling on a bin boundary is assigned to a unique interval. Values $x_i$ exactly equal to the lowest bin boundary $\beta_0$ are grouped into the first bin to close the leftmost bound. Each observation is then mapped to a bin center, $x_j^\ast$; the midpoint for the interval to which the observation belongs. 
+
+This is expressed mathematically using the binning function $b_X(.) : x_i \rightarrow x^\ast_j$ defined as 
+%
+\begin{eqnarray}\label{rectbin}
+b_X(x_i) = \left\{\begin{array}{ll} 
+  x^\ast_{1} &\text{ for all } x_i = \beta_{0} \\
+  x^\ast_j & \text{ for all } x_i \in (\beta_{j-1} , \beta_j] 
+  \end{array}\right.
+\end{eqnarray}  
+%
+\textit{Quantile binning} is another option that divides the range of the observations into bins each containing an equal number of points. The $j^{th}$ bin interval takes the form $(Q_X((j-1)/J),Q_X((j)/J)]$, where $Q_X(p)$ is the the $p^{th}$ empirical quantile using the inverse empirical distribution function \ktm{\citep{hyndman1996sample}}. Note that this binning approach is \textit{not} desirable for spatially visualizing density patterns, as it effectively balances the frequency counts in all bins; it does however have desirable properties for binned scatterplots that employ a second stage of binning to create discrete shade scheme for displaying grouped bin frequencies, which will be discussed in Section~\ref{Intro}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll} \hline
+ & Bin Boundaries & Bin Centers \\ 
+ \hline  
+General &  $ \{\beta_j \text{ }|\text{ } \beta_j > \beta_{j-1} \} $ & $\{x_j^\ast \text{ }|\text{ } x_j^\ast = (\beta_{j-1}+ \beta_j)/2 \}$ \\
+%-------------
+Standard \hspace{0.5cm} & $ \{\beta_j \text{ }|\text{ } \beta_j = \beta_{j-1} + \omega_X \} $\hspace{0.5cm} & $\{x_j^\ast \text{ }|\text{ } x_j^\ast = \beta_{j-1} + \omega_X/2 \}$ \\
+%-------------
+Quantile & $ \{\beta_j \text{ }|\text{ } \beta_j = Q_X(j/J) \} $  & $\{x_j^\ast \text{ }|\text{ } x_j^\ast = Q_X((j-0.5)/J) \}$ \\
+\hline
+\end{tabular}
+\caption{Rectangular Binning Specifications}
+\label{tab:rectbinning}
+\end{table}
+%
+
+%-----------------------------------------------------------------------------
+
+\section{Section Title}
+
+% example Figure~\ref{fig:UniformStripes} below.
+% \begin{figure}[hbtp]
+% \centering
+%   \subfloat[Binned scatterplots]{\includegraphics[keepaspectratio=TRUE,width=.63\textwidth]{./figure/CoarseUnif.png}} 
+%   \caption[Traditional and adapted scatterplots for games vs. strikeouts data.]{\label{fig:UniformStripes} \ktm{Binned scatterplots and spatial losses for various sized bins with coarse uniform data. Note the slight dip in loss at even integers, when bins are aligned with data resolution.}}
+% \end{figure}
+
+
+<<ExampleCodeChunk, echo=F,include=T,eval=T,fig.width=8, fig.height=4, out.width='.9\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Figure Caption Here.">>= 
+hist(1:5)
+@
+
+
+%----------------------------------------------------------------------------
+\newpage
+\begin{appendix}
+\section{Appendix for Origin Offset Proof}  
+%----------------------------------------------------------------------------
+%\subsection{}
+\label{proof:offset}
+
+Appendix stuff goes here
+
+\end{appendix}
+
+\bibliographystyle{asa}
+
+\spacingset{1} % reference spacing
+
+\bibliography{references}
+
+\end{document}
