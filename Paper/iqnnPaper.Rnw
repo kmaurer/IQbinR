@@ -27,6 +27,9 @@
 options(scipen=5, digits=5)
 
 # libraries
+library(iqbin)
+library(mvtnorm)
+library(tidyverse)
 
 # source in functions
 
@@ -124,9 +127,9 @@ We can then roughly approximate KNN classification or regression modeling by usi
 \subsection{Iterative Quantile Binned Neighborhoods}
 \label{iqbin}
 
-Now suppose we wish to create binned neighborhoods to approximate $k$-nearest neighboorhoods within a $p$-dimensional continuous valued feature space, $\vec{x}_i \in \mathbb{R}^p$. A $p$-dimensional bin can be defined using a $p$-dimensional hyper-cube with interval boundaries running orthogonal to the coordinate axes. It would be simplest to generate a univariate binning function for each dimension then apply these independently. But in cases with dependence between the feature variables, the bin counts for the resulting $p$-dimensional bins are unlikely to contain balanced counts. Instead we propose the \textit{interative-quantile binning} process: starting with the univariate quantile binning described in subsection\ref{unibin} above, then iteratively using univariate quantile-bin partitions \textit{nested within} each partition from the previous dimension. By iteratively subdividing nearly equal sized groups at each stage, the resulting $p$-dimensional bins will maintain bin neighborhood counts that are nearly balanced throughout all $p$-dimensions. 
+Now suppose we wish to create binned neighborhoods to approximate $k$-nearest neighboorhoods within a $p$-dimensional continuous valued feature space, $\vec{x}_i \in \mathbb{R}^p$. A $p$-dimensional bin can be defined using a $p$-dimensional hyper-cube with interval boundaries running orthogonal to the coordinate axes. It would be simplest to generate a univariate binning function for each dimension then apply these independently. But in cases with dependence between the feature variables, the bin counts for the resulting $p$-dimensional bins are unlikely to contain balanced counts. Instead we propose the \textit{interative-quantile binning} process: starting with the univariate quantile binning described in Subsection~\ref{unibin} above, then iteratively using univariate quantile-bin partitions \textit{nested within} each partition from the previous dimension. By iteratively subdividing nearly equal sized groups at each stage, the resulting $p$-dimensional bins will maintain bin neighborhood counts that are nearly balanced throughout all $p$-dimensions. 
 
-Figure \ktm{(add ref for figure here)} shows this process in the simple case where $\vec{x}_i \in \mathbb{R}^p$. For this example we have randomly generated 160 observations from a multivariate normal distribution, parameterized such that 
+Figure~\ref{fig:2d_iqbin_plots} shows this process in the simple case where $\vec{x}_i \in \mathbb{R}^2$ and responses $y_i \in \mathbb{R}$. For this example we have randomly generated 160 feature points from a bivariate normal distribution, and linearly related response values with random noise; parameterized such that 
 \begin{center}
 $\vec{x}_i \sim MVN\left(\begin{bmatrix}
   0 \\
@@ -134,11 +137,60 @@ $\vec{x}_i \sim MVN\left(\begin{bmatrix}
 \end{bmatrix},\begin{bmatrix}
   1 & .5 \\
   .5 & 1
-\end{bmatrix}\right)$.
+\end{bmatrix}\right)$, \\
+\vspace{.4cm}
+$y_i = x_{i1} + x_{i2} + \epsilon_i$, where $\epsilon_i \sim Normal(0,1)$
 \end{center}
-In the example we use iterative quantile binning with four bins per dimension to create iterative-quantile nearest-neighborhoods of size $k=10$.
+and iterative quantile binning with four bins per dimension us used to create iterative-quantile nearest-neighborhoods of size $k=10$. The left panel demonstrates 
 
-\ktm{Put bivariate iqnn example here.}
+<<2d_iqbin_plots, echo=F,include=T,eval=T,fig.width=3, fig.height=3.5, out.width='.32\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Figure Caption Here.">>=
+set.seed(12345)
+nsim=90
+mydata <- data.frame(rmvnorm(nsim, mean=c(0,0), sigma=matrix(c(1,.9,.9,1),byrow=TRUE, nrow=2)))
+mydata$Y <- mydata$X1 + mydata$X2 + rnorm(nsim)
+point_color <- "black"
+line_color <- "black"
+mytheme <- theme_bw() + 
+  theme(legend.position = "bottom",
+                     panel.border = element_blank())
+
+mybins <- iqbin(data=mydata, bin_cols=c("X1","X2"),nbins=c(3,3), output="both")
+X1_bounds <- unique(c(mybins$bin_def$bin_bounds[,1],mybins$bin_def$bin_bounds[,2]))
+
+# plot with X1 breaks
+ggplot()+
+  geom_vline(xintercept = X1_bounds, size=.6, color=line_color)+
+  geom_point(aes(x=X1,y=X2, color=Y), data=mydata, size=.8) +
+  scale_color_gradient2("Y",low="#08519c",mid="gray80",high="#a50f15",
+                        midpoint=0,breaks=c(-4,-2,0,2,4), 
+                        limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+
+  labs(x=expression(X[1]),y=expression(X[2]))+
+  mytheme
+
+#iqbin_plot_2d(mybins) rework from here to allow closer match in progression of 3 plots
+ggplot()+
+  geom_rect(aes(xmin = X1, xmax = X2, ymin = X3, ymax = X4), 
+            data = data.frame(mybins$bin_def$bin_bounds),
+            color =line_color, fill = NA, size=.6) +
+  geom_point(aes(x = X1, y = X2,color=Y), data = mydata, size=.8)+
+  scale_color_gradient2("Y",low="#08519c",mid="gray80",high="#a50f15",
+                        midpoint=0,breaks=c(-4,-2,0,2,4), 
+                        limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+
+  labs(x=expression(X[1]),y=expression(X[2]))+
+  mytheme
+
+# IQNN regression plot
+myiqnn <- iqnn(mydata,y="Y", mod_type = "reg", bin_cols=c("X1","X2"),nbins=c(3,3))
+ggplot()+
+  geom_rect(aes(xmin = X1, xmax = X2, ymin = X3, ymax = X4, fill=pred), 
+            data = data.frame(mybins$bin_def$bin_bounds,pred=myiqnn$bin_stats$pred),
+            color =line_color, size=.6) +
+  scale_fill_gradient2(expression(hat(Y)),low="#08519c",mid="gray80",high="#a50f15",
+                       midpoint=0,breaks=c(-4,-2,0,2,4), 
+                       limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+ 
+  labs(x=expression(X[1]),y=expression(X[2]))+
+  mytheme
+@
 
 We can extend this process to higher dimensions using the following generalized algorithm:
 
