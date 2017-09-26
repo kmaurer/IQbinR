@@ -143,9 +143,11 @@ $y_i = x_{i1} + x_{i2} + \epsilon_i$, where $\epsilon_i \sim Normal(0,1)$
 \end{center}
 and iterative quantile binning with four bins per dimension us used to create iterative-quantile nearest-neighborhoods of size $k=10$. The left panel demonstrates 
 
-<<2d_iqbin_plots, echo=F,include=T,eval=T,fig.width=3, fig.height=3.5, out.width='.32\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Figure Caption Here.">>=
+<<2d_iqbin_plots, echo=F,include=T,eval=T,fig.width=3, fig.height=3.5, out.width='.32\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Process for constructing IQNN regression model using 4X4 binning structure. (Left) first partition the training set using quartiles of $X_1$, (Center) then further partition each group using quartiles of $X_2$, (Right) then apply average $Y$ in each bin as the IQNN regression estimates for future points falling within each respective bin.">>=
 set.seed(12345)
-nsim=90
+nsim=160
+simbins <- 4
+color_steps <- c(-4,-2,0,2,4)
 mydata <- data.frame(rmvnorm(nsim, mean=c(0,0), sigma=matrix(c(1,.9,.9,1),byrow=TRUE, nrow=2)))
 mydata$Y <- mydata$X1 + mydata$X2 + rnorm(nsim)
 point_color <- "black"
@@ -154,39 +156,39 @@ mytheme <- theme_bw() +
   theme(legend.position = "bottom",
                      panel.border = element_blank())
 
-mybins <- iqbin(data=mydata, bin_cols=c("X1","X2"),nbins=c(3,3), output="both")
+mybins <- iqbin(data=mydata, bin_cols=c("X1","X2"),nbins=c(simbins, simbins), output="both")
 X1_bounds <- unique(c(mybins$bin_def$bin_bounds[,1],mybins$bin_def$bin_bounds[,2]))
 
 # plot with X1 breaks
 ggplot()+
-  geom_vline(xintercept = X1_bounds, size=.6, color=line_color)+
   geom_point(aes(x=X1,y=X2, color=Y), data=mydata, size=.8) +
+  geom_vline(xintercept = X1_bounds, size=.6, color=line_color)+
   scale_color_gradient2("Y",low="#08519c",mid="gray80",high="#a50f15",
-                        midpoint=0,breaks=c(-4,-2,0,2,4), 
+                        midpoint=0,breaks=color_steps, 
                         limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+
   labs(x=expression(X[1]),y=expression(X[2]))+
   mytheme
 
 #iqbin_plot_2d(mybins) rework from here to allow closer match in progression of 3 plots
 ggplot()+
+  geom_point(aes(x = X1, y = X2,color=Y), data = mydata, size=.8)+  
   geom_rect(aes(xmin = X1, xmax = X2, ymin = X3, ymax = X4), 
             data = data.frame(mybins$bin_def$bin_bounds),
             color =line_color, fill = NA, size=.6) +
-  geom_point(aes(x = X1, y = X2,color=Y), data = mydata, size=.8)+
   scale_color_gradient2("Y",low="#08519c",mid="gray80",high="#a50f15",
-                        midpoint=0,breaks=c(-4,-2,0,2,4), 
+                        midpoint=0,breaks=color_steps, 
                         limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+
   labs(x=expression(X[1]),y=expression(X[2]))+
   mytheme
 
 # IQNN regression plot
-myiqnn <- iqnn(mydata,y="Y", mod_type = "reg", bin_cols=c("X1","X2"),nbins=c(3,3))
+myiqnn <- iqnn(mydata,y="Y", mod_type = "reg", bin_cols=c("X1","X2"),nbins=c(simbins,simbins))
 ggplot()+
   geom_rect(aes(xmin = X1, xmax = X2, ymin = X3, ymax = X4, fill=pred), 
             data = data.frame(mybins$bin_def$bin_bounds,pred=myiqnn$bin_stats$pred),
             color =line_color, size=.6) +
   scale_fill_gradient2(expression(hat(Y)),low="#08519c",mid="gray80",high="#a50f15",
-                       midpoint=0,breaks=c(-4,-2,0,2,4), 
+                       midpoint=0,breaks=color_steps, 
                        limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+ 
   labs(x=expression(X[1]),y=expression(X[2]))+
   mytheme
