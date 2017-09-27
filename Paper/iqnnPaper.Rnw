@@ -4,6 +4,7 @@
 \usepackage{enumerate}
 \usepackage{natbib}
 \usepackage{url} % not crucial - just used below for the URL 
+\usepackage{algorithm2e}
 
 % DON'T change margins - should be 1 inch all around.
 \addtolength{\oddsidemargin}{-.5in}%
@@ -118,7 +119,14 @@ $d(x_i,q) = (x_i - q) < (\beta_j - \beta_{j-1})  \hspace{.2cm} \forall \hspace{.
 \end{center}
 however the neighbors in each bin may vary depending on bin boundaries and the distribution of training points.Attempting to control $d(x_i,q)$ by setting regularly spaced intervals for any non-uniformly distributed training set would result in imbalanced bin counts; thus, a poor alternative to $k$-nearest neighborhoods. 
 
-We define \textit{quantile-binning} through specifying that the $j^{th}$ bin interval, $(\beta_{j-1} , \beta_j]$, takes the form $(Q_X((j-1)/J),Q_X((j)/J)]$, where $Q_X(p)$ is the the $p^{th}$ empirical quantile using the inverse empirical distribution function \ktm{\citep{hyndman1996sample}}. The resulting $J$ partitions will have interval widths that vary base on distribution, but will each contain either $\lceil \frac{n}{J} \rceil$ or $\lceil \frac{n}{J} \rceil - 1$ training points; thus roughly approximating a $(\frac{n}{J})$-nearest-neighborhood. It should be noted that we are assuming training points $x_i \in \mathbb{R}$ to be truly continuous in nature. If the training data is collected with poor measurement precision or have naturally discrete values, repeated values for $x_i$ could result in empirical quantile where $\beta_j = \beta_k$ for some $j \ne k$, thus non-unique bin assignments. In practice, the simple addition of a small amound of random noise (example: $Uniform(-\eta,\eta)$ , for some small $\eta > 0$) may be added to each value for discrete feature variables to allow for unique quantile bin bounds.
+We define \textit{quantile binning} through specifying that the $j^{th}$ bin interval, $(\beta_{j-1} , \beta_j]$, takes the form $(Q_X(\frac{j-1}{J})\hspace{.2cm},\hspace{.2cm}Q_X(\frac{j}{J})]$, where $Q_X(p)$ is the the $p^{th}$ empirical quantile using the inverse empirical distribution function \ktm{\citep{hyndman1996sample}}. The quantile binning function $b_X^q(.) : x_i \rightarrow x^\ast_j$ defined as 
+%
+\begin{eqnarray}\label{rectbin}
+b_X^q(x_i) = \left\{\begin{array}{ll} 
+  1 &\text{ for all } x_i = \min(x_i) \\
+  j & \text{ for all } x_i \in (Q_X(\frac{j-1}{J}) \hspace{.2cm} , \hspace{.2cm} Q_X(\frac{j}{J})] 
+  \end{array}\right.
+\end{eqnarray}   The resulting $J$ partitions will have interval widths that vary base on distribution, but will each contain either $\lceil \frac{n}{J} \rceil$ or $\lceil \frac{n}{J} \rceil - 1$ training points; thus roughly approximating a $(\frac{n}{J})$-nearest-neighborhood. It should be noted that we are assuming training points $x_i \in \mathbb{R}$ to be truly continuous in nature. If the training data is collected with poor measurement precision or have naturally discrete values, repeated values for $x_i$ could result in empirical quantile where $\beta_j = \beta_k$ for some $j \ne k$, thus non-unique bin assignments. In practice, the simple addition of a small amound of random noise (example: $Uniform(-\eta,\eta)$ , for some small $\eta > 0$) may be added to each value for discrete feature variables to allow for unique quantile bin bounds.
 
 We can then roughly approximate KNN classification or regression modeling by using the quantile bin neighbor response values $\bold{y}_q = \{y_i \hspace{.2cm} | \hspace{.2cm} x_i \in \bold{x}_q\}$. The query point is given an estimated response, $\hat{y_q} = S(\bold{y}_q)$, for some summary statistic $S(.)$ that is appropriate for response type; an average for numeric responses or a majority vote count for categorical responses. The estimated responses for each bin may be pre-calculated and stored for quick retrieval in situations with a large number of query points; unlike KNN models where the estimated response needs to be calculated for each unique query point. 
 
@@ -143,7 +151,7 @@ $y_i = x_{i1} + x_{i2} + \epsilon_i$, where $\epsilon_i \sim Normal(0,1)$
 \end{center}
 and iterative quantile binning with four bins per dimension us used to create iterative-quantile nearest-neighborhoods of size $k=10$. The left and center panels demonstrates the two stages of quantile-based partitioning necessary for this bivariate feature space. 
 
-<<2d_iqbin_plots, echo=F,include=T,eval=T,fig.width=3, fig.height=3.5, out.width='.32\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Process for constructing IQNN regression model using 4X4 binning structure. (Left) first partition the training set using quartiles of $X_1$, (Center) then further partition each group using quartiles of $X_2$, (Right) then apply average $Y$ in each bin as the IQNN regression estimates for future points falling within each respective bin.">>=
+<<2d_iqbin_plots, echo=F,include=T,eval=T,fig.width=3, fig.height=3.5, out.width='.32\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Process for constructing IQNN regression model using 4X4 binning structure. (Left) first partition the training set using quartiles of $X_1$, (Center) then further partition each group using quartiles of $X_2$, (Right) then apply average $Y$ in each bin as the IQNN regression estimates for future points falling within each respective bin.">>=
 set.seed(12345)
 nsim=160
 simbins <- 4
@@ -194,16 +202,40 @@ ggplot()+
   mytheme
 @
 
-We can extend this process to higher dimensions using the following generalized algorithm:
+This iterative quantile process can be generalized for binning a set of $p$-dimensional points $[x_{i1},x_{i2},...,x_{ip}]^t = \vec{x}_i \in \mathbb{R}^p \hspace{.2cm} \forall \hspace{.2cm} i \in \{1,...,n\}$ through the following algorithm:\\
 
-\ktm{Put Algorithm Psuedo-Code Here.}
+\begin{algorithm}
+\noindent \textbf{Specification:} Set order of features $\{X_1,X_2,...,X_p\}$ to match desired iterative binning order and number of bins $\{\delta_1,\delta_2,...,\delta_p\}$ for partitioning in each dimension 
 
+\noindent \textbf{Binning:} \vspace{-.3cm}
+  \begin{enumerate}
+  \setlength\itemsep{0cm}
+  \item Partition all points based on $\delta_1$ quantile bins over feature $X_1$ into index sets\\
+  $\{B_1,B_2,...B_{\delta_1}\}$ such that $B_\ell = \{i \hspace{.2cm} | \hspace{.2cm} b_{X_1}^q(x_{i1}) = \ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell \in \{1,2,...\delta_1\}$
+  \item Repeat the following for $j = 2,...,P$ \{ 
+  \begin{enumerate}[i]
+  \setlength\itemsep{0cm}
+  \item Relabel the $L=\displaystyle\prod_{d=1}^{j-1}\delta_d$ index sets defined in $(j-1)^{th}$ iteration as $\{B_1,B_2,...B_L\}$
+  \item Subdivide each $B_\ell$ into  $\delta_j$ quantile bins over feature $X_j$ to create new index sets 
+  $B_{\ell m} = \{i \hspace{.2cm} | \hspace{.2cm} i \in B_\ell$ and $b_{X_{j}}^q(x_{ij}) = m \} \hspace{.2cm} \forall \hspace{.2cm} \ell \in \{1,2,...L\}$
+  \end{enumerate}
+  \}
+  \item Assign final labels $\{B_1,B_2,...B_L\}$ where $L=\displaystyle\prod_{d=1}^{j}\delta_d$ for index sets from the $p$ iteration
+  \end{enumerate}
+\vspace{.3cm}
+\label{iqalgorithm}
+\caption{Iterative Quantile Binning Algorithm}
+\end{algorithm}
 
+The binning structure and $p$-dimensional nested partitions of the feature space in $\mathbb{R}^p$ are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ are act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each dimension. A benefit of this structure is that \ktm{finish thought here...}
 \subsection{Iterative Quantile Nearest-Neighbor Modeling}
 \label{iqnnmodels}
 
 \begin{itemize}
-\item Use higher dimensional bin notation $\vec{\bold{x}}_q$ and $\bold{y}_q$ to specify IQNN regression and classification models
+\item Use higher dimensional bin notation $\vec{\bold{x}}_q$ and $\bold{y}_q$ to specify IQNN regression 
+\item Refer back to figure 1 right panel for example
+\item Use higher dimensional bin notation $\vec{\bold{x}}_q$ and $\bold{y}_q$ to specify IQNN classification
+\item Problem with extrapolation, stretching, open outer
 \end{itemize}
 
 \vspace{2in}
