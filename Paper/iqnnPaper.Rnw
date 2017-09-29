@@ -210,31 +210,32 @@ and iterative quantile binning with four bins per feature dimension is used to c
   \begin{enumerate}
   \setlength\itemsep{0cm}
   \item Partition all points based on $\delta_1$ quantile bins over feature $X_1$ into index sets\\
-  $\{B_1,B_2,...B_{\delta_1}\}$ such that $B_\ell = \{i \hspace{.2cm} | \hspace{.2cm} b_{X_1}^q(x_{i1}) = \ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell \in \{1,2,...\delta_1\}$
-  \item Repeat the following for $j = 2,...,P$ :
+  $\{B_1,...B_{\delta_1}\}$ such that $B_\ell = \{i \hspace{.2cm} | \hspace{.2cm} b_{X_1}^q(x_{i1}) = \ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell = 1,...\delta_1$
+  \item Repeat the following for $j = 2,...,p$ :
     \vspace{-.3cm}
     \begin{enumerate}[i]
     \setlength\itemsep{0cm}
-    \item Relabel the $L_j=\displaystyle\prod_{d=1}^{j-1}\delta_d$ index sets defined in $(j-1)^{th}$ iteration as $\{B_1,B_2,...B_{L_j}\}$
-    \item Subdivide each $B_\ell$ into  $\delta_j$ quantile bins over feature $X_j$ to create new index sets 
-    $B_{\ell m} = \{i \hspace{.2cm} | \hspace{.2cm} i \in B_\ell$ and $b_{X_{j}}^q(x_{ij}) = m \} \hspace{.2cm} \forall \hspace{.2cm} \ell \in \{1,2,...L_j\}$
+    \item Subdivide each $B_\ell$ using  $\delta_j$ quantile bins over feature $X_j$ to create new index sets
+    $C_{m n} = \{i \hspace{.2cm} | \hspace{.2cm} i \in B_m$ and $b_{X_{j}}^q(x_{ij}) = n \} \hspace{.2cm} \forall \hspace{.2cm} m = 1,...,\displaystyle\prod_{d=1}^{j-1}\delta_d$ and $n = 1,...,\delta_j$
+    \item Redefine index sets $\{B_1,...B_L\}$ such that $B_\ell = C_{m n}$, where $\ell = n(m-1) + n$ 
     \end{enumerate}
     \vspace{-.3cm}
-  \item The resulting $L=\displaystyle\prod_{d=1}^{j}\delta_d$ index sets are relabeled $\{B_1,B_2,...B_L\}$ corresponding to:\\
+\end{enumerate}
+  
+\noindent \textbf{Outputs:}
     \vspace{-.3cm}
     \begin{enumerate}[i]
     \setlength\itemsep{0cm}
-    \item iterative-quantile bin neighborhoods $\vec{\bold{x}}_\ell = \{\vec{x_i} \hspace{.2cm} | \hspace{.2cm}  i \in B_\ell \} $
-    \item iterative-quantile bin hyper-rectangles \ktm{$(lower_{j,\ell} \hspace{.1cm} , \hspace{.1cm} upper_{j,\ell}] \in \mathbb{R}^p$}
+  \item Bin neighbor sets $\vec{\bold{x}}_\ell = \{\vec{x_i} \hspace{.1cm} | \hspace{.1cm}  i \in B_\ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell = 1,...,L=\displaystyle\prod_{d=1}^{p}\delta_d$
+    \item Hyper-rectangles for bins $\ell = 1,...,L$ as intervals $(\beta_{j\ell1} \hspace{.1cm} , \hspace{.1cm} \beta_{j\ell2}]$ for dimensions $j=1,...,p$ 
     \end{enumerate}
-    \vspace{-.3cm}
-    
-  \end{enumerate}
-\caption{$p$-dimensional iterative-quantile binning algorithm}
+
+
+\caption{$p$-dimensional iterative-quantile binning}
 \label{alg:iqalgorithm}
 \end{algorithm}
 
-This iterative quantile process is generalized for binning a set of $p$-dimensional points $[x_{i1},x_{i2},...,x_{ip}]^t = \vec{x}_i \in \mathbb{R}^p \hspace{.2cm} \forall \hspace{.2cm} i \in \{1,...,n\}$ in Algorithm~\ref{alg:iqalgorithm} The iterative quantile binning process generates $p$-dimensional hyper-rectangles in the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ are act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each dimension. A benefit of this nested structure is that after identifying the interval in the $j^{th}$ level of the R-tree containing $j^{th}$ dimension of a query point, the branches below all other intervals at that level are ignored; thus allowing a query for membership among $\prod_{d=1}^{p}\delta_d$ unique $p$-dimensional bins to be completed by checking membership within at most $\sum_{d=1}^{p}\delta_d$ univariate intervals. We will let $b_{\bold{X}}^{iq}(.): \vec{q},\rightarrow \ell$ denote the function mapping query points to iterative quantile bins by passing through the branches of the R-tree of intervals. 
+This iterative quantile process is generalized for binning a set of $p$-dimensional points $[x_{i1},x_{i2},...,x_{ip}]^t = \vec{x}_i \in \mathbb{R}^p \hspace{.2cm} \forall \hspace{.2cm} i \in \{1,...,n\}$ in Algorithm~\ref{alg:iqalgorithm} The iterative quantile binning process generates $p$-dimensional hyper-rectangles in the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ are act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each dimension. A benefit of this nested structure is that after identifying the interval in the $j^{th}$ level of the R-tree containing $j^{th}$ dimension of a query point, the branches below all other intervals at that level are ignored; thus allowing a query for membership among $\prod_{d=1}^{p}\delta_d$ unique $p$-dimensional bins to be completed by checking membership within at most $\sum_{d=1}^{p}\delta_d$ univariate intervals. We will let $b_{\bold{X}}^{iq}(.): \vec{q} \rightarrow \ell$ denote the function mapping query points to iterative quantile bins by passing through the branches of the R-tree of intervals. 
 
 
 
@@ -242,7 +243,13 @@ This iterative quantile process is generalized for binning a set of $p$-dimensio
 \subsection{Iterative Quantile Nearest-Neighbor Modeling}
 \label{iqnnmodels}
 
-In Subsection~\ref{unibin} we saw how quantile bin neighborhoods could be used to roughly approximate KNN regression and classification models. The adaptation to $p$-dimensional feature spaces using iterative-quantile binning is straightforward. If the iterative-quantile binning provides index sets $B_\ell = \{i \hspace{.15cm} | \hspace{.15cm} \vec{x}_i \text{ in bin }\ell \} \hspace{.15cm} \forall \hspace{.15cm} \ell = 1,...,L$, then the  use to construct neighborhood groups of training observations can be used to drive a predictive modeling
+In Subsection~\ref{unibin} we used quantile bin neighborhoods to roughly approximate KNN regression and classification models. An extension to $p$-dimensional feature spaces can summary statistics of the training response values within iterative-quantile bins to be used as predicted responses for test points. For this proposed method we define \textit{iterative-quantile nearest-neighbor} (IQNN) models for regression and classification such that
+
+\begin{center}
+$\hat{y}_{\vec{q}} = \displaystyle\sum_{i\in B_{\vec{q}}}\vec{x}_i/|B_{\vec{q}}|$ 
+\end{center}
+
+the iterative-quantile binning provides index sets $B_\ell = \{i \hspace{.15cm} | \hspace{.15cm} \vec{x}_i \text{ in bin }\ell \} \hspace{.15cm} \forall \hspace{.15cm} \ell = 1,...,L$, 
 
 \begin{itemize}
 \item Use higher dimensional bin notation $\vec{\bold{x}}_q$ and $\bold{y}_q$ to specify IQNN regression 
