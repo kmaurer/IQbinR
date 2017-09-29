@@ -104,31 +104,31 @@ To lay out the proposed method for iterative quantile nearest-neighbor modeling 
 \subsection{Univariate Quantile Binned Neighborhoods}
 \label{unibin}
 
-Partitioning a continuous range of numeric values using a set of adjacent intervals is commonly referred to as binning. For the univariate case with observations, $x_i \in \mathbb{R}$ for $i \in \{1,\dots,n\}$, binning algorithms employ a function $b_X(.) : x_i \rightarrow b_j$ that maps observations to unique bin indices $j \in \{1,\dots,J\}$. We define a defining a sequence of $J$ adjacent intervals, $(\beta_{j-1},\beta_{j}]$ for bins $j \in \{1,\dots,J\}$, and set the outermost bounds, $\beta_{0}=min(x_i)$ and $\beta_{J}=max(x_i)$. Half-open intervals are used such that any observation falling on a bin boundary is assigned to a unique interval and values $x_i$ exactly equal to the lowest bin boundary $\beta_0$ are grouped into the first bin to close the leftmost bound. This is expressed mathematically using the binning function $b_X(.) : x_i \rightarrow j$ defined as 
+Partitioning a continuous range of numeric values using a set of adjacent intervals is commonly referred to as binning. For the univariate case with observations, $x \in \mathbb{R}$ for $i \in \{1,\dots,n\}$, binning algorithms employ a function $b_X(.) : x \rightarrow b_j$ that maps observations to unique bin indices $j \in \{1,\dots,J\}$. We define a defining a sequence of $J$ adjacent intervals, $(\beta_{j-1},\beta_{j}]$ for bins $j \in \{1,\dots,J\}$, and set the outermost bounds, $\beta_{0}=min(x_i)$ and $\beta_{J}=max(x_i)$. Half-open intervals are used such that any observation falling on a bin boundary is assigned to a unique interval and values $x_i$ exactly equal to the lowest bin boundary $\beta_0$ are grouped into the first bin to close the leftmost bound. This is expressed mathematically using the binning function $b_X(.) : x \rightarrow j$ defined as 
 %
 \begin{eqnarray}\label{rectbin}
-b_X(x_i) = \left\{\begin{array}{ll} 
-  1 &\text{ for all } x_i = \beta_{0} \\
-  j & \text{ for all } x_i \in (\beta_{j-1} , \beta_j] 
+b_X(x) = \left\{\begin{array}{ll} 
+  1 &\text{ for all } x = \beta_{0} \\
+  j & \text{ for all } x \in (\beta_{j-1} , \beta_j] 
   \end{array}\right.
 \end{eqnarray}  
 
-It is clear that any new query point, $q \in \mathbb{R}$, can be allocated to a bin by comparing the value to the set of $J+1$ bin bounds. This binning is notably faster than calculating the distances from the training points if $J$ is much smaller than $n$. For a training data set containing a single continuous numeric feature variable and new query point $q\in\mathbb{R}$, we define the \textit{bin neighbors} as the set of training points $\bold{x}_q = \{x_i \hspace{.2cm} | \hspace{.2cm} b_X(x_i) = b_X(q) \}$. It is clear that the distance between a query point and any of its bin neighbors is bounded
+It is clear that any new query point, $q \in \mathbb{R}$, can be allocated to a bin by comparing the value to the set of $J+1$ bin bounds. This binning is notably faster than calculating the distances from the training points if $J$ is much smaller than $n$. For cases with one continuous numeric feature with training data points $x_i \in\mathbb{R}$ for $i=1,...,n$ and new query point $q\in\mathbb{R}$, we define the \textit{bin neighbors} as the set of training points $\mathbf{x}_q = \{x_i \hspace{.2cm} | \hspace{.2cm} b_X(x_i) = b_X(q) \}$. It is clear that the distance between a query point and any of its bin neighbors is bounded
 \begin{center}
-$d(x_i,q) = (x_i - q) < (\beta_j - \beta_{j-1})  \hspace{.2cm} \forall \hspace{.2cm} x_i \in \bold{x}_q$,
+$d(x_i,q) = (x_i - q) < (\beta_j - \beta_{j-1})  \hspace{.2cm} \forall \hspace{.2cm} x_i \in \mathbf{x}_q$,
 \end{center}
 however the neighbors in each bin may vary depending on bin boundaries and the distribution of training points.Attempting to control $d(x_i,q)$ by setting regularly spaced intervals for any non-uniformly distributed training set would result in imbalanced bin counts; thus, a poor alternative to $k$-nearest neighborhoods. 
 
 We define \textit{quantile binning} through specifying that the $j^{th}$ bin interval, $(\beta_{j-1} , \beta_j]$, takes the form $(Q_X(\frac{j-1}{J})\hspace{.2cm},\hspace{.2cm}Q_X(\frac{j}{J})]$, where $Q_X(p)$ is the the $p^{th}$ empirical quantile using the inverse empirical distribution function \ktm{\citep{hyndman1996sample}}. The quantile binning function $b_X^q(.) : x_i \rightarrow j$ defined as 
 %
-\begin{eqnarray}\label{rectbin}
+\begin{eqnarray}\label{quantbin}
 b_X^q(x_i) = \left\{\begin{array}{ll} 
   1 &\text{ for all } x_i = \min(x_i) \\
   j & \text{ for all } x_i \in (Q_X(\frac{j-1}{J}) \hspace{.2cm} , \hspace{.2cm} Q_X(\frac{j}{J})] 
   \end{array}\right.
 \end{eqnarray}   The resulting $J$ partitions will have interval widths that vary base on distribution, but will each contain either $\lceil \frac{n}{J} \rceil$ or $\lceil \frac{n}{J} \rceil - 1$ training points; thus roughly approximating a $(\frac{n}{J})$-nearest-neighborhood. It should be noted that we are assuming training points $x_i \in \mathbb{R}$ to be truly continuous in nature. If the training data is collected with poor measurement precision or have naturally discrete values, repeated values for $x_i$ could result in empirical quantile where $\beta_j = \beta_k$ for some $j \ne k$, thus non-unique bin assignments. In practice, the simple addition of a small amount of random noise (example: $Uniform(-\eta,\eta)$ , for some small $\eta > 0$) may be added to each value for discrete feature variables to allow for unique quantile bin bounds.
 
-We can then roughly approximate KNN classification or regression modeling by using the quantile bin neighbor response values $\bold{y}_q = \{y_i \hspace{.2cm} | \hspace{.2cm} x_i \in \bold{x}_q\}$. The query point is given an estimated response, $\hat{y_q} = S(\bold{y}_q)$, for some summary statistic $S(.)$ that is appropriate for response type; an average for numeric responses or a majority vote count for categorical responses. The estimated responses for each bin may be pre-calculated and stored for quick retrieval in situations with a large number of query points; unlike KNN models where the estimated response needs to be calculated for each unique query point. 
+We can then roughly approximate KNN classification or regression modeling by using the quantile bin neighbor response values $\mathbf{y}_q = \{y_i \hspace{.2cm} | \hspace{.2cm} x_i \in \mathbf{x}_q\}$. The query point is given an estimated response, $\hat{y_q} = S(\mathbf{y}_q)$, for some summary statistic $S(.)$ that is appropriate for response type; an average of numeric responses or a majority vote count of categorical responses. The estimated responses for each bin may be pre-calculated and stored for quick retrieval in situations with a large number of query points; unlike KNN models where the estimated response needs to be calculated for each unique query point. 
 
 
 
@@ -226,8 +226,8 @@ and iterative quantile binning with four bins per feature dimension is used to c
     \vspace{-.3cm}
     \begin{enumerate}[i]
     \setlength\itemsep{0cm}
-  \item Bin neighbor sets $\vec{\bold{x}}_\ell = \{\vec{x_i} \hspace{.1cm} | \hspace{.1cm}  i \in B_\ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell = 1,...,L=\displaystyle\prod_{d=1}^{p}\delta_d$
-    \item Hyper-rectangles for bins $\ell = 1,...,L$ as intervals $(\beta_{j\ell1} \hspace{.1cm} , \hspace{.1cm} \beta_{j\ell2}]$ for dimensions $j=1,...,p$ 
+  \item Bin neighbor sets $\vec{\mathbf{x}}_\ell = \{\vec{x_i} \hspace{.1cm} | \hspace{.1cm}  i \in B_\ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell = 1,...,L=\displaystyle\prod_{d=1}^{p}\delta_d$
+    \item Hyper-rectangular bins $\ell = 1,...,L$ as intervals $(\beta_{j\ell1} \hspace{.1cm} , \hspace{.1cm} \beta_{j\ell2}]$ for dimensions $j=1,...,p$ 
     \end{enumerate}
 
 
@@ -235,7 +235,7 @@ and iterative quantile binning with four bins per feature dimension is used to c
 \label{alg:iqalgorithm}
 \end{algorithm}
 
-This iterative quantile process is generalized for binning a set of $p$-dimensional points $[x_{i1},x_{i2},...,x_{ip}]^t = \vec{x}_i \in \mathbb{R}^p \hspace{.2cm} \forall \hspace{.2cm} i \in \{1,...,n\}$ in Algorithm~\ref{alg:iqalgorithm} The iterative quantile binning process generates $p$-dimensional hyper-rectangles in the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ are act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each dimension. A benefit of this nested structure is that after identifying the interval in the $j^{th}$ level of the R-tree containing $j^{th}$ dimension of a query point, the branches below all other intervals at that level are ignored; thus allowing a query for membership among $\prod_{d=1}^{p}\delta_d$ unique $p$-dimensional bins to be completed by checking membership within at most $\sum_{d=1}^{p}\delta_d$ univariate intervals. We will let $b_{\bold{X}}^{iq}(.): \vec{q} \rightarrow \ell$ denote the function mapping query points to iterative quantile bins by passing through the branches of the R-tree of intervals. 
+This iterative quantile-based process is generalized for binning a set of $p$-dimensional points $[x_{i1},x_{i2},...,x_{ip}]^t = \vec{x}_i \in \mathbb{R}^p \hspace{.2cm} \forall \hspace{.2cm} i \in \{1,...,n\}$ in Algorithm~\ref{alg:iqalgorithm}. The process generates $p$-dimensional hyper-rectangular bins over the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ are act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each dimension. A benefit of this nested structure is that after identifying the interval in the $j^{th}$ level of the R-tree containing $j^{th}$ dimension of a query point, the branches below all other intervals at that level are ignored; thus allowing a query for membership among $\prod_{d=1}^{p}\delta_d$ unique $p$-dimensional bins to be completed by checking membership within at most $\sum_{d=1}^{p}\delta_d$ univariate intervals. We will let $b_{\mathbf{X}}^{iq}(.): \vec{q} \rightarrow \ell$ denote the function mapping query points to iterative quantile bins by passing through the branches of the R-tree of intervals. 
 
 
 
@@ -246,26 +246,25 @@ This iterative quantile process is generalized for binning a set of $p$-dimensio
 In Subsection~\ref{unibin} we used quantile bin neighborhoods to roughly approximate KNN regression and classification models. An extension to $p$-dimensional feature spaces can summary statistics of the training response values within iterative-quantile bins to be used as predicted responses for test points. For this proposed method we define \textit{iterative-quantile nearest-neighbor} (IQNN) models for regression and classification such that
 
 \begin{center}
-$\hat{y}_{\vec{q}} = \displaystyle\sum_{i\in B_{\vec{q}}}\vec{x}_i/|B_{\vec{q}}|$ 
+$\hat{y}_{\vec{q}} = S(\vec{\mathbf{y}}_\ell)$, where $\vec{\mathbf{y}}_\ell = \{y_i \hspace{.15cm} | \hspace{.15cm} i = B_{\ell} \text{, where } \ell=b_{\mathbf{X}}^{iq}(q)\}$
 \end{center}
 
-the iterative-quantile binning provides index sets $B_\ell = \{i \hspace{.15cm} | \hspace{.15cm} \vec{x}_i \text{ in bin }\ell \} \hspace{.15cm} \forall \hspace{.15cm} \ell = 1,...,L$, 
+Thus estimating the response using some appropriate summary statistic $S(.)$ over the response values over training observations from the iterative quantile bin containing the query point. We propose using a simple average of numeric responses for IQNN regression and a majority vote count of categorical responses for IQNN classification. The rightmost panel of Figure~\ref{fig:2d_iqbin_plots} visually demonstrates the predicted values from IQNN regression over the simulated bivariate feature space resulting from averaging the ten training data response values in each bin. 
 
-\begin{itemize}
-\item Use higher dimensional bin notation $\vec{\bold{x}}_q$ and $\bold{y}_q$ to specify IQNN regression 
-\item Refer back to figure 1 right panel for example
-\item Use higher dimensional bin notation $\vec{\bold{x}}_q$ and $\bold{y}_q$ to specify IQNN classification
-\item Problem with extrapolation, stretching, open outer
-\item most similar to knn if nbins nearly equal for all dimensions
-\item no need to scale like knn but tuning requires more future work 
-\end{itemize}
+A potential problem for IQNN models is that a test observation could fall beyond the outermost bounds of the hyper-rectangular bins. We could refuse to predict for these points to avoid extrapolation outside the range of observed data; however, this would severely limit the practical applicability of IQNN models. An alternative is to alter the quantile binning function, $b_{X}^q(.)$ used in stages 1 and 2.i of Algorithm~\ref{alg:iqalgorithm} to include a tolerance value to extend the outermost bin boundaries. A \textit{stretched} quantile binning function, $b_{X,\tau}^q(.):x \rightarrow j$, would be defined as 
+%
+\begin{eqnarray}
+\label{stretchbin}
+b_{X,\tau}^q(x) = \left\{\begin{array}{ll} 
+  1 & \text{ for all } x_i \in [\min(x_i) - \tau \hspace{.2cm} , \hspace{.2cm} Q_X(\frac{1}{J}) ]  \\
+  j & \text{ for all } x_i \in (Q_X(\frac{j-1}{J}) \hspace{.2cm} , \hspace{.2cm} Q_X(\frac{j}{J})] \\
+  J & \text{ for all } x_i \in (Q_X(\frac{J-1}{J}) \hspace{.2cm} , \hspace{.2cm} \max(x_i) + \tau] 
+\end{array}\right.
+\end{eqnarray}
 
-Iterative-quantile bins are constructed in a way that can provide a potential alternative to $k$-nearest neighborhoods within training data, but it is important to recognize the fundamental differences in behavior that results from parameterization and treatment of feature values. The KNN model has a much simpler paramerization, requiring only the neighborhood size $k$ to be set as some positive integer.   The magnitude of feature values in each dimension can hold major influence on $p$-dimensional distances, thus making the scaling and units associated with feature values very important in KNN. The groupings created by iterative-quantile neighborhoods are invariant to any \ktm{term for positive one-to-one?} scaling because the unchanged ordering of observations in each dimension leads to the same quantile-based partitions.
+Setting the tolerance value, $\tau$, to the outermost quantile bins allows for the practitioner to control how far outside the range of observed points they are willing to make predictions. Additionally, a different value for $\tau$ can be specified for each dimensions to allow for more/less strict tolerance of extrapolation for each feature variable. We could also guarantee that every query point belongs to an iterative-quantile bin by setting $\tau = \infty$ for unlimited tolerance.
 
-
-
-
-
+Iterative-quantile binning was designed to provide a potential alternative to $k$-nearest neighborhoods within training data, but it is important to recognize how fundamental differences in parameterization and treatment of feature values may effect behavior within predictive modeling. KNN models have a much simpler paramerization, requiring only specification of an integer neighborhood size $k$, whereas IQNN models require a variable ordering and the number of bins in each dimension. The magnitude of values in each features dimension can hold major influence on $p$-dimensional distances between training and query points. Feature values are often standardized before constructing KNN models, in an attempt to allow more balanced contribution across feature dimensions when performing neighborhood queries. Interestingly, any \ktm{term for positive one-to-one?} scaling will impact the hyper-rectangular bin boundary values, but will \textit{not} changes the iterative-quantile neighborhoods because the unchanged ordering of observations in each dimension leads to the same set of training points in each quantile-based partition.
 
 
 \newpage
