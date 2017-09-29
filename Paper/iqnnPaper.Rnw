@@ -229,8 +229,7 @@ and iterative quantile binning with four bins per feature dimension is used to c
   \item Bin neighbor sets $\vec{\mathbf{x}}_\ell = \{\vec{x_i} \hspace{.1cm} | \hspace{.1cm}  i \in B_\ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell = 1,...,L=\displaystyle\prod_{d=1}^{p}\delta_d$
     \item Hyper-rectangular bins $\ell = 1,...,L$ as intervals $(\beta_{j\ell1} \hspace{.1cm} , \hspace{.1cm} \beta_{j\ell2}]$ for dimensions $j=1,...,p$ 
     \end{enumerate}
-
-
+\vspace{.3cm}  
 \caption{$p$-dimensional iterative-quantile binning}
 \label{alg:iqalgorithm}
 \end{algorithm}
@@ -249,9 +248,9 @@ In Subsection~\ref{unibin} we used quantile bin neighborhoods to roughly approxi
 $\hat{y}_{\vec{q}} = S(\vec{\mathbf{y}}_\ell)$, where $\vec{\mathbf{y}}_\ell = \{y_i \hspace{.15cm} | \hspace{.15cm} i = B_{\ell} \text{, where } \ell=b_{\mathbf{X}}^{iq}(q)\}$
 \end{center}
 
-Thus estimating the response using some appropriate summary statistic $S(.)$ over the response values over training observations from the iterative quantile bin containing the query point. We propose using a simple average of numeric responses for IQNN regression and a majority vote count of categorical responses for IQNN classification. The rightmost panel of Figure~\ref{fig:2d_iqbin_plots} visually demonstrates the predicted values from IQNN regression over the simulated bivariate feature space resulting from averaging the ten training data response values in each bin. 
+Thus estimating the response for any query point using some appropriate summary statistic $S(.)$ over the response values over training observations from the iterative quantile bin containing the query point. We propose using a simple average of numeric responses for IQNN regression and a majority vote count of categorical responses for IQNN classification. Note that the prediction for any query point in bin $\ell$ is always $S(\vec{\mathbf{y}}_\ell)$ which may be precalculated and stored for fast by leveraging the R-tree structure. The rightmost panel of Figure~\ref{fig:2d_iqbin_plots} visually demonstrates the predicted values from IQNN regression over the simulated bivariate feature space resulting from averaging the ten training data response values in each bin. 
 
-A potential problem for IQNN models is that a test observation could fall beyond the outermost bounds of the hyper-rectangular bins. We could refuse to predict for these points to avoid extrapolation outside the range of observed data; however, this would severely limit the practical applicability of IQNN models. An alternative is to alter the quantile binning function, $b_{X}^q(.)$ used in stages 1 and 2.i of Algorithm~\ref{alg:iqalgorithm} to include a tolerance value to extend the outermost bin boundaries. A \textit{stretched} quantile binning function, $b_{X,\tau}^q(.):x \rightarrow j$, would be defined as 
+A potential problem for IQNN models is that a test observation could fall beyond the outermost bounds of the hyper-rectangular bins. We could refuse to predict for these points to avoid extrapolation outside the range of observed data; however, this would severely limit the practical applicability of IQNN models. An alternative is to alter the quantile binning function, $b_{X}^q(.)$, used in stages 1 and 2.i of Algorithm~\ref{alg:iqalgorithm} to include a tolerance value to extend the outermost bin boundaries. A \textit{stretched} quantile binning function, $b_{X,\tau}^q(.):x \rightarrow j$, would be defined as 
 %
 \begin{eqnarray}
 \label{stretchbin}
@@ -261,11 +260,10 @@ b_{X,\tau}^q(x) = \left\{\begin{array}{ll}
   J & \text{ for all } x_i \in (Q_X(\frac{J-1}{J}) \hspace{.2cm} , \hspace{.2cm} \max(x_i) + \tau] 
 \end{array}\right.
 \end{eqnarray}
-
+%
 Setting the tolerance value, $\tau$, to the outermost quantile bins allows for the practitioner to control how far outside the range of observed points they are willing to make predictions. Additionally, a different value for $\tau$ can be specified for each dimensions to allow for more/less strict tolerance of extrapolation for each feature variable. We could also guarantee that every query point belongs to an iterative-quantile bin by setting $\tau = \infty$ for unlimited tolerance.
 
-Iterative-quantile binning was designed to provide a potential alternative to $k$-nearest neighborhoods within training data, but it is important to recognize how fundamental differences in parameterization and treatment of feature values may effect behavior within predictive modeling. KNN models have a much simpler paramerization, requiring only specification of an integer neighborhood size $k$, whereas IQNN models require a variable ordering and the number of bins in each dimension. The magnitude of values in each features dimension can hold major influence on $p$-dimensional distances between training and query points. Feature values are often standardized before constructing KNN models, in an attempt to allow more balanced contribution across feature dimensions when performing neighborhood queries. Interestingly, any \ktm{term for positive one-to-one?} scaling will impact the hyper-rectangular bin boundary values, but will \textit{not} changes the iterative-quantile neighborhoods because the unchanged ordering of observations in each dimension leads to the same set of training points in each quantile-based partition.
-
+Iterative-quantile binning provides a potential alternative to $k$-nearest neighborhoods within training data, but it is important to recognize how fundamental differences in how their respective predictive models treat of feature values and how they are parameterized. The magnitude of values in each features dimension heavily influence $p$-dimensional distances between training and query points. Feature values are often standardized before constructing KNN models, in an attempt to allow more balanced contribution across feature dimensions. Interestingly for IQNN models, rescaling will impact the hyper-rectangular bin boundaries but will \textit{not} change the training points in each bin neighborhood. This is because order of training points is invariant to scaling, thus result in the same groupings from quantile-based partitions. We can make a similar attempt to balanced contribution of each features by specifying the IQNN model with equal number of bins in each dimension. We define a \textit{balanced-bin} parameterization with $\delta_1=...=\delta_p=\delta$ for some positive integer and will provide an average of bin count of $n/\delta^p$ points. The problem with this parameterization is that the bin counts shift dramatically as $\delta$ changes, giving us much less control over neighborhood sizes than with KNN, where any positive integer, $k$, can be defined. To loosen these constraints we define \textit{nearly-balanced-bin} parameterization such that $\delta_j \in \delta_{j'} \pm \gamma$ of any dimensions $j$ and $j'$ for some small integer, $\gamma$; creating nearly the same number of bins in each dimension, while maintaining more control over bin counts.
 
 \newpage
 
