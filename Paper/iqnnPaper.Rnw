@@ -137,10 +137,10 @@ We can then roughly approximate KNN classification or regression modeling by usi
 
 Now suppose we wish to create binned neighborhoods to approximate $k$-nearest neighborhoods within a $p$-dimensional continuous valued feature space, $\vec{x}_i \in \mathbb{R}^p$. A $p$-dimensional bin can be defined using a $p$-dimensional hyper-rectangle with interval boundaries running orthogonal to the coordinate axes. It would be simplest to generate a univariate binning function for each dimension then apply these independently to form a $p$-dimensional grid of bin boundaries. In many cases the dependence between the feature variables would result in $p$-dimensional bins with highly unbalanced counts, and thus would provide a poor substitute for the equal counts in $k$-nearest neighborhoods. Instead we propose the \textit{iterative-quantile binning} process: starting with the univariate quantile binning described in Subsection~\ref{unibin} above, then iteratively using univariate quantile-bin partitions \textit{nested within} each partition from the previous dimension. By iteratively subdividing nearly equal sized groups at each stage, the resulting $p$-dimensional bins will maintain bin neighborhood counts that are nearly balanced throughout all $p$-dimensions. 
 
-<<2d_iqbin_plots, echo=F,include=T,eval=T,fig.width=3, fig.height=3.5, out.width='.32\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Process for constructing IQNN regression model using 4X4 binning structure. (Left) first partition the training set using quartiles of $X_1$, (Center) then further partition each group using quartiles of $X_2$, (Right) then apply average $Y$ in each bin as the IQNN regression estimates for future points falling within each respective bin.">>=
+<<2d_iqbin_plots, echo=F,include=T,eval=T,fig.width=3, fig.height=3.5, out.width='.32\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Process for constructing IQNN regression model using 3X3 binning structure. (Left) first partition the training set using tertiles of $X_1$, (Center) then further partition each group using tertiles of $X_2$, (Right) then apply average $Y$ in each bin as the IQNN regression estimates for future points falling within each respective bin.">>=
 set.seed(12345)
-nsim=160
-simbins <- 4
+nsim=90
+simbins <- 3
 color_steps <- c(-4,-2,0,2,4)
 mydata <- data.frame(rmvnorm(nsim, mean=c(0,0), sigma=matrix(c(1,.9,.9,1),byrow=TRUE, nrow=2)))
 mydata$Y <- mydata$X1 + mydata$X2 + rnorm(nsim)
@@ -188,7 +188,7 @@ ggplot()+
   mytheme
 @
 
-Figure~\ref{fig:2d_iqbin_plots} shows this process in the simple case where $\vec{x}_i \in \mathbb{R}^2$ and responses $y_i \in \mathbb{R}$. For this example we have randomly generated 160 feature points from a bivariate normal distribution with a strong positive covariance, and linearly related response values with additive random noise; parameterized such that 
+Figure~\ref{fig:2d_iqbin_plots} shows this process in the simple case where $\vec{x}_i \in \mathbb{R}^2$ and responses $y_i \in \mathbb{R}$. For this example we have randomly generated \Sexpr{nsim} feature points from a bivariate normal distribution with a strong positive covariance, and linearly related response values with additive random noise; parameterized such that 
 \begin{center}
 $\vec{x}_i \sim MVN\left(\begin{bmatrix}
   0 \\
@@ -200,9 +200,12 @@ $\vec{x}_i \sim MVN\left(\begin{bmatrix}
 \vspace{.4cm}
 $y_i = x_{i1} + x_{i2} + \epsilon_i$, where $\epsilon_i \sim Normal(0,1)$
 \end{center}
-and iterative quantile binning with four bins per feature dimension is used to create iterative-quantile nearest-neighborhoods of size $k=10$. The left and center panels demonstrates the two stages of quantile-based partitioning necessary for this bivariate feature space. \\
-%
+and iterative quantile binning with three bins per feature dimension is used to create iterative-quantile nearest-neighborhoods of size $k=10$. The left and center panels demonstrates the two stages of quantile-based partitioning necessary for this bivariate feature space. 
 
+This iterative quantile-based process is generalized for binning a set of $p$-dimensional points $[x_{i1},x_{i2},...,x_{ip}]^t = \vec{x}_i \in \mathbb{R}^p \hspace{.2cm} \forall \hspace{.2cm} i \in \{1,...,n\}$ in Algorithm~\ref{alg:iqalgorithm} below.
+
+
+\RestyleAlgo{boxruled}
 \begin{algorithm}
 \noindent \textbf{Specification:} Set order of features $\{X_1,X_2,...,X_p\}$ to match desired iterative binning order and number of bins $\{\delta_1,\delta_2,...,\delta_p\}$ for partitioning in each dimension 
 
@@ -215,9 +218,10 @@ and iterative quantile binning with four bins per feature dimension is used to c
     \vspace{-.3cm}
     \begin{enumerate}[i]
     \setlength\itemsep{0cm}
-    \item Subdivide each $B_\ell$ using  $\delta_j$ quantile bins over feature $X_j$ to create new index sets
-    $C_{m n} = \{i \hspace{.2cm} | \hspace{.2cm} i \in B_m$ and $b_{X_{j}}^q(x_{ij}) = n \} \hspace{.2cm} \forall \hspace{.2cm} m = 1,...,\displaystyle\prod_{d=1}^{j-1}\delta_d$ and $n = 1,...,\delta_j$
-    \item Redefine index sets $\{B_1,...B_L\}$ such that $B_\ell = C_{m n}$, where $\ell = n(m-1) + n$ 
+    \item Define $C_{s t} = \{i \hspace{.2cm} | \hspace{.2cm} i \in B_s$ and $b_{X_{j}}^q(x_{ij}) = t \} \hspace{.2cm} \forall \hspace{.2cm} s = 1,...,\displaystyle\prod_{d=1}^{j-1}\delta_d$ and $t = 1,...,\delta_j$ \\
+    to subdivide each $B_s$ from last step using $\delta_j$ quantile bins of feature $X_j$ 
+    \item Redefine index sets $\{B_1,...B_L\}$ such that $B_\ell = C_{s t}$, where $\ell = t(s-1) + t$ \\
+    to combine parent and child subscripts of sets into unique subscript
     \end{enumerate}
     \vspace{-.3cm}
 \end{enumerate}
@@ -227,15 +231,21 @@ and iterative quantile binning with four bins per feature dimension is used to c
     \begin{enumerate}[i]
     \setlength\itemsep{0cm}
   \item Bin neighbor sets $\vec{\mathbf{x}}_\ell = \{\vec{x_i} \hspace{.1cm} | \hspace{.1cm}  i \in B_\ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell = 1,...,L=\displaystyle\prod_{d=1}^{p}\delta_d$
-    \item Hyper-rectangular bins $\ell = 1,...,L$ as intervals $(\beta_{j\ell1} \hspace{.1cm} , \hspace{.1cm} \beta_{j\ell2}]$ for dimensions $j=1,...,p$ 
+    \item Hyper-rectangular bins $\ell = 1,...,L$ as intervals $(\beta_{j\ell1} \hspace{.1cm} , \hspace{.1cm} \beta_{j\ell2}]$ in dimensions $j=1,...,p$ 
     \end{enumerate}
 \vspace{.3cm}  
 \caption{$p$-dimensional iterative-quantile binning}
 \label{alg:iqalgorithm}
 \end{algorithm}
 
-This iterative quantile-based process is generalized for binning a set of $p$-dimensional points $[x_{i1},x_{i2},...,x_{ip}]^t = \vec{x}_i \in \mathbb{R}^p \hspace{.2cm} \forall \hspace{.2cm} i \in \{1,...,n\}$ in Algorithm~\ref{alg:iqalgorithm}. The process generates $p$-dimensional hyper-rectangular bins over the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ are act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each dimension. A benefit of this nested structure is that after identifying the interval in the $j^{th}$ level of the R-tree containing $j^{th}$ dimension of a query point, the branches below all other intervals at that level are ignored; thus allowing a query for membership among $\prod_{d=1}^{p}\delta_d$ unique $p$-dimensional bins to be completed by checking membership within at most $\sum_{d=1}^{p}\delta_d$ univariate intervals. We will let $b_{\mathbf{X}}^{iq}(.): \vec{q} \rightarrow \ell$ denote the function mapping query points to iterative quantile bins by passing through the branches of the R-tree of intervals. 
+The process generates $p$-dimensional hyper-rectangular bins over the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ are act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each dimension. Figure~\ref{fig:rtree} below to demonstrates the R-tree generated by the iterative-quantile binning algorithm with the simulated data example from above. A benefit of this nested structure is that after identifying the interval in the $j^{th}$ level of the R-tree containing $j^{th}$ dimension of a query point, the branches below all other intervals at that level are ignored; thus allowing a query for membership among $\prod_{d=1}^{p}\delta_d$ unique $p$-dimensional bins to be completed by checking membership within at most $\sum_{d=1}^{p}\delta_d$ univariate intervals. We will let $b_{\mathbf{X}}^{iq}(.): \vec{q} \rightarrow \ell$ denote the function mapping query points to iterative quantile bins by passing through the branches of the R-tree of intervals. 
 
+\begin{figure}[hbtp]
+\centering
+  \includegraphics[width=.85\textwidth]{./figure/RtreeSketch.pdf}
+  \caption{ \ktm{(Rough Sketch of)} Interval R-tree structure generated by iterative-quantile binning in simulated data from Figure 1}
+  \label{fig:rtree}
+\end{figure}
 
 
 %-----------------------------------------------------------------------
@@ -288,12 +298,6 @@ Quantile & $ \{\beta_j \text{ }|\text{ } \beta_j = Q_X(j/J) \} $  & $\{x_j^\ast 
 
 \section{Section Title}
 
-% example Figure~\ref{fig:UniformStripes} below.
-% \begin{figure}[hbtp]
-% \centering
-%   \subfloat[Binned scatterplots]{\includegraphics[keepaspectratio=TRUE,width=.63\textwidth]{./figure/CoarseUnif.png}} 
-%   \caption[Traditional and adapted scatterplots for games vs. strikeouts data.]{\label{fig:UniformStripes} \ktm{Binned scatterplots and spatial losses for various sized bins with coarse uniform data. Note the slight dip in loss at even integers, when bins are aligned with data resolution.}}
-% \end{figure}
 
 
 <<ExampleCodeChunk, echo=F,include=T,eval=T,fig.width=8, fig.height=4, out.width='.9\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Figure Caption Here.">>= 
