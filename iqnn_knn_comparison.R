@@ -213,6 +213,16 @@ str(results_all_lsist)
 # save(results_all_list, file="iqnn_knn_comparisons.Rdata")
 load(file="iqnn_knn_comparisons.Rdata")
 
+# process for table form (average times/accuracy over each trial)
+results_all <- data.frame(do.call("rbind", results_all_list),
+                          type=rep(c("iqnn","knn - brute ","knn - cover tree","knn - kd tree"),each=nrow(results_all_list$results_iqnn))) %>%
+  group_by(data_name,obs,nn_size,type) %>%
+  summarize(avg_cv_accuracy=mean(cv_accuracy,na.rm=TRUE),
+            avg_time_fit=mean(time_fit,na.rm=TRUE),
+            avg_time_pred=mean(time_pred,na.rm=TRUE)) %>%
+  as.data.frame()
+head(results_all)
+# write.csv(results_all,"resultsToShareKarsten.csv", row.names=FALSE)
 
 # Combine into data frame for plots
 results_all <- data.frame(do.call("rbind", results_all_list),
@@ -246,14 +256,19 @@ ggplot()+
 
 
 
+
 walter_data <- read.csv("resultsToShare.csv")
 head(walter_data)
 
-results_instance_selection <- walter_data %>%
+results2 <- read.csv("resultsToShareWalter.csv")
+head(results2)
+
+library(stringr)
+
+results_instance_selection <- results2 %>%
   select(Dataset,TSSMethod,TestAccuracy,TimeReduce,TimePredict) %>%
-  mutate(TestAccuracy=TestAccuracy/100) %>%
   gather(key="metric",value="value",TestAccuracy:TimePredict) %>%
-  mutate(data_name = factor(Dataset, levels=medium_sets[order(sizes)]),
+  mutate(data_name =  str_sub(Dataset,9,-6),
          metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Prediction Time (sec)","Preprocess Time (sec)")),
          metric_pretty = factor(metric_pretty, levels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)")))
   
