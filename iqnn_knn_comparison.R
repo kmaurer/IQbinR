@@ -254,17 +254,142 @@ ggplot()+
        caption="Data Source: UCI Machine Learning Data Repository")+
   geom_text(aes(x=data_name, label=n), y=.2,data=label_data)
 
+#----------------------------------------------------------------------------------------------------
+library(dplyr)
+library(RWeka)
+WPM("load-packages")   
 
+## Set seed
+seed <- 100
 
+## Create a place to hold results from instance selection methods
+results <- data.frame(Dataset = numeric(0), TSSMethod = numeric(0),
+                      Fold = numeric(0), Size = numeric(0),
+                      TrainAccuracy = numeric(0), TestAccuracy = numeric(0), 
+                      ReductionTime = numeric(0), PredictionTime = numeric(0))
+
+## Point to location of datasets
+datasets <- list.files("C:\\Users\\maurerkt\\Google Drive\\AFRLSFFP\\Fall2017\\mediumDatasets\\in",
+                       full.names = TRUE)
+
+## Create filters
+folder <- make_Weka_filter("weka.filters.supervised.instance.StratifiedRemoveFolds")
+greedy <- make_Weka_filter("weka.filters.GreedyThreaded_SuperSpecialForKarsten")
+drop3 <- make_Weka_filter("weka.filters.Drop3_Wrapper")
+
+## Create a function to assess accuracy
+RA<-function(confusion_matrix){
+  row_dim<-dim(confusion_matrix)[1]
+  s1<-1
+  diag_sum<-0
+  accuracy<-0
+  while(s1<=row_dim)
+  {
+    s2<-1
+    while(s2<=row_dim)
+    {
+      if(s1==s2)
+      {
+        diag_sum<-diag_sum+confusion_matrix[s1,s2]
+      }
+      s2<-s2+1
+    }
+    s1<-s1+1
+  }
+  accuracy<-diag_sum/sum(confusion_matrix)
+  return(accuracy)
+}
+
+## Create a nearest neighbors classifier
+knn <- RWeka::make_Weka_classifier("weka/classifiers/lazy/IBk")
+
+## Cycle through 10-fold and fill in results
+for(i in datasets){
+  dat <- read.arff(i)
+  name1 <- unlist(stringr::str_split(i, pattern = "/"))
+  name <- name1[length(name1)]
+  colnames(dat)[dim(dat)[2]] <- "Class"
+  
+  for(j in c(1:10)){
+    train <- folder(Class ~ ., data = dat, control = Weka_control(V = TRUE, N = 10, F = j, S = seed)) 
+    test <- folder(Class ~ ., data = dat, control = Weka_control(V = FALSE, N = 10, F = j, S = seed)) 
+    
+    ## Original (no filter)
+    start <- Sys.time()
+    classifier <- knn(Class ~., train, control = Weka_control(K = 3))
+    timeToPrep <- Sys.time() - start
+
+    trainPred <- predict(classifier, train[,-dim(train)[2]])
+    trainAcc <- RA(table(trainPred,train$Class))
+    
+    start <- Sys.time()
+    testPred <- predict(classifier, test[,-dim(test)[2]])
+    testAcc <- RA(table(testPred,test$Class))
+    timeToClassify <- Sys.time() - start
+    toAdd <- data.frame(Dataset = name, TSSMethod = "None",
+                        Fold = j, Size = dim(train)[1],
+                        TrainAccuracy = trainAcc, TestAccuracy = testAcc, 
+                        ReductionTime = timeToPrep, PredictionTime = timeToClassify)
+    results <- rbind(results, toAdd)
+    
+    ## Greedy
+    start <- Sys.time()
+    selected <- greedy(Class ~ ., dat = train)
+    classifier <- knn(Class ~., dat = selected, control = Weka_control(K = 3))
+    timeToFilter <- Sys.time() - start
+    
+    trainPred <- predict(classifier, train[,-dim(train)[2]])
+    trainAcc <- RA(table(trainPred,train$Class))
+    
+    start <- Sys.time()
+    testPred <- predict(classifier, test[,-dim(test)[2]])
+    testAcc <- RA(table(testPred,test$Class))
+    timeToClassify <- Sys.time() - start
+    toAdd <- data.frame(Dataset = name, TSSMethod = "Greedy",
+                        Fold = j, Size = dim(selected)[1],
+                        TrainAccuracy = trainAcc, TestAccuracy = testAcc, 
+                        ReductionTime = timeToFilter, PredictionTime = timeToClassify)
+    results <- rbind(results, toAdd)
+    
+    ## DROP3
+    start <- Sys.time()
+    selected <- drop3(Class ~ ., dat = train)
+    classifier <- knn(Class ~., dat = selected, control = Weka_control(K = 3))
+    timeToFilter <- Sys.time() - start
+    
+    trainPred <- predict(classifier, train[,-dim(train)[2]])
+    trainAcc <- RA(table(trainPred,train$Class))
+    
+    start <- Sys.time()
+    testPred <- predict(classifier, test[,-dim(test)[2]])
+    testAcc <- RA(table(testPred,test$Class))
+    timeToClassify <- Sys.time() - start
+    toAdd <- data.frame(Dataset = name, TSSMethod = "DROP3",
+                        Fold = j, Size = dim(selected)[1],
+                        TrainAccuracy = trainAcc, TestAccuracy = testAcc, 
+                        ReductionTime = timeToFilter, PredictionTime = timeToClassify)
+    results <- rbind(results, toAdd)
+  } 
+}
+
+# process results into similar form to those from knn/iqnn
+results2 <- results %>% group_by(Dataset, TSSMethod) %>%
+  summarize(Size = mean(Size),
+            TrainAccuracy = mean(TrainAccuracy),
+            TestAccuracy = mean(TestAccuracy),
+            TimeReduce = mean(ReductionTime),
+            TimePredict = mean(PredictionTime)) %>%
+  ungroup() %>% as.data.frame()
+
+results2 %>% knitr::kable()
+# write.csv(results2, "resultsToShareWalter.csv", row.names=FALSE)
 
 walter_data <- read.csv("resultsToShare.csv")
 head(walter_data)
-
 results2 <- read.csv("resultsToShareWalter.csv")
 head(results2)
 
 library(stringr)
-
 results_instance_selection <- results2 %>%
   select(Dataset,TSSMethod,TestAccuracy,TimeReduce,TimePredict) %>%
   gather(key="metric",value="value",TestAccuracy:TimePredict) %>%
@@ -286,6 +411,11 @@ ggplot()+
        x="Data Set", y="", 
        caption="Data Source: UCI Machine Learning Data Repository")+
   geom_text(aes(x=data_name, label=n), y=.2,data=label_data)
+
+
+
+
+
 
 # ------------------------------------------------------------------------------------------------------
 # Baseball batting data from sean lahmann's database 
