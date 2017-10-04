@@ -1,17 +1,52 @@
 # Functions used in iqnn_knn_comparison.R
 
 kdtree_nn_predict <- function(train,test,y,mod_type="class",k=10){
-  nearest <- nn2(data=train,query=test, k=k)
+  timer <- Sys.time()
+  nearest <- nn2(data=train,query=test, k=k)$nn.idx
+  fittime <- as.numeric(Sys.time() - timer,units="mins")
+  
+  timer <- Sys.time()
   if(mod_type=="class"){
     preds <- sapply(1:nrow(test), function(x) {
-      iqbin::majority_vote(as.character(train[nearest$nn.idx[x,],y]))
+      iqbin::majority_vote(as.character(train[nearest[x,],y]))
+    })
+  } else if(mod_type=="reg") {
+    preds <- sapply(1:nrow(test), function(x) {
+      mean(train[nearest[x,],y])
     })
   } else {
-    preds <- sapply(1:nrow(test), function(x) {
-      mean(train[nearest$nn.idx[x,],y])
-    })
+    print("Must specify mod_type as either class or reg")
+    preds <- NULL
   }
-  return(preds)
+  predtime <- as.numeric(Sys.time() - timer,units="mins")
+  return(list(preds=preds,fittime=fittime,predtime=predtime))
+}
+
+#------------------------------------
+aknn_predict <- function(train_x,test_x,y,mod_type="class",k=10,algorithm="cover_tree"){
+  timer <- Sys.time()
+  neighbors <- get.knnx(data=train_x, query=test_x, k=k, algorithm=algorithm)$nn.index
+  fittime <- as.numeric(Sys.time() - timer,units="mins")
+  
+
+  if(mod_type=="class"){
+    timer <- Sys.time()
+    preds <- sapply(1:nrow(test), function(x) {
+      iqbin::majority_vote(as.character(y[neighbors[x,]]))
+    })
+    predtime <- as.numeric(Sys.time() - timer,units="mins")
+  } else if(mod_type=="reg") {
+    timer <- Sys.time()
+    preds <- sapply(1:nrow(test), function(x) {
+      mean(y[neighbors[x,]]) 
+    })
+    predtime <- as.numeric(Sys.time() - timer,units="mins")
+  } else {
+    print("Must specify mod_type as either class or reg")
+    preds <- NULL; fittime <- NULL;predtime <- NULL
+  }
+
+  return(list(preds=preds,fittime=fittime,predtime=predtime))
 }
 
 #--------------------------------------
