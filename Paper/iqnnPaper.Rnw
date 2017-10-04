@@ -82,19 +82,19 @@ Write abstract here
 \newpage
 \spacingset{1.45} % DON'T change the spacing!
 \section{Introduction}
-\label{Intro}
+\label{intro}
 
 The nearest-neighbor search is a classic problem in computer science that has applications within many fields.\ktm{(example citations)}. Within the context of statistical learning the k-nearest neighbors search is used as a non-parametric method for gathering training observations used to predict for both regression and classifier models. The basic mechanism for $k$-nearest-neighbor (KNN) models is to use numeric feature variables to calculate distances between a new query observation and all the observations in the training data, then create a prediction based on the responses from the $k$ training observations with the smallest distances from the query point \ktm{(add knn citation)}; most typically using an average of response values for KNN regressions, and the majority vote for KNN classifiers \ktm{(general KNN learning citation)}. 
 
-Given the rapid growth in data volume and availability, it is important to consider how the computational requirements of a statistical learning method scale with increase training and test data sizes. KNN models rely on calculation of $p$-dimensional distances - typically Euclidean - between the $n$ observations in the training set for each new query observation, which can be solved in O(n) time through a brute force approach. This can clearly become computationally demanding when either the training data size increases. The computational demands are compounded when using KNN models to make a large number of predictions. In a test set with $m$ observations, every new query requires recalculation of distances; solved by brute force in O(nm) time. 
+Given the rapid growth in data volume and availability, it is important to consider how the computational requirements of a statistical learning method scale with increase training and test data sizes. KNN models rely on calculation of $p$-dimensional distances - typically Euclidean - between the $n$ observations in the training set for each new query observation, which can be solved in $O(n)$ time through a brute force approach. Then the distances must be sorted by magnitude to allow the $k$-nearest points be selected, taking an additional $O(nlog(n))$ time with a quick-sort algorithm. This can clearly become computationally demanding when either the training data size increases. The computational demands are compounded when using KNN models to make a large number of predictions. In a test set with $m$ observations, every new query requires recalculation of distances; solved by brute force in $O(mn(1+log(n)))$ time. 
 
-Algorithms have been developed to improve the speed at which queries are able to run by pre-processing the training data to allow for more efficient nearest-neighbor searches using tree-based structures. Roussopoulos et al. presented the Branch-and-Bound R-tree method, using minimal bounding rectangles to group observations for efficient nearest-neighbor searches. While the method makes clever use of nested hyper-bins, it is fundamentally focused on finding the single nearest-neighbor and the computational gains erode quickly as query neighborhood size, $k$, increases \ktm{(Roussopoulos, Kelley and Vincent	1995)}. Arya and Mount presented another method for preprocessing the training data into a kd-tree structure for efficient \textit{approximate k-nearest-neighbor} (AKNN) queries; a set of $k$ observations with distances within a ratio of $(1+\epsilon)$ to the query point as the true $k^{th}$-nearest-neighbor, for some specified $\epsilon$. This kd-tree AKNN method requires $O(n^2)$ time to organize the data into nested conically shaped search regions that are then stored in $O(n\log(n))$ space, and AKNN queries then require only $O(\log^3(n))$ time \ktm{(Arya and Mount	1993)}. Arya et al. then optimized the AKNN algorithm to preprocess the kd-tree in $O(n\log(n))$ time and store in $O(n)$ space, then able to make AKNN queries in $O(c_{p\epsilon}\log(n))$ time, where $c_{p\epsilon}$ is a constant bounded above by a function of the dimensionality, $p$, and the approximation parameter, $\epsilon$ \ktm{(Arya, Mount, Netanyahu, Silverman and Wu	1998)}. Beygelzimer et al. provide the cover-tree method as an alternative for either KNN or AKNN searches. Cover-tree AKNN approach take $O(c^6 n\log(n))$ time to construct the cover-tree, required $O(n)$ storage space and allows nearest-neighbor queries in $O(c^{12} \log(n))$ time, where $c$ is a bounded expansion constant \ktm{(Beygelzimer, Kakade, Langford	2006)}.  
+Algorithms have been developed to improve the speed at which queries are able to run by pre-processing the training data to allow for more efficient nearest-neighbor searches using tree-based structures. Roussopoulos et al. presented the Branch-and-Bound R-tree method, using minimal bounding rectangles to group observations for efficient nearest-neighbor searches. While the method makes clever use of nested hyper-bins, it is fundamentally focused on finding the single nearest-neighbor and the computational gains erode quickly as query neighborhood size, $k$, increases \ktm{(Roussopoulos, Kelley and Vincent	1995)}. Arya and Mount presented another method for pre-processing the training data into a kd-tree structure for efficient \textit{approximate k-nearest-neighbor} (AKNN) queries; a set of $k$ observations with distances within a ratio of $(1+\epsilon)$ to the query point as the true $k^{th}$-nearest-neighbor, for some specified $\epsilon$. This kd-tree AKNN method requires $O(n^2)$ time to organize the data into nested conically shaped search regions that are then stored in $O(n\log(n))$ space, and AKNN queries then require only $O(\log^3(n))$ time \ktm{(Arya and Mount	1993)}. Arya et al. then optimized the AKNN algorithm to pre-process the kd-tree in $O(n\log(n))$ time and store in $O(n)$ space, then able to make AKNN queries in $O(c_{p\epsilon}\log(n))$ time, where $c_{p\epsilon}$ is a constant bounded above by a function of the dimensionality, $p$, and the approximation parameter, $\epsilon$ \ktm{(Arya, Mount, Netanyahu, Silverman and Wu	1998)}. Beygelzimer et al. provide the cover-tree method as an alternative for either KNN or AKNN searches. Cover-tree AKNN approach take $O(c^6 n\log(n))$ time to construct the cover-tree, required $O(n)$ storage space and allows nearest-neighbor queries in $O(c^{12} \log(n))$ time, where $c$ is a bounded expansion constant \ktm{(Beygelzimer, Kakade, Langford	2006)}.  
 
 Instance selection methodology provides a fundamentally different option for speeding up KNN queries, aiming to select a small targeted subsample from the training data on which to compare new observations. By greatly reducing the train set size, $n$, the computational cost of using even a brute force KNN query may be acceptable. Popular instance selection algorithms include \ktm{... Walter suggestions?} 
 
 \ktm{paragraph transitioning to discussions on predictive modeling goals of KNN classification/regression}
 
-We propose \textit{iterative-quantile nearest-neighbor} (IQNN) models for classification and regression that provides a rough approximation to $k$-nearest-neighborhood models through the use of an iterative process of partitioning the feature space using empirical-quantiles of the variable from the training data. In Section~\ref{iqnn} we explain the intuition and procedural details of the IQNN algorithm. The method requires at most $O(pn\log(n))$ time to construct the nested quantile based partitions on $p$-dimensional features, which are then stored into an R-tree structure using at most $O(pn)$\ktm{???} space, and iterative-quantile neighborhoods queried in $O(\sum_{j=1}^{p}b_j)$ time, where $b_j$ is the number of partitions in the $j^{th}$ feature dimension. In Section~\ref{eval} we evaluate the theoretically expected computational costs of the IQNN approach and then compare the timing performance and predictive accuracy of the IQNN models to the kd-tree AKNN , cover-tree AKNN, and \ktm{some instance selection methods} on a number of real data sets with both numeric and categorical response values. Finally, in Section~\ref{discussion} we discuss the results of our computational testing and identify areas for future research.  
+We propose \textit{iterative-quantile nearest-neighbor} (IQNN) models for classification and regression that provides a rough approximation to $k$-nearest-neighborhood models through the use of an iterative process of partitioning the feature space using empirical-quantiles of the variable from the training data. In Section~\ref{iqnn} we explain the intuition and procedural details of the IQNN algorithm. The method requires at most $O(pn\log(n))$ time to construct the nested quantile based partitions on $p$-dimensional features, which are then stored into an R-tree structure using at most $O(pn)$\ktm{???} space, and iterative-quantile neighborhoods queried in $O(\sum_{j=1}^{p}\delta_j)$ time, where $\delta_j$ is the number of partitions in the $j^{th}$ feature dimension. In Section~\ref{eval} we evaluate the theoretically expected computational costs of the IQNN approach and then compare the timing performance and predictive accuracy of the IQNN models to the kd-tree AKNN , cover-tree AKNN, and \ktm{some instance selection methods} on a number of real data sets with both numeric and categorical response values. Finally, in Section~\ref{discussion} we discuss the results of our computational testing and identify areas for future research.  
 
 \section{Iterative Quantile Nearest-Neighbors}
 \label{iqnn}
@@ -238,7 +238,7 @@ This iterative quantile-based process is generalized for binning a set of $p$-di
 \label{alg:iqalgorithm}
 \end{algorithm}
 
-The process generates $p$-dimensional hyper-rectangular bins over the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ are act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each dimension. Figure~\ref{fig:rtree} below to demonstrates the R-tree generated by the iterative-quantile binning algorithm with the simulated data example from above. In this example, the bin containing a query point, $\vec{q}=(q_{1},q_{2})$, can be identified by first finding the interval containing $q_{1}$ in the first level of the R-tree, then finding the interval containing $q_{2}$ amongst the three nest intervals. 
+The process generates $p$-dimensional hyper-rectangular bins over the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ are act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each dimension. Figure~\ref{fig:rtree} below to demonstrates the R-tree generated by the iterative-quantile binning algorithm with the simulated data example from above. In this example, the bin containing a query point, $\vec{q}=(q_{1},q_{2})$, can be identified by first finding the interval containing $q_{1}$ in the first level of the R-tree, then finding the interval containing $q_{2}$ among the three nest intervals. 
 
 \begin{figure}[hbtp]
 \centering
@@ -253,13 +253,13 @@ A benefit of this nested structure is that our search ignores all branches below
 \subsection{Iterative Quantile Nearest-Neighbor Modeling}
 \label{iqnnmodels}
 
-In Subsection~\ref{unibin} we used univariate quantile bin neighborhoods to roughly approximate KNN regression and classification models. An extension to $p$-dimensional feature spaces will use summary statistics of the training response values within iterative-quantile bins to predicte responses for test points. We propose \textit{iterative-quantile nearest-neighbor} (IQNN) models for regression and classification defined such that
+In Subsection~\ref{unibin} we used univariate quantile bin neighborhoods to roughly approximate KNN regression and classification models. An extension to $p$-dimensional feature spaces will use summary statistics of the training response values within iterative-quantile bins to predict responses for test points. We propose \textit{iterative-quantile nearest-neighbor} (IQNN) models for regression and classification defined such that
 
 \begin{center}
 $\hat{y}_{\vec{q}} = S(\vec{\mathbf{y}}_\ell)$, where $\vec{\mathbf{y}}_\ell = \{y_i \hspace{.15cm} | \hspace{.15cm} i = B_{\ell} \text{, where } \ell=b_{\mathbf{X}}^{iq}(q)\}$
 \end{center}
 
-Thus estimating the response for a query point, $\hat{y}_{\vec{q}}$, using some appropriate summary statistic $S(.)$ over the response values over training observations from the iterative quantile bin containing the query point. We propose using a simple average of numeric responses for IQNN regression and a majority vote count of categorical responses for IQNN classification. Note that the prediction for any query point in iterative-quantile bin $\ell$ is always $S(\vec{\mathbf{y}}_\ell)$ which may be precalculated and stored for fast retrieval using the R-tree structure. The rightmost panel of Figure~\ref{fig:2d_iqbin_plots} visually demonstrates the predicted values from IQNN regression over the simulated bivariate feature space resulting from averaging the ten training data response values in each bin. 
+Thus estimating the response for a query point, $\hat{y}_{\vec{q}}$, using some appropriate summary statistic $S(.)$ over the response values over training observations from the iterative quantile bin containing the query point. We propose using a simple average of numeric responses for IQNN regression and a majority vote count of categorical responses for IQNN classification. Note that the prediction for any query point in iterative-quantile bin $\ell$ is always $S(\vec{\mathbf{y}}_\ell)$ which may be pre-calculated and stored for fast retrieval using the R-tree structure. The rightmost panel of Figure~\ref{fig:2d_iqbin_plots} visually demonstrates the predicted values from IQNN regression over the simulated bivariate feature space resulting from averaging the ten training data response values in each bin. 
 
 A potential problem for IQNN models is that a test observation could fall beyond the outermost bounds of the hyper-rectangular bins. We could refuse to predict for these outlying points to avoid extrapolation outside the range of observed data; however, this would severely limit the practical applicability of IQNN models. An alternative is to alter the quantile binning function, $b_{X}^q(.)$, used in stages 1 and 2.i of Algorithm~\ref{alg:iqalgorithm} to extend the outermost bin boundaries by some tolerance parameter. A \textit{stretched} quantile binning function, $b_{X,\tau}^q(.):x \rightarrow j$, would be defined as 
 %
@@ -287,13 +287,35 @@ An iterative-quantile nearest-neighbor model roughly mimics the neighborhood mec
 \subsection{Computational Efficiency}
 \label{timing}
 
-These models requires computational investment for the construction of the R-tree of univariate intervals over each of the $p$-dimensions used for binning future observations with the iterative-quantile binning function, $b_{\mathbf{X}}^{iq}(q)$. The dominating computational cost for creating the iterative-quantile bins is from generating the $\delta_j$ quantiles within each of the $\prod_{d=1}^{j}\delta_d$ data partitions at each iterative step for $j=1,...,p$. Creating empirical quantile for n observations can be conducted in $o(nlog(n))$ time; a result of using a quick-sort algorithm to order the values. Luckily as the number of partitions requiring quantile calculations increases with each iteration, the number of training values per bin are dropping. The combined time required for generating quantiles in all stages of Algorithm~\ref{alg:iqalgorithm} is
+These models requires computational investment for the construction of the R-tree of univariate intervals over each of the $p$-dimensions used for binning future observations with the iterative-quantile binning function, $b_{\mathbf{X}}^{iq}(q)$. The dominating computational cost for creating the iterative-quantile bins is from generating the $\delta_j$ quantiles within each of the $\prod_{d=1}^{j}\delta_d$ data partitions at each iterative step for $j=1,...,p$. Creating empirical quantile for n observations can be conducted in $O(nlog(n))$ time; a result of using a comparison-based quick-sort algorithm to order the values. \ktm{(This may be slower than needed if we are using Radix sort)} Luckily as the number of partitions requiring quantile calculations increases with each iteration, the number of training values per bin are dropping. The combined time required for generating quantiles in all stages of Algorithm~\ref{alg:iqalgorithm} is
 %
 \begin{center}
-$o(nlog(n) + \displaystyle\sum_{j=2}^{p-1} L_j \frac{n}{L_j}\log(\frac{n}{L_j})) = o(nlog(n) + n\displaystyle\sum_{j=2}^{p-1}\log(\frac{n}{L_j})) = o(nlog(n) + nlog(\displaystyle\prod_{j=2}^{p-1}\frac{n}{L_j}))$, 
+$O(nlog(n) + \displaystyle\sum_{j=2}^{p-1} L_j \frac{n}{L_j}\log(\frac{n}{L_j})) = O(nlog(n) + n\displaystyle\sum_{j=2}^{p-1}\log(\frac{n}{L_j})) = O(nlog(n\displaystyle\prod_{j=2}^{p-1}\frac{n}{L_j}))$, 
 \end{center}
 %
-where $L_j = \displaystyle\prod_{m=1}^{j}\delta_m$ is the number of partitions at iteration $j$; thus $\frac{n}{L_j}$ is the average number of oberservations per partition at iteration $j$. The storage size of the resulting bin structure will however increase as the number of partions increase because the $j^{th}$ level of the R-tree requires $o(L_j)$ space; a total space of size $o(\sum_j^p\{L_j)\})$. Note that the computational time required decreases and the computation storage increases as the number of partitions, $\delta_j$, at each iteratition increases. Thus partitioning to smaller and more bins requires less time but more storage space.
+where $L_j = \displaystyle\prod_{m=1}^{j}\delta_m$ is the number of partitions at iteration $j$; thus $\frac{n}{L_j}$ is the average number of observations per partition at iteration $j$. The storage size of the resulting bin structure will however increase as the number of partitions increase because the $j^{th}$ level of the R-tree requires $O(L_j)$ space; a total space of size $O(\sum_j^p\{L_j)\})$. Note that the computational time required decreases and the computation storage increases as the number of partitions, $\delta_j$, at each iteration increases. Thus partitioning to smaller and more bins requires less time but more storage space.
+
+The IQNN model then performs predictions for test observations in $O(\sum_{j=1}^{p}\delta_j)$ time, scaling with the number of univariate interval checks required to move through the R-tree. Table~\ref{tab:theory_time} summarizes the theoretical pre-processing and prediction times for IQNN models in comparison to the KNN, AKNN and instance selection KNN methods discussed in Section~\ref{intro}.
+
+\begin{table}[h]
+\small
+\centering
+\begin{tabular}{rlll} \hline
+Model & Pre-processing & Storage & Prediction \\ 
+ \hline  
+IQNN & $O(nlog(n\prod_{j=2}^{p-1}\frac{n}{L_j}))$ & $O(\sum_j^pL_j)$ & $O(m\sum_{j=1}^{p}\delta_j)$ \\
+%-------------
+brute force - KNN & NA & NA & $O(mn(1+log(n)))$ \\
+cover-tree - AKNN & $O(c^6 n\log(n))$ & $O(n)$ & $O(mc^{12} \log(n))$ \\
+kd-tree - AKNN    & $O(n\log(n))$ & $O(n)$ & $O(mc_{p\epsilon}\log(n))$ \\
+\hline
+\end{tabular}
+\caption{Computational costs for pre-processing training data with $n$-rows by $p$-columns, storing searchable structure, and predicting for test data with $m$-rows by $p$-columns.}
+\label{tab:theory_time}
+\end{table}
+\normalsize
+
+To empirically demonstrate the time required for binning and prediction we use simulated training and test data sets, such that we are able to control number of observations and features.
 
 %-----------------------------------------------------------------------
 \subsection{Predictive Accuracy}
@@ -306,22 +328,7 @@ where $L_j = \displaystyle\prod_{m=1}^{j}\delta_m$ is the number of partitions a
 
 \newpage
 
-\begin{table}[h]
-\centering
-\begin{tabular}{lll} \hline
- & Bin Boundaries & Bin Centers \\ 
- \hline  
-General &  $ \{\beta_j \text{ }|\text{ } \beta_j > \beta_{j-1} \} $ & $\{x_j^\ast \text{ }|\text{ } x_j^\ast = (\beta_{j-1}+ \beta_j)/2 \}$ \\
-%-------------
-Standard \hspace{0.5cm} & $ \{\beta_j \text{ }|\text{ } \beta_j = \beta_{j-1} + \omega_X \} $\hspace{0.5cm} & $\{x_j^\ast \text{ }|\text{ } x_j^\ast = \beta_{j-1} + \omega_X/2 \}$ \\
-%-------------
-Quantile & $ \{\beta_j \text{ }|\text{ } \beta_j = Q_X(j/J) \} $  & $\{x_j^\ast \text{ }|\text{ } x_j^\ast = Q_X((j-0.5)/J) \}$ \\
-\hline
-\end{tabular}
-\caption{Example table - keep for LaTeX framework}
-\label{tab:rectbinning}
-\end{table}
-%
+
 
 
 
