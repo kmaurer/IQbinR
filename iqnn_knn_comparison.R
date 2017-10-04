@@ -20,11 +20,11 @@ source("iqnn_knn_comparison_functions.R")
 #---------------------------------------------------------------------------
 
 # simulate data from different numbers of dimensions, bins per dimension and neighborhood size
-ps = 2:4 # number of dimensions
-bs = 11:12 # number of bins per dimension
-ks = c(1,10,100) # number in iq-neighborhood
-combinations <- expand.grid(ps,bs,ks)
-names(combinations) <- c("p","b","k")
+ps = 2:3 # number of dimensions
+deltas = 2:3 # number of bins per dimension
+ks = c(1,10) # number in iq-neighborhood
+combinations <- expand.grid(ps,deltas,ks)
+names(combinations) <- c("p","d","k")
 sim_times <- data.frame(combinations, 
                         n = NA, knntime_brute=NA,
                         knntime_cover=NA, knntime_kd=NA,iqnntime_total=NA,
@@ -32,11 +32,11 @@ sim_times <- data.frame(combinations,
 set.seed(12345)
 for(sim in 1:nrow(sim_times)){
   p = sim_times$p[sim]
-  b = sim_times$b[sim]
+  d = sim_times$d[sim]
   k = sim_times$k[sim]
   
   # sim data with number of observations to align number of bins with knn sizes
-  n <- b^p*k*2 
+  n <- d^p*k*2 
   sim_times$n[sim] <- n
   sim_data <- data.frame(sapply(1:p, function(x) rnorm(n)),
                             y=rnorm(n,100,10))
@@ -70,13 +70,13 @@ for(sim in 1:nrow(sim_times)){
   # time the fitting of the iq bin model
   timer <- Sys.time()
   iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
-                   nbins=rep(b,p), jit=rep(0.001,p), stretch=TRUE, tol=rep(5,p))
+                   nbins=rep(d,p), jit=rep(0.001,p), stretch=TRUE, tol=rep(5,p))
   sim_times$iqfittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
   # time the prediction using iq bin model
   timer <- Sys.time()
   iqnn_preds <- iqnn_predict(iqnn_mod, sim_data[test_index,],strict=TRUE)
   sim_times$iqpredtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
-  print(paste("completed p =",p,", b =",b,", k =",k),sep="")
+  print(paste("completed p =",p,", d =",d,", k =",k),sep="")
 }
 
 sim_times$iqnntime_total <- sim_times$iqfittime + sim_times$iqpredtime
@@ -89,13 +89,13 @@ library(tidyverse)
 sim_plot_data <- sim_times %>%
   # select(-iqfittime,-iqpredtime) %>%
   gather(key="type",value="time",knntime_brute:iqpredtime) %>%
-  filter(p==4, b>=9)
+  filter(p==4, d>=9)
 head(sim_plot_data)
 
 ggplot()+
   geom_line(aes(x=k, y=time,color=type),
             size=2,data=sim_plot_data) +
-  facet_grid(p~b)+
+  facet_grid(p~d)+
   scale_y_continuous(trans="log10")+
   scale_x_continuous(trans="log10")
 
