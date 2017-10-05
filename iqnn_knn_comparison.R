@@ -10,6 +10,7 @@ help(package="iqbin")
 
 library(FNN)
 library(tidyverse)
+library(stringr)
 library(randomForest)
 library(RANN)
 library(mvtnorm)
@@ -20,8 +21,8 @@ source("iqnn_knn_comparison_functions.R")
 #---------------------------------------------------------------------------
 
 # simulate data from different numbers of dimensions, bins per dimension and neighborhood size
-ps = 2:3 # number of dimensions
-deltas = 2:3 # number of bins per dimension
+ps = 2:4 # number of dimensions
+deltas = 2:10 # number of bins per dimension
 ks = c(1,10) # number in iq-neighborhood
 ms = c(10000)
 combinations <- expand.grid(ps,deltas,ks,ms)
@@ -31,7 +32,7 @@ sim_times <- data.frame(combinations, n = NA,
                         knn_cover_fittime=NA,knn_cover_predtime=NA,
                         knn_kd_fittime=NA,knn_kd_predtime=NA,
                         iqnn_fittime=NA, iqnn_predtime=NA)
-set.seed(1234)
+
 for(sim in 1:nrow(sim_times)){
   p = sim_times$p[sim]
   d = sim_times$d[sim]
@@ -41,6 +42,7 @@ for(sim in 1:nrow(sim_times)){
   # sim data with number of observations to align number of bins with knn sizes
   n <- k*d^p 
   sim_times$n[sim] <- n
+  set.seed(1234)
   sim_data <- data.frame(sapply(1:p, function(x) runif(n+m)),
                             y=runif(n+m))
   # rebuild column names to proper dimension 
@@ -83,20 +85,31 @@ for(sim in 1:nrow(sim_times)){
   sim_times$iqnn_fittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
   # time the prediction using iq bin model
   timer <- Sys.time()
-  iqnn_preds <- iqnn_predict(iqnn_mod, sim_data[test_index,],strict=TRUE)
+  iqnn_preds <- iqnn_predict(iqnn_mod, sim_data[test_index,],strict=FALSE)
   sim_times$iqnn_predtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
-  print(paste("completed p =",p,", d =",d,", k =",k,"m =",m),sep="")
+  print(paste("completed p =",p,", d =",d,", k =",k,", n =",n,", m =",m),sep="")
 }
 
 sim_times
 # write.csv(sim_times,"simulationTimesBruteCoverKdIqnn.csv", row.names=FALSE)
 
-sim_times <- read.csv("simulationTimesBruteCoverKdIqnn.csv")
-library(tidyverse)
+# sim_times <- read.csv("simulationTimesBruteCoverKdIqnn.csv")
+
+head(sim_times)
+
+types <-c("knn_brute","knn_cover","knn_kd","iqnn")
+
+# pull out fittimes and move from wide to tall
+sim_times %>%
+  select(-ends_with("predtime")) 
+%>%
+  gather(key="type",value="time",knn_brute_fittime:iqnn_predtime) %>%
+
 sim_plot_data <- sim_times %>%
   # select(-iqfittime,-iqpredtime) %>%
-  gather(key="type",value="time",knntime_brute:iqpredtime) %>%
-  filter(p==4, d>=9)
+  gather(key="type",value="time",knn_brute_fittime:iqnn_predtime) %>%
+  mutate(preprocess = ifelse(str_sub(type,-7,-5)=="fit","fitting","predicting")) %>%
+  spread(key="preprocess", value="time")
 head(sim_plot_data)
 
 ggplot()+
