@@ -21,9 +21,9 @@ source("iqnn_knn_comparison_functions.R")
 #---------------------------------------------------------------------------
 
 # simulate data from different numbers of dimensions, bins per dimension and neighborhood size
-ps = 2:4 # number of dimensions
-deltas = 2:10 # number of bins per dimension
-ks = c(1,10) # number in iq-neighborhood
+ps = 2:5 # number of dimensions
+deltas = 2:5 # number of bins per dimension
+ks = c(1,10,100,1000) # number in iq-neighborhood
 ms = c(10000)
 combinations <- expand.grid(ps,deltas,ks,ms)
 names(combinations) <- c("p","d","k","m")
@@ -33,91 +33,136 @@ sim_times <- data.frame(combinations, n = NA,
                         knn_kd_fittime=NA,knn_kd_predtime=NA,
                         iqnn_fittime=NA, iqnn_predtime=NA)
 
-for(sim in 1:nrow(sim_times)){
-  p = sim_times$p[sim]
-  d = sim_times$d[sim]
-  k = sim_times$k[sim]
-  m = sim_times$m[sim]
-  
-  # sim data with number of observations to align number of bins with knn sizes
-  n <- k*d^p 
-  sim_times$n[sim] <- n
-  set.seed(1234)
-  sim_data <- data.frame(sapply(1:p, function(x) runif(n+m)),
-                            y=runif(n+m))
-  # rebuild column names to proper dimension 
-  xcols <- names(sim_data)[1:p]
-  
-  test_index <- 1:m
-  #-------
-  # time the knn predictions with brute force
-  timer <- Sys.time()
-  #!# need to add time taken for standardization?
-  knnTest <- knn.reg(train = sim_data[-test_index,xcols],
-                     test = sim_data[test_index,xcols],
-                     y = sim_data$y[-test_index], k = k, algorithm = "brute")
-  sim_times$knn_brute_predtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
-  #-------
-  # time the knn predictions with cover tree
-  knnTest2 <- aknn_predict(train_x = sim_data[-test_index,xcols],
-                           test_x = sim_data[test_index,xcols],
-                           y = sim_data[-test_index,"y"],
-                           mod_type="reg", k=k,algorithm="cover_tree")
-  sim_times$knn_cover_fittime[sim] <- knnTest2$fittime
-  sim_times$knn_cover_predtime[sim] <- knnTest2$predtime
-  #-------  
-  # time the knn predictions with kd_tree
-  knnTest3 <- aknn_predict(train_x = sim_data[-test_index,xcols],
-                           test_x = sim_data[test_index,xcols],
-                           y = sim_data[-test_index,"y"],
-                           mod_type="reg", k=k,algorithm="kd_tree")
-  # knnTest3 <- kdtree_nn_predict(train = sim_data[-test_index,xcols],
-  #                               test = sim_data[test_index,],
-  #                               mod_type="reg",
-  #                               y = "y", k=k)
-  sim_times$knn_kd_fittime[sim] <- knnTest3$fittime
-  sim_times$knn_kd_predtime[sim] <- knnTest3$predtime
-  #-------
-  # time the fitting of the iq bin model
-  timer <- Sys.time()
-  iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
-                   nbins=rep(d,p), jit=rep(0.001,p), stretch=TRUE, tol=rep(5,p))
-  sim_times$iqnn_fittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
-  # time the prediction using iq bin model
-  timer <- Sys.time()
-  iqnn_preds <- iqnn_predict(iqnn_mod, sim_data[test_index,],strict=FALSE)
-  sim_times$iqnn_predtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
-  print(paste("completed p =",p,", d =",d,", k =",k,", n =",n,", m =",m),sep="")
+# Alternative parameterization based on 2^x scaling
+ns= 2^(seq(0,16,by=4))
+ks= 2^(seq(0,8,by=4))
+ps= 2^(1:2)
+ms = c(1000)
+combinations <- expand.grid(ns,ps,ks,ms)
+names(combinations) <- c("n","p","k","m")
+combinations <- combinations %>%
+  filter(n > k) %>%
+  mutate(d=(n/k)^(1/p))
+head(combinations,10)
+sim_times <- data.frame(combinations,
+                        knn_brute_fittime=NA,knn_brute_predtime=NA,
+                        knn_cover_fittime=NA,knn_cover_predtime=NA,
+                        knn_kd_fittime=NA,knn_kd_predtime=NA,
+                        iqnn_fittime=NA, iqnn_predtime=NA)
+head(sim_times)
+
+sim_all <- NULL
+for(ntrials in 1:10){
+  for(sim in 1:nrow(sim_times)){
+    p = sim_times$p[sim]
+    d = sim_times$d[sim]
+    k = sim_times$k[sim]
+    m = sim_times$m[sim]
+    n = sim_times$n[sim]
+    # sim data with number of observations to align number of bins with knn sizes
+    # n <- k*d^p 
+    sim_times$n[sim] <- n
+    set.seed(1234)
+    sim_data <- data.frame(sapply(1:p, function(x) runif(n+m)),
+                           y=runif(n+m))
+    # rebuild column names to proper dimension 
+    xcols <- names(sim_data)[1:p]
+    
+    test_index <- 1:m
+    #-------
+    # time the knn predictions with brute force
+    timer <- Sys.time()
+    #!# need to add time taken for standardization?
+    knnTest <- knn.reg(train = sim_data[-test_index,xcols],
+                       test = sim_data[test_index,xcols],
+                       y = sim_data$y[-test_index], k = k, algorithm = "brute")
+    sim_times$knn_brute_predtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+    #-------
+    # time the knn predictions with cover tree
+    knnTest2 <- aknn_predict(train_x = sim_data[-test_index,xcols],
+                             test_x = sim_data[test_index,xcols],
+                             y = sim_data[-test_index,"y"],
+                             mod_type="reg", k=k,algorithm="cover_tree")
+    sim_times$knn_cover_fittime[sim] <- knnTest2$fittime
+    sim_times$knn_cover_predtime[sim] <- knnTest2$predtime
+    #-------  
+    # time the knn predictions with kd_tree
+    knnTest3 <- aknn_predict(train_x = sim_data[-test_index,xcols],
+                             test_x = sim_data[test_index,xcols],
+                             y = sim_data[-test_index,"y"],
+                             mod_type="reg", k=k,algorithm="kd_tree")
+    # knnTest3 <- kdtree_nn_predict(train = sim_data[-test_index,xcols],
+    #                               test = sim_data[test_index,],
+    #                               mod_type="reg",
+    #                               y = "y", k=k)
+    sim_times$knn_kd_fittime[sim] <- knnTest3$fittime
+    sim_times$knn_kd_predtime[sim] <- knnTest3$predtime
+    #-------
+    # time the fitting of the iq bin model
+    timer <- Sys.time()
+    iqnn_mod <- iqnn(sim_data[-test_index,], y="y", bin_cols=xcols,
+                     nbins=rep(d,p), jit=rep(0.001,p), stretch=TRUE, tol=rep(5,p))
+    sim_times$iqnn_fittime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+    # time the prediction using iq bin model
+    timer <- Sys.time()
+    iqnn_preds <- iqnn_predict(iqnn_mod, sim_data[test_index,],strict=FALSE)
+    sim_times$iqnn_predtime[sim] <- as.numeric(Sys.time() - timer,units="mins")
+    print(paste("completed p =",p,", d =",d,", k =",k,", n =",n,", m =",m),sep="")
+  }
+  sim_all <- rbind(sim_all,sim_times)
 }
 
-sim_times
-# write.csv(sim_times,"simulationTimesBruteCoverKdIqnn.csv", row.names=FALSE)
+# write.csv(sim_times,"simulationTimesPowersOf2.csv", row.names=FALSE)
 
-# sim_times <- read.csv("simulationTimesBruteCoverKdIqnn.csv")
+# sim_times <- read.csv("simulationTimesPowersOf2.csv")
 
 head(sim_times)
 
 types <-c("knn_brute","knn_cover","knn_kd","iqnn")
 
 # pull out fittimes and move from wide to tall
-sim_times %>%
-  select(-ends_with("predtime")) 
-%>%
-  gather(key="type",value="time",knn_brute_fittime:iqnn_predtime) %>%
-
-sim_plot_data <- sim_times %>%
-  # select(-iqfittime,-iqpredtime) %>%
-  gather(key="type",value="time",knn_brute_fittime:iqnn_predtime) %>%
-  mutate(preprocess = ifelse(str_sub(type,-7,-5)=="fit","fitting","predicting")) %>%
-  spread(key="preprocess", value="time")
-head(sim_plot_data)
+sim_fit_times <- sim_times %>%
+  select(-ends_with("predtime")) %>%
+  gather(key="type",value="time",knn_brute_fittime:iqnn_fittime) %>%
+  mutate(stage = "fitting",
+         type = str_sub(type,1,-9),
+         plabel = factor(paste0("p == 2^",log2(p)), levels=paste0("p == 2^",sort(unique(log2(sim_times$p))))),
+         klabel = factor(paste0("k == 2^",log2(k)), levels=paste0("k == 2^",sort(unique(log2(sim_times$k))))) )
+head(sim_fit_times)
 
 ggplot()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(x=n, y=time, color=type),
+            size=2,data=sim_fit_times) +
+  facet_grid(plabel~klabel, labeller = label_parsed)+
+  scale_y_continuous(trans="log10") +
+  scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
+                     labels=paste0("2^",seq(4,20,by=4))) +
+  labs(title="fitting times")
+
+
+sim_pred_times <- sim_times %>%
+  select(-ends_with("fittime")) %>%
+  gather(key="type",value="time",knn_brute_predtime:iqnn_predtime) %>%
+  mutate(stage="prediction",
+         type=str_sub(type,1,-10))
+
+
+sim_plot_data <- rbind(sim_fit_times,sim_pred_times)
+head(sim_plot_data)
+tail(sim_plot_data)
+
+
+
+ggplot()+
+  geom_hline(yintercept = 0)+
   geom_line(aes(x=k, y=time,color=type),
-            size=2,data=sim_plot_data) +
+            size=2,data=sim_pred_times) +
   facet_grid(p~d)+
   scale_y_continuous(trans="log10")+
-  scale_x_continuous(trans="log10")
+  scale_x_continuous(trans="log10") +
+  labs(title="prediction times")
+
 
 ###-----------------------------------------------------------------------------------------------------
 # Compare using Walter "medium data sets"
