@@ -1,22 +1,26 @@
 # Functions used in iqnn_knn_comparison.R
 
-kdtree_nn_predict <- function(train,test,y,mod_type="class",k=10){
+kdtree_nn_predict <- function(train_x,test_x,y,mod_type="class",k=10){
   timer <- Sys.time()
-  nearest <- nn2(data=train,query=test, k=k)$nn.idx
+  neighbors <- nn2(data=train_x,query=test_x, k=k)$nn.idx
   fittime <- as.numeric(Sys.time() - timer,units="mins")
   
-  timer <- Sys.time()
+  # make predictions (and time it)
   if(mod_type=="class"){
-    preds <- sapply(1:nrow(test), function(x) {
-      iqbin::majority_vote(as.character(train[nearest[x,],y]))
+    timer <- Sys.time()
+    preds <- sapply(1:nrow(test_x), function(x) {
+      iqbin::majority_vote(as.character(y[neighbors[x,]]))
     })
+    predtime <- as.numeric(Sys.time() - timer,units="mins")
   } else if(mod_type=="reg") {
-    preds <- sapply(1:nrow(test), function(x) {
-      mean(train[nearest[x,],y])
+    timer <- Sys.time()
+    preds <- sapply(1:nrow(test_x), function(x) {
+      mean(y[neighbors[x,]], na.rm=TRUE) 
     })
+    predtime <- as.numeric(Sys.time() - timer,units="mins")
   } else {
     print("Must specify mod_type as either class or reg")
-    preds <- NULL
+    preds <- NULL; fittime <- NULL;predtime <- NULL
   }
   predtime <- as.numeric(Sys.time() - timer,units="mins")
   return(list(preds=preds,fittime=fittime,predtime=predtime))
