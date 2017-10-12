@@ -23,11 +23,11 @@ source("iqnn_knn_comparison_functions.R")
 
 # simulate data from different numbers of dimensions, bins per dimension and neighborhood size
 # parameterization based on 2^x scaling
-ns= 2^(seq(4,22,by=2))
+ns= 2^(seq(4,14,by=2))
 # ns= 2^(seq(4,10,by=2))
-ks= 2^(seq(0,12,by=2))
+ks= 2^(seq(0,14,by=2))
 ps= 2^(1)
-ms = c(10000)
+ms = c(1000)
 combinations <- expand.grid(ns,ps,ks,ms)
 names(combinations) <- c("n","p","k","m")
 combinations <- combinations %>%
@@ -44,9 +44,10 @@ sim_times <- data.frame(combinations,
 head(sim_times)
 
 set.seed(12345)
-trial_sim_seeds <- sample(1:1000000,100*nrow(sim_times))
-sim_all <- list(NULL)
-for(trial in 1:10){
+trial_sim_seeds <- sample(1:1000000,10000*nrow(sim_times))
+# load(file="sim_all.Rdata")
+# sim_all <- list(NULL)
+for(trial in 1:100){
   trial_timer <- Sys.time()
   for(sim in 1:nrow(sim_times)){
     # set seed for method order unique to trial/parameterization combination
@@ -131,9 +132,9 @@ for(trial in 1:10){
   print(paste("Trial",trial,"completed in", as.numeric(Sys.time() - trial_timer,units="mins"),"minutes"))
   sim_all[[trial]] <- sim_times
 }
-sim_all
-# save(sim_all, file="sim_all.Rdata")
-# write.csv(sim_times,"simulationTimesPowersOf2.csv", row.names=FALSE)
+tail(sim_all[[10]])
+# save(sim_all, file="sim_all_small_n.Rdata")
+# write.csv(sim_times,"simulationTimesPowersOf2Big.csv", row.names=FALSE)
 
 # load(file="sim_all.Rdata")
 
@@ -168,10 +169,11 @@ head(sim_fit_times)
 
 fit_times <- ggplot()+
   geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 2^14)+
   geom_line(aes(x=n, y=time, color=type),
             size=1.2,data=sim_fit_times) +
   facet_grid(plabel~klabel, labeller = label_parsed)+
-  scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.001,.01,.1,1,10)) +
+  scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.0001,.001,.01,.1,1,10)) +
   scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
                      labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
   scale_color_brewer(palette="Set2")+
@@ -193,12 +195,13 @@ head(sim_pred_times)
 
 pred_times <- ggplot()+
   geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 2^14)+
   geom_line(aes(x=n, y=time, color=type),
             size=1.2,data=sim_pred_times) +
   # geom_text(aes(x=n, y=time, label=dlabel),
   #           data=filter(sim_pred_times, type=="iqnn"), parse=TRUE) +
   facet_grid(plabel~klabel, labeller = label_parsed)+
-  scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.001,.01,.1,1,10)) +
+  scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.001,.01,.1,1,10,100)) +
   scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
                      labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
   scale_color_brewer(palette="Set2")+
@@ -607,7 +610,8 @@ Sys.time() - timer
 
 #-----------------------------------------------------------------------------------------------
 ### Testing with cabs data
-load("~/onePercentSample.Rdata")
+setwd("C:\\Users\\maurerkt\\Documents\\Data")
+load("onePercentSample.Rdata")
 library(tidyverse)
 library(lubridate)
 
@@ -657,6 +661,11 @@ Sys.time() - timer
 sqrt(mean((taxi_std[test_index,"fare_amount"]-knnTest$pred)^2))
 
 #--------------
+timer <- Sys.time()
+iqbin(data=taxi[-test_index,], bin_cols=c("time","pickup_longitude","pickup_latitude"),
+      nbins=c(10,10,10), jit=rep(0.001,3), output="both")
+Sys.time() - timer
+
 timer <- Sys.time()
 iqnn_mod <- iqnn(taxi[-test_index,], y="fare_amount", bin_cols=c("time","pickup_longitude","pickup_latitude"),
                  nbins=c(10,10,10), jit=rep(0.001,3))
