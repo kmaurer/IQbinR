@@ -44,7 +44,7 @@ sim_times <- data.frame(combinations,
 head(sim_times)
 
 set.seed(12345)
-trial_sim_seeds <- sample(1:1000000,10000*nrow(sim_times))
+trial_sim_seeds <- sample(1:100000000,1000000)
 # load(file="sim_all.Rdata")
 # sim_all <- list(NULL)
 for(trial in 1:100){
@@ -135,6 +135,7 @@ for(trial in 1:100){
 tail(sim_all[[10]])
 # save(sim_all, file="sim_all_small_n.Rdata")
 # write.csv(sim_times,"simulationTimesPowersOf2Big.csv", row.names=FALSE)
+# sim_times <- read.csv("simulationTimesPowersOf2Big.csv")
 
 # load(file="sim_all.Rdata")
 
