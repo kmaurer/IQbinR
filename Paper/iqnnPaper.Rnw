@@ -29,13 +29,18 @@ options(scipen=5, digits=5)
 
 # libraries
 library(iqbin)
-library(mvtnorm)
+library(FNN)
 library(tidyverse)
+library(stringr)
+library(randomForest)
+library(RANN)
+library(mvtnorm)
+library(gridExtra)
 
 # source in functions
 
 # Load all data
-
+load(file="../sim_all.Rdata")
 @
 
 %-----------------------------------------------------------------------------------------------------
@@ -317,31 +322,120 @@ kd-tree - AKNN    & $O(pn\log(n))$ & $O(n)$ & $O(mc_{p\epsilon}\log(n))$ \\
 \end{table}
 \normalsize
 
-We use simulated training and test data sets to empirically evaluate the time required for preprocessing and prediction under many controlled scenarios. For simplicity, values for training and test sets are generated using a uniform distribution over continuous intervals; parameterized such that $x_{ij} \sim iid Uniform(0,1)$ and $y_i \sim iid Uniform(0,1)$, for observation $i=1,...,n$ and features $j=1,2$. We will consider only balanced-bin parameterizations for IQNN where $\delta_1=\delta_2$, to allow the most appropriate comparisons with the KNN methods. We generate a new data set for combinations of training data size and neighborhoods size: $n\in\{2^\eta | \eta=4,6,8,10,12,14,16,18,20,22\}$ and $k\in\{2^\kappa | \kappa=2,4,6,8,10,12\}$, respectively. We maintain a constant number of test points with $m=1000$ because all models being considered generate predictions in line, thus timing differnces will reflect the relative speed per prediction. These powers of two were used to conveniently align the neighborhood sizes with the $\delta$ parameter needed for balanced binning; for the bivariate feature space $\delta = (n/k)^{1/p} = (2^\eta/2^\kappa)^{1/2} = 2^{(\eta-\kappa)/2}$ will provide matching neighborhood sizes for the IQNN and KNN methods. Naturally, we consider only parameterizations where the training set is larger than the neighborhood sizes, $n > k$. We impose one further constraint to $n$ and $k$ combinations such that we limit the total number of IQNN bins, $\delta_1 \delta_2 \le 2^{16}$.
+We use simulated training and test data sets to empirically evaluate the time required for preprocessing and prediction under many controlled scenarios. For simplicity, values for training and test sets are generated using a uniform distribution over continuous intervals; parameterized such that $x_{ij}$ and $y_i$  are independently and identically distributed $Uniform(0,1)$, for all observations $i=1,...,n$ and features $j=1,2$. We will consider only balanced-bin parameterizations for IQNN where $\delta_1=\delta_2$, to allow the most appropriate comparisons with the KNN methods. We generate a new data set for combinations of training data size and neighborhoods size: $n\in\{2^\eta \hspace{.1cm} | \hspace{.1cm} \eta=4,6,8,10,12,14,16,18,20,22\}$ and $k\in\{2^\kappa \hspace{.1cm} | \hspace{.1cm} \kappa=2,4,6,8,10,12\}$, respectively. We maintain a constant number of test points with $m=1000$ because all models being considered generate predictions in line, thus timing differnces will reflect the relative speed per prediction. These powers of two were used to conveniently align the neighborhood sizes with the $\delta$ parameter needed for balanced binning; for the bivariate feature space $\delta = (n/k)^{1/p} = (2^\eta/2^\kappa)^{1/2} = 2^{(\eta-\kappa)/2}$ will provide matching neighborhood sizes for the IQNN and KNN methods. Naturally, we consider only parameterizations where the training set is larger than the neighborhood sizes, $n > k$. We impose one further constraint to $n$ and $k$ combinations such that we limit the total number of IQNN bins, $\delta_1 \delta_2 \le 2^{16}$.
 
-For each parameterization described above we simulate training and test data sets then we collect timing measurements for training data pre-processing and generating test data predictions. All simulations were run on a Dell Optiplex 9020(TM) Desktop with an Intel(R) Core(TM) i7-4770 3.40GHz CPU. To account for variation in processing speed we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations and the order of the model fitting was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 25 times for each parameterization. For smaller training sets, $n \le 2^{14}$ we repeat all simulations 1000 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences manifest much more strongly when $n$ is large. See Table\ktm{AddRefHere} in Appendix\ktm{addAppendixRefHere} for all parameter combinations and average timing measurements.  
+For each parameterization described above we repeatedly simulate training and test data sets, then we collect and average timing measurements for training data pre-processing and generating test data predictions using IQNN, KNN and AKNN models. All simulations were run using R \ktm{(cite R)} on a Dell Optiplex 9020(TM) Desktop with an Intel(R) Core(TM) i7-4770 3.40GHz CPU. IQNN methods were implementated in R and are available in the \texttt{iqbin} package \ktm{(cite my package here?)}. The KNN and AKNN methods were run using impementations in the \texttt{FNN} package \ktm{(cite FNN)}, which are highly optimized and drop intensive tasks down into C \ktm{(cite C)}.  
 
-In Figure~\ref{fig:sim_time} we see...
+To account for variation in processing speed we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations and the order of the model fitting was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 25 times for each parameterization. For smaller training sets, $n \le 2^{14}$ we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences manifest much more strongly when $n$ is large. See Table\ktm{AddRefHere} in Appendix\ktm{addAppendixRefHere} for all parameter combinations and average timing measurements.  
 
-<<sim_time, echo=F,include=T,eval=T,fig.width=3, fig.height=3.5, out.width='.32\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Sim Sample times...">>=
-plot(1:4,1:4)
+Figure~\ref{fig:sim_time} displays the average time for pre-processing and predicting using each method in each simulated scenario. We see that for small training set sizes and for small numbers of neighbors, the KNN and AKNN models outperform the IQNN model. The KNN model using brute-force requires no time to pre-precess but requires substantially more time to predict in the test set as the training set size increases. The IQNN and both AKNN methods have increasing pre-processing time as the training and/or neighborhood sizes grow. Interestingly, the pre-processing time grows more rapidly as a function of $n$ but less rapidly as a function of $k$ for the IQNN model than the AKNN models. Pre-processing in AKNN models tends to be more efficient than IQNN for small training sets and neighborhoods, but less efficient as these increase. For prediction, the AKNN methods require increasing time as training and neighborhood sizes increase, whereas the IQNN models require nearly constant time across all scenarios. As with pre-processing, AKNN models are more efficient for prediction than IQNN for small $n$ and $k$, but less efficient as these sizes grow. 
+<<sim_time, echo=F,include=T,eval=T,fig.width=9, fig.height=3, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Sim Sample times...",warning=FALSE>>=
+
+# # stack all in list
+# sim_times_all <- do.call("rbind", sim_all)
+# # gather by parameterizations, then average time for each combination
+# sim_times <- sim_times_all %>% 
+#   group_by(n,p,k,m,d) %>%
+#   summarize(knn_brute_fittime = mean(knn_brute_fittime), knn_brute_predtime = mean(knn_brute_predtime),
+#             knn_cover_fittime = mean(knn_cover_fittime), knn_cover_predtime = mean(knn_cover_predtime),
+#             knn_kd_fittime = mean(knn_kd_fittime), knn_kd_predtime = mean(knn_kd_predtime),
+#             iqnn_fittime = mean(iqnn_fittime), iqnn_predtime = mean(iqnn_predtime)) %>%
+#   as.data.frame()
+# 
+
+sim_times <- read.csv("../simulationTimesPowersOf2Big.csv")
+
+# pull out fittimes and move from wide to tall
+sim_fit_times <- sim_times %>%
+  select(-ends_with("predtime")) %>%
+  gather(key="type",value="time",knn_brute_fittime:iqnn_fittime) %>%
+  mutate(stage = "fitting",
+         type = str_sub(type,1,-9),
+         plabel = factor(paste0("p == 2^",log2(p)), levels=paste0("p == 2^",sort(unique(log2(sim_times$p))))),
+         klabel = factor(paste0("k == 2^",log2(k)), levels=paste0("k == 2^",sort(unique(log2(sim_times$k))))) )
+
+fit_times <- ggplot()+
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 2^14)+
+  geom_line(aes(x=n, y=time, color=type),
+            size=1.2,data=sim_fit_times) +
+  facet_grid(plabel~klabel, labeller = label_parsed)+
+  scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.0001,.001,.01,.1,1,10)) +
+  scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
+                     labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
+  scale_color_brewer(palette="Set2")+
+  labs(title="Training Data Pre-Processing Times", x=" ")+
+  theme_bw()
+
+# pull out prediction times and move from wide to tall
+sim_pred_times <- sim_times %>%
+  select(-ends_with("fittime")) %>%
+  gather(key="type",value="time",knn_brute_predtime:iqnn_predtime) %>%
+  mutate(stage = "predicting",
+         type = str_sub(type,1,-10),
+         plabel = factor(paste0("p == 2^",log2(p)), levels=paste0("p == 2^",sort(unique(log2(sim_times$p))))),
+         klabel = factor(paste0("k == 2^",log2(k)), levels=paste0("k == 2^",sort(unique(log2(sim_times$k))))),
+         dlabel = factor(paste0("delta == 2^",log2(d)), levels=paste0("delta == 2^",sort(unique(log2(sim_times$d))))) )
+
+pred_times <- ggplot()+
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 2^14)+
+  geom_line(aes(x=n, y=time, color=type),
+            size=1.2,data=sim_pred_times) +
+  # geom_text(aes(x=n, y=time, label=dlabel),
+  #           data=filter(sim_pred_times, type=="iqnn"), parse=TRUE) +
+  facet_grid(plabel~klabel, labeller = label_parsed)+
+  scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.001,.01,.1,1,10,100)) +
+  scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
+                     labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
+  scale_color_brewer(palette="Set2")+
+  labs(title="Test Data Prediction Times")+
+  theme_bw()
+
+# grid.arrange(fit_times,pred_times,nrow=2)
+fit_times
+pred_times
 @
 
-The exact sample sizes and average computational times for all combinations are listed in Table~\ref{tab:sim_param} of Appendix~\ktm{??}.
-
-
-
-and iterative quantile binning with three bins per feature dimension is used to create iterative-quantile nearest-neighborhoods of size $k=10$. The left and center panels demonstrates the two stages of quantile-based partitioning necessary for this bivariate feature space. 
+Similar timing results hold in higher dimensonal feature spaces, where IQNN outperforms the KNN and AKNN methods for "big $n$ - big $k$" cases. See Appendix \ktm{(ref here)} for the timing results for analogous explorations using simulations with $p=4$ and $p=8$ dimensional feature spaces. 
 
 
 %-----------------------------------------------------------------------
 \subsection{Predictive Accuracy}
 \label{accuracy}
 
+
+<<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=8, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="3-nn examples times...",warning=FALSE>>=
+load(file="../plot_data_3nn.Rdata")
+# plot the accuracy/fit time/prediction time
+ggplot()+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(x=data_name, y=value,color=type, group=type),size=1, data=results_all_3nn)+
+  facet_grid(metric_pretty ~ ., scales="free_y") +
+  theme_bw()+
+  labs(title="3-NN Classifier vs IQNN Classifier (~3 per bin)",
+       subtitle="Based on averages across 1000 repetitions of 10-fold CV",
+       x="Data Set", y="", 
+       caption="Data Source: UCI Machine Learning Data Repository")+
+  geom_text(aes(x=data_name, label=n), y=.2,data=label_data)
+@
+
+
+
+
+
 %-----------------------------------------------------------------------------
 
 \section{Discussion and Future Work}
 \label{discussion}
+
+We have proposed an alternative to $k$-nearest-neighbors models using iterative-quantile binning. In Section~\ref{eval} we showed that IQNN models provide computational advantage over KNN and AKNN models for situations with large training set sizes and large neighborhoods. We also saw that the predictive accuracy from the IQNN model was ... 
+
+It is important to consider the real-time costs to an analyst in choosing between the IQNN, KNN and AKNN models. The simulation in Subsection~\ref{timing} were reported and compared on a log scale, but the real world wait times for the analyst are experienced linearly. For ``small $n$ - small $k$" scenarios the IQNN was consistently slower, but the differences observed in our simulations were measured in seconds. For ``big $n$ - small $k$" simulations we observed that the kd-tree AKNN model outperformed the IQNN for preprocessing, saving several minutes in some cases. However, IQNN providing minutes to hours of reduced wait time in our simulated ``big $n$ - big $k$" scenarios. Therefore, IQNN provides an intreguing computationally efficient alternative to KNN in situations with large training data where we desire to generate large neighborhoods. 
+ 
+Uniquely, the storage size of the IQNN r-tree and time required for prediction is not tied to the training set size. The aggregation within iterative-quantile bins provides an option for scaling a KNN-style method to cases with truly "big $n$" data scenarios if sufficient computational infrastructure is available at the time of model fitting to create bins. The iterative quantile binning algorithm could be implemented using a database query language to scale to situations with huge numbers of training observations because the iterative-quantile binning algorithm only requires tracking indeces in a sequence of quantile calculation, then calculating simple summary statistics over the resulting index groups. 
+
+In Section~\ref{accuracy} that
 
 \newpage
 

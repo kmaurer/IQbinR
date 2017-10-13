@@ -47,7 +47,7 @@ set.seed(12345)
 trial_sim_seeds <- sample(1:100000000,1000000)
 # load(file="sim_all.Rdata")
 # sim_all <- list(NULL)
-for(trial in 1:100){
+for(trial in 1:1000){
   trial_timer <- Sys.time()
   for(sim in 1:nrow(sim_times)){
     # set seed for method order unique to trial/parameterization combination
@@ -137,12 +137,14 @@ tail(sim_all[[10]])
 # write.csv(sim_times,"simulationTimesPowersOf2Big.csv", row.names=FALSE)
 # sim_times <- read.csv("simulationTimesPowersOf2Big.csv")
 
-# load(file="sim_all.Rdata")
+# load(file="sim_all_small_n.Rdata")
+sim_times_small <- do.call("rbind", sim_all)
 
-
+# load(file="sim_all_big_n.Rdata")
+sim_times_big <- do.call("rbind", sim_all)
 
 # stack all in list
-sim_times_all <- do.call("rbind", sim_all)
+sim_times_all <- rbind(sim_times_big,sim_times_small)
 # gather by parameterizations, then average time for each combination
 sim_times <- sim_times_all %>% 
   group_by(n,p,k,m,d) %>%
@@ -180,8 +182,6 @@ fit_times <- ggplot()+
   scale_color_brewer(palette="Set2")+
   labs(title="Training Data Pre-Processing Times", x=" ")+
   theme_bw()
-
-
 
 # pull out prediction times and move from wide to tall
 sim_pred_times <- sim_times %>%
@@ -323,45 +323,60 @@ for(set in 1:6){
   }
 }
 Sys.time() - big_timer
-str(results_all_lsist)
+str(results_all_list)
 
 # Save it
 # save(results_all_list, file="iqnn_knn_comparisons.Rdata")
-load(file="iqnn_knn_comparisons.Rdata")
+# load(file="iqnn_knn_comparisons.Rdata")
 
 # process for table form (average times/accuracy over each trial)
 results_all <- data.frame(do.call("rbind", results_all_list),
-                          type=rep(c("iqnn","knn - brute ","knn - cover tree","knn - kd tree"),each=nrow(results_all_list$results_iqnn))) %>%
+                          type=rep(c("iqnn","knn - brute","knn - cover tree","knn - kd tree"),each=nrow(results_all_list$results_iqnn))) %>%
   group_by(data_name,obs,nn_size,type) %>%
   summarize(avg_cv_accuracy=mean(cv_accuracy,na.rm=TRUE),
             avg_time_fit=mean(time_fit,na.rm=TRUE),
             avg_time_pred=mean(time_pred,na.rm=TRUE)) %>%
-  as.data.frame()
+  as.data.frame() %>%
+  group_by(data_name) %>%
+  mutate(diff_acc = avg_cv_accuracy - avg_cv_accuracy[2])  #!# only works due to knn brute being 2nd in order - danger of hard coding (don't know simple alternative)
 head(results_all)
 # write.csv(results_all,"resultsToShareKarsten.csv", row.names=FALSE)
 
-# Combine into data frame for plots
-results_all <- data.frame(do.call("rbind", results_all_list),
-                          type=rep(c("iqnn","knn - brute ","knn - cover tree","knn - kd tree"),each=nrow(results_all_list$results_iqnn))) %>%
-  gather(key="metric",value="value",cv_accuracy:time_pred) %>% 
+results_all_3nn  <- results_all %>%
+  select(-avg_cv_accuracy) %>%
+  gather(key="metric",value="value",avg_time_fit:diff_acc) %>% 
   group_by(data_name,obs,nn_size,type,metric) %>%
   summarize(value=mean(value,na.rm=TRUE)) %>%
   as.data.frame() %>%
   mutate(data_name = factor(data_name, levels=medium_sets[order(sizes)]),
-         metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)")),
-         metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)"))) 
-head(results_all)
-levels(results_all$metric_pretty)
+          metric_pretty = factor(metric, labels=c("Preprocess Time (sec)","Prediction Time (sec)","Test Accuracy (% diff from KNN)")),
+          metric_pretty = factor(metric, labels=c("Preprocess Time (sec)","Prediction Time (sec)","Test Accuracy (% diff from KNN)"))) 
+
+# Combine into data frame for plots
+# results_all <- data.frame(do.call("rbind", results_all_list),
+#                           type=rep(c("iqnn","knn - brute","knn - cover tree","knn - kd tree"),each=nrow(results_all_list$results_iqnn))) %>%
+#   gather(key="metric",value="value",cv_accuracy:time_pred) %>% 
+#   group_by(data_name,obs,nn_size,type,metric) %>%
+#   summarize(value=mean(value,na.rm=TRUE)) %>%
+#   as.data.frame() %>%
+#   mutate(data_name = factor(data_name, levels=medium_sets[order(sizes)]),
+#          metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)")),
+#          metric_pretty = factor(metric, labels=c("Test Accuracy Rate","Preprocess Time (sec)","Prediction Time (sec)"))) 
+# head(results_all)
+# levels(results_all$metric_pretty)
 
 label_data <- arrange(unique(results_all[,c("metric_pretty","data_name")]),data_name)
 label_data$n <- NA
 label_data[label_data$metric_pretty=="Prediction Time (sec)",]$n <- paste0("n=",sort(sizes))
 label_data
 
+# save(results_all_3nn,label_data,file="plot_data_3nn.Rdata")
+
+
 # plot the accuracy/fit time/prediction time
 ggplot()+
   geom_hline(yintercept = 0)+
-  geom_line(aes(x=data_name, y=value,color=type, group=type),size=1, data=results_all)+
+  geom_line(aes(x=data_name, y=value,color=type, group=type),size=1, data=results_all_3nn)+
   facet_grid(metric_pretty ~ ., scales="free_y") +
   theme_bw()+
   labs(title="3-NN Classifier vs IQNN Classifier (~3 per bin)",
