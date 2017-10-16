@@ -404,8 +404,13 @@ Similar timing results hold in higher dimensonal feature spaces, where IQNN outp
 \subsection{Predictive Accuracy}
 \label{accuracy}
 
+While computational efficiency is important, a new method must demonstract comparable or favorable predictive accuracy to existing method to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models; using mean squared error (MSE) and misclassification error rates to assess regression and classification models, respectively. Eight real world data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, eight data sets with continuous response values and continuous features variables were selected to test regression accuracy. These data sets range in size from $n=150$ to $n=\ktm{12345}$, and number of features variable from $p=2$ to $p=\ktm{123}$. All data sets come from the University of California Irvin Machine (UCI) Learning Repository \ktm{(put repo citation here)}. See Table \ktm{Tab\#} in Appendix \ktm{(ref here)} for a more detailed summary of each data set considered below.
 
-<<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=8, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="3-nn examples times...",warning=FALSE>>=
+The units associated with each feature varible and the number of feature variables differed across all data sets, so a consistent data pre-processing was implemented to allow for more uniform comparisons of accuracy for IQNN, KNN and AKNN models. First, a center/scale transformation was used to standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Secondly, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all eight cases. This was done by fitting a random forest to part of the training data removing all but variables with the two highest importance scores; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. The added complexity of using high importance variables is done to allow stronger predictions under the constraint than might be had by selecting two features at random. The added benefit of this variable selection approach is that the order of importance scores suggests an feature ordering that will is used in the iterative-quantile binning algorithm.
+
+In model specification we aim for the number of iterative-quantile neighbors and k-nearest neightbors to be as close as possible. Each KNN and AKNN model is set to construct three-nearest neighborhoods, and the IQNN models use the nearly-balanced binning parameterization ($\gamma$=1) that provides three points per bin. Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the three neighbor regression and classification models for all considered real-world data sets. In each plot the accuracy values come from average accuracies across 1000 initializations of ten-fold cross validation for each datas et. These are visualized relative change in accuracy compared to the KNN model - fit with brute force - as the baseline model. For regression, we compare the percent change from the KNN cross-validated MSE to remove differences response units across data sets. For classification, we can simply compare the diffence from KNN in cross-validated percent misclassified. 
+
+<<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=8, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="3-nn examples times...",warning=FALSE>>=
 load(file="../plot_data_3nn.Rdata")
 # plot the accuracy/fit time/prediction time
 ggplot()+
@@ -420,8 +425,7 @@ ggplot()+
   geom_text(aes(x=data_name, label=n), y=.2,data=label_data)
 @
 
-
-
+In Figure~\ref{fig:categorical_accuracy} we see that for all regression models \ktm{there are ...}. For the classification models we see that IQNN has mixed performance with \ktm{four} case of lower and \ktm{two} cases with higher accuracy than KNN. Noteably, the misclassification error rates for all IQNN classifier models were consistantly within 0.5\% of the KNN accuracy. The accuracy of IQNN models display very similar behavior to that exhibited by the AKNN models. 
 
 
 %-----------------------------------------------------------------------------
