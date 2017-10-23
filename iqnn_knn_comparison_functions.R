@@ -171,7 +171,7 @@ knn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, knn_algorithm = 
   data <- as.data.frame(data)
   set.seed(seed)
   cv_cohorts <- make_cv_cohorts(data, cv_k)
-  cv_preds <- factor(rep(NA,nrow(data)),levels=levels(data[,y]))
+  cv_preds <- factor(rep("NA",nrow(data)),levels=levels(data[,y]))
   time_knn <- 0
   for(fold in 1:length(unique(cv_cohorts))){
     test_index <- which(cv_cohorts==fold)
@@ -189,6 +189,34 @@ knn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, knn_algorithm = 
   return(list(preds=cv_preds,time_fit=time_fit, pred_time=time_knn-time_fit))
 }
 
+#--------------------------------------
+### iqnn_cv_predict with output as list containing predictions AND timing values for fitting and predicting
+iqnn_cv_predict_timer <- function(data, y, mod_type = "reg", bin_cols, nbins, 
+                                  jit = rep(0,length(bin_cols)), stretch = FALSE, 
+                                  tol = rep(0, length(bin_cols)), strict = FALSE, cv_k = 10,
+                                  seed=sample(1:100000, 1)) {
+  data <- as.data.frame(data)
+  set.seed(seed)
+  cv_cohorts <- make_cv_cohorts(data, cv_k)
+  cv_preds <- factor(rep(NA,nrow(data)),levels=levels(data[,y]))
+  time_fit <- 0
+  pred_time <- 0
+  for (fold in 1:length(unique(cv_cohorts))) {
+    test_index <- which(cv_cohorts == fold)
+    train_data_temp <- data[-test_index, ]
+    row.names(train_data_temp) <- 1:nrow(train_data_temp)
+    timer <- Sys.time()
+    iqnn_mod <- iqnn(train_data_temp, y = y, mod_type = mod_type, 
+                     bin_cols = bin_cols, nbins = nbins, jit = jit, stretch = stretch, 
+                     tol = tol)
+    time_fit <- time_fit + difftime(Sys.time(),timer,units="sec")
+    
+    timer <- Sys.time()
+    cv_preds[test_index] <- iqnn_predict(iqnn_mod, data[test_index, ], strict = strict, type = "estimate")
+    pred_time <- pred_time + difftime(Sys.time(),timer,units="secs")
+  }
+  return(list(preds=cv_preds,time_fit=time_fit,pred_time=pred_time))
+}
 #--------------------------------------
 ### kdtree_nn_cv_pred with output as list containing predictions AND timing values for fitting and predicting
 kdtree_nn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, eps = 0, seed=sample(1:100000, 1)){
@@ -211,35 +239,6 @@ kdtree_nn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, eps = 0, s
   return(list(preds=cv_preds,time_fit=time_fit, pred_time=time_knn-time_fit))
 }
 
-#--------------------------------------
-### iqnn_cv_predict with output as list containing predictions AND timing values for fitting and predicting
-iqnn_cv_predict_timer <- function(data, y, mod_type = "reg", bin_cols, nbins, 
-                                  jit = rep(0,length(bin_cols)), stretch = FALSE, 
-                                  tol = rep(0, length(bin_cols)), strict = FALSE, cv_k = 10,
-                                  seed=sample(1:100000, 1)) {
-  data <- as.data.frame(data)
-  set.seed(seed)
-  cv_cohorts <- make_cv_cohorts(data, cv_k)
-  cv_preds <- factor(rep("NA", nrow(data)), levels(data[, y]))
-  time_fit <- 0
-  pred_time <- 0
-  for (fold in 1:length(unique(cv_cohorts))) {
-    test_index <- which(cv_cohorts == fold)
-    train_data_temp <- data[-test_index, ]
-    row.names(train_data_temp) <- 1:nrow(train_data_temp)
-    timer <- Sys.time()
-    iqnn_mod <- iqnn(train_data_temp, y = y, mod_type = mod_type, 
-                     bin_cols = bin_cols, nbins = nbins, jit = jit, stretch = stretch, 
-                     tol = tol)
-    time_fit <- time_fit + difftime(Sys.time(),timer,units="sec")
-    
-    timer <- Sys.time()
-    cv_preds[test_index] <- iqnn_predict(iqnn_mod, data[test_index, 
-                                                        ], strict = strict, type = "estimate")
-    pred_time <- pred_time + difftime(Sys.time(),timer,units="secs")
-  }
-  return(list(preds=cv_preds,time_fit=time_fit,pred_time=pred_time))
-}
 
 #make function for finding closest binning structure for a given data size, neighborhood size, and dimensionality
 find_bin_root <- function(n,k,p){
