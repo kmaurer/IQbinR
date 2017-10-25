@@ -22,70 +22,65 @@ source("iqnn_knn_comparison_functions.R")
 
 ###-----------------------------------------------------------------------------------------------------
 # Accuracy Comparisons for Classification
+setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classification")
 
-# Small classifier set attributes
+## Small classifier set attributes
 small_sets <- c("iris","pima","yeast")
 web_link <- c("iris/iris.data","pima-indians-diabetes/pima-indians-diabetes.data","yeast/yeast.data")
 small_responses <- c("V5","V9","V10")
 small_sizes <- c(150,768,1484)
 
-# # Loop over UCI data sets to clean and save to CSV
+# # Loop over UCI data sets to clean and save to CSV 
 # for(set in 1:3){
-#   ## load and clean data in preparation for testing speed/accuracy with k-fold CV process
 #   data <- fread(paste0("http://archive.ics.uci.edu/ml/machine-learning-databases/",web_link[set]))
-#   # name of response variable
-#   y <- responses[set]
-#   # use helper function to standardize and drop non-numeric/constant-valued input variables
-#   clean_data <- clean_data_for_iqnn_knn(as.data.frame(data),y)
-#   write.csv(clean_data,paste0("cleaned_",small_sets[set],".csv"),row.names=FALSE)
+#   save(data, file=paste0(small_sets[set],"_raw.Rdata"))
 # }
 
 
-# "mediumDatasets" attributes
-medium_sets <- c("abalone","banana","marketing","optdigits","satimage","waveform")
-medium_responses <- c("Sex","Class","Sex","Class","Class","Class")
-medium_sizes <- c(4174,5300,6876,5620,6435,5000)
+## "mediumDatasets" attributes
+medium_sets <- c("abalone","waveform","optdigits","satimage","marketing")
+medium_responses <- c("Sex","Class","Class","Class","Sex")
+medium_sizes <- c(4174,5000,5620,6435,6876)
 
-# # Loop over all "medium" data sets from walter to clean and save to CSV
+# Loop over all "medium" data sets from walter to clean and save to CSV
 # for(set in 1:6){
 #   setwd("C:\\Users\\maurerkt\\Google Drive\\AFRLSFFP\\Fall2017\\mediumDatasets")
 #   ## load and clean data in preparation for testing speed/accuracy with k-fold CV process
 #   data <- RWeka::read.arff(paste0(medium_sets[set],".arff"))
-#   # name of response variable
-#   y <- responses[set]
-#   # use helper function to standardize and drop non-numeric/constant-valued input variables
-#   clean_data <- clean_data_for_iqnn_knn(data,y)
-#   write.csv(clean_data,paste0("cleaned_",medium_sets[set],".csv"),row.names=FALSE)
+#   save(data, file=paste0(medium_sets[set],"_raw.Rdata"))
 # }
 
-# # Loop over all data sets to clean and save to CSV for walter
-# for(set in 1:6){
-#   setwd("C:\\Users\\maurerkt\\Google Drive\\AFRLSFFP\\Fall2017\\mediumDatasets")
-#   ## load and clean data in preparation for testing speed/accuracy with k-fold CV process
-#   data <- RWeka::read.arff(paste0(medium_sets[set],".arff"))
+
+## Large classifier set attributes
+large_sets <- c("youtube", "skin")
+large_responses <- c("category", "V4")
+large_sizes <- c(168286,245057)
+
+# # download zipfolder containing youtube_videos.tsv from https://archive.ics.uci.edu/ml/datasets/Online+Video+Characteristics+and+Transcoding+Time+Dataset
+# data <- fread("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classification\\youtube_videos.tsv")
+# save(data, file="youtube_raw.Rdata")
+# # read skin segmentation data directly from web
+# data <- fread("https://archive.ics.uci.edu/ml/machine-learning-databases/00229/Skin_NonSkin.txt")
+# save(data, file="skin_raw.Rdata")
+
+### combine all sizes
+all_sets <- c(small_sets,medium_sets, large_sets)
+all_responses <- c(small_responses,medium_responses, large_responses)
+all_sizes <- c(small_sizes,medium_sizes, large_sizes)
+
+# # Clean all using helper function
+# for(set in 1:length(all_sets)){
+#   load(file=paste0(all_sets[set],"_raw.Rdata"))
 #   # name of response variable
-#   y <- responses[set]
+#   y <- all_responses[set]
 #   # use helper function to standardize and drop non-numeric/constant-valued input variables
-#   data <- clean_data_for_iqnn_knn(data,y)
-#   
-#   ## Variable selection
-#   # Find column names in order of importance for randomForest (heuristic for doing variable selection)
-#   myforest <- randomForest::randomForest(as.formula(paste0("as.factor(as.character(",y,"))~ .")) , data=sample_n(data,1000))
-#   important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
-#   # allow a cap to be put on number of variables considered
-#   p <- min(length(important_cols),max_p)
-#   
-#   clean_data <- data[,c(y,important_cols[1:p])]
-#   # setwd("C:\\Users\\maurerkt\\Desktop")
-#   # clean_data <- clean_data_for_iqnn_knn(data,y)
-#   write.csv(clean_data,paste0("cleaned_",medium_sets[set],".csv"),row.names=FALSE)
+#   data <- clean_data_for_iqnn_knn(as.data.frame(data),y)
+#   save(data,file=paste0(all_sets[set],"_cleaned.Rdata"))
 # }
 
-all_sets <- c(small_sets,medium_sets)
-all_responses <- c(small_responses,medium_responses)
-all_sizes <- c(small_sizes,medium_sizes)
 
-nreps <- 10 # number of times to run k-fold comparisons
+
+nreps <- 2 # number of times to run k-fold comparisons
 # Initialize an empty data structure to put timing/accuracy measurements into
 # Use a list with one df for each method, this is done to allow consistant storage when randomizing order of methods in each trial
 results <- data.frame(data_name=rep(all_sets,each=nreps),obs = NA, nn_size = NA, cv_accuracy = NA, 
@@ -95,17 +90,17 @@ accuracy_results_list <- list(results_iqnn=results, results_knn=results,
 
 max_p <- 2 # max number of dimensions for inputs
 cv_k <- 10 # cv folds
-k <- 3 # knn size
+# k <- 5 # knn size
 
 
 setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classification")
 big_timer <- Sys.time()
 # Loop over all data sets and repetitions to record accuracies and times. 
-for(set in 1:length(all_sets)){
-  data <- read.csv(paste0("cleaned_",all_sets[set],".csv"))
+for(set in 1:8){
+  load(file=paste0(all_sets[set],"_cleaned.Rdata"))
   y <- all_responses[set]
   data[,y] <- factor(data[,y])
-
+  k <- ceiling(nrow(data)/81)
 
   ## Variable selection
   # Find column names in order of importance for randomForest (heuristic for doing variable selection)
@@ -120,7 +115,7 @@ for(set in 1:length(all_sets)){
   nbins <- find_bin_root(n=train_n,k=k,p=p)
   bin_cols <- important_cols[1:p]
   
-  print(paste("avg number of ties = ", nrow(data)/nrow(unique(data[,bin_cols])),bin_cols))
+  print(paste(all_sets[set],"with",ncol(data),"columns and k=",k))
   
   ## Compare knn/iqnn method timing and accuracy with k-fold CV
   # loop over nreps for each method
@@ -165,6 +160,9 @@ for(set in 1:length(all_sets)){
 Sys.time() - big_timer
 str(accuracy_results_list)
 
+
+
+
 # Save it
 # save(accuracy_results_list, file="iqnn_knn_comparisons.Rdata")
 # load(file="iqnn_knn_comparisons.Rdata")
@@ -187,10 +185,17 @@ results_all
 head(results_all)
 
 ggplot()+
-  geom_line(aes(x=data_name,y=diff_acc,color=type,group=type),data=results_all)
+  geom_line(aes(x=data_name,y=diff_acc,color=type,group=type),size=2,data=results_all)+
+  theme_bw()
 
 ggplot()+
-  geom_line(aes(x=data_name,y=avg_cv_accuracy,color=type,group=type),data=results_all)
+  geom_line(aes(x=data_name,y=avg_cv_accuracy,color=type,group=type),data=results_all)+
+  theme_bw()
+
+###--------------------------------------------------------------------------------------------
+# Accuracy Comparisons for Regression
+
+
 
 ###--------------------------------------------------------------------------------------------
 # Accuracy Comparisons for Regression

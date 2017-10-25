@@ -150,10 +150,13 @@ tune_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k
 #helper function to standardize and drop non-numeric/constant-valued input variables
 clean_data_for_iqnn_knn <- function(data,y){
   # Fix accidental spaces before some column names
-  names(data) <- stringr::str_replace_all(names(data)," ","")
-  names(data) <- stringr::str_replace_all(names(data),"-","_")
-  # keep only numeric input columns
-  keeper_cols <- sapply(data, is.numeric)
+  names(data) <- stringr::str_replace_all(names(data), " ", "")  
+  names(data) <- stringr::str_replace_all(names(data), "\\.", "")
+  names(data) <- stringr::str_replace_all(names(data), "-", "_")
+  names(data) <- stringr::str_replace_all(names(data), "\\(", "_")
+  names(data) <- stringr::str_replace_all(names(data), "\\)", "_")
+  # keep only numeric input columns with at sqrt(n)/10 least unique values
+  keeper_cols <- sapply(data, function(x) is.numeric(x) & (length(unique(x))>=sqrt(length(x))/10) )
   keeper_cols[which(names(data)==y)] <- TRUE
   data <- data[,keeper_cols]
   # Drop Rows with Missing Values
