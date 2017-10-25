@@ -190,12 +190,113 @@ ggplot()+
 
 ggplot()+
   geom_line(aes(x=data_name,y=avg_cv_accuracy,color=type,group=type),data=results_all)+
+  ylim(c(0,1))+
   theme_bw()
 
 ###--------------------------------------------------------------------------------------------
-# Accuracy Comparisons for Regression
+# Accuracy Comparisons using TUNED classifiers
+
+nreps <- 5 # number of times to run k-fold comparisons
+# Initialize an empty data structure to put timing/accuracy measurements into
+# Use a list with one df for each method, this is done to allow consistant storage when randomizing order of methods in each trial
+results <- data.frame(data_name=rep(all_sets,each=nreps),obs = NA, nn_size = NA, cv_accuracy = NA, 
+                      time_fit = NA, time_pred = NA, seed = NA)
+accuracy_results_list <- list(results_iqnn=results, results_knn=results,
+                              results_knn_cover=results, results_knn_kd=results)
+
+max_p <- 2 # max number of dimensions for inputs
+cv_k <- 10 # cv folds
+# k <- 5 # knn size
 
 
+setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classification")
+big_timer <- Sys.time()
+# Loop over all data sets and repetitions to record accuracies and times. 
+for(set in 1:8){
+  load(file=paste0(all_sets[set],"_cleaned.Rdata"))
+  y <- all_responses[set]
+  data[,y] <- factor(data[,y])
+  
+  ## Variable selection
+  # Find column names in order of importance for randomForest (heuristic for doing variable selection)
+  set.seed(12345)
+  myforest <- randomForest(as.formula(paste0("as.factor(as.character(",y,"))~ .")) , data=sample_n(data,min(1000,nrow(data))))
+  important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
+  # allow a cap to be put on number of variables considered
+  p <- min(length(important_cols),max_p)
+  
+  ## Parameterize for binning to best match k-nn structure specified with n, k, p, and cv_k
+  train_n <- nrow(data)*((cv_k-1)/cv_k)
+  bin_cols <- important_cols[1:p]
+  k <- tune_knn_oom(data=data,y_name=y,x_names=bin_cols, mod_type="class", cv_method="kfold", cv_k = 10, base=2, knn_algorithm = "brute")
+  nbins <- find_bin_root(n=train_n,k=k,p=p)
+  print(paste(all_sets[set],"with",ncol(data),"columns and k=",k))
+
+  tune_iqnn <- iqnn_tune(data, y, mod_type = "class", bin_cols, nbins_range=c(2,floor(nrow(data)^{1/p})),
+                         jit = rep(0.00001,length(bin_cols)),oom_search = TRUE, oom_base = 2)
+  nbins <- tune_iqnn$nbins[[which.min(tune_iqnn$error)]]
+  print(nbins)
+  
+  ## Compare knn/iqnn method timing and accuracy with k-fold CV
+  # loop over nreps for each method
+  for(rep in 1:nreps){
+    # set seed for CV partitioning so that each method uses same train/test splits
+    seed <- sample(1:100000,1)
+    # pick order for methods at random
+    method_order <- sample(1:4)
+    # seed <-  12345 # fixed value to check if all reps identical predictions made **Confirmed as identical for accuracy**
+    for(method in method_order){
+      # find 10-fold CV predictions, Record time/accuracy for each
+      if(method==1){
+        # pred_times <- iqnn_cv_predict_timer(data=data, y=y, mod_type="class", bin_cols=bin_cols,
+        #                                     nbins=nbins, jit=rep(0.000001,length(nbins)), strict=FALSE, 
+        #                                     cv_k=cv_k, seed=seed)
+        set.seed(seed)
+        pred_times <-list(preds=iqnn_cv_predict(data=data, y=y, mod_type="class", bin_cols=bin_cols,
+                                                nbins=nbins, jit=rep(0.000001,length(nbins)), strict=FALSE,
+                                                cv_k=cv_k),time_fit=NA,pred_time=NA)
+      } else if(method==2){
+        pred_times <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,
+                                        knn_algorithm = "brute", seed=seed)
+      } else if(method==3){
+        pred_times <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,
+                                        knn_algorithm = "cover_tree", seed=seed)
+      } else {
+        # pred_times <- kdtree_nn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,
+        #                                       eps=1, seed=seed)
+        pred_times <- knn_cv_pred_timer(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,
+                                        knn_algorithm = "kd_tree", seed=seed)
+      }
+      # store results in proper mehtod/set/rep values
+      accuracy_results_list[[method]]$obs[(set-1)*nreps + rep] <- nrow(data)
+      accuracy_results_list[[method]]$nn_size[(set-1)*nreps + rep] <- k
+      accuracy_results_list[[method]]$cv_accuracy[(set-1)*nreps + rep] <- sum(as.character(pred_times$preds)==as.character(data[,y]))/nrow(data)
+      accuracy_results_list[[method]]$time_fit[(set-1)*nreps + rep] <- pred_times$time_fit
+      accuracy_results_list[[method]]$time_pred[(set-1)*nreps + rep] <- pred_times$pred_time
+      accuracy_results_list[[method]]$seed[(set-1)*nreps + rep] <- seed
+    }
+  }
+}
+Sys.time() - big_timer
+str(accuracy_results_list)
+results_all <- data.frame(do.call("rbind", accuracy_results_list),
+                          type=rep(c("iqnn","knn - brute","knn - cover tree","knn - kd tree"),each=nrow(accuracy_results_list$results_iqnn))) %>%
+  group_by(data_name,obs,nn_size,type) %>%
+  summarize(avg_cv_accuracy=mean(cv_accuracy,na.rm=TRUE),
+            avg_time_fit=mean(time_fit,na.rm=TRUE),
+            avg_time_pred=mean(time_pred,na.rm=TRUE)) %>%
+  as.data.frame() %>%
+  group_by(data_name) %>%
+  mutate(diff_acc = avg_cv_accuracy - avg_cv_accuracy[2]) %>% #!# only works due to knn brute being 2nd in order - danger of hard coding (don't know simple alternative)
+  ungroup() %>%
+  mutate(data_name = factor(data_name, levels=all_sets[order(all_sizes)])) %>%
+  as.data.frame()
+
+head(results_all)
+
+ggplot()+
+  geom_line(aes(x=data_name,y=diff_acc,color=type,group=type),size=2,data=results_all)+
+  theme_bw()
 
 ###--------------------------------------------------------------------------------------------
 # Accuracy Comparisons for Regression

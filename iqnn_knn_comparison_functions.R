@@ -129,22 +129,32 @@ tune_knn_reg <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_v
 
 #--------------------------------------
 ### Tuning function for knn classifier
-tune_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
+tune_knn_class <- function(data, y_name, x_names, cv_method="kfold", cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
   if(!is.integer(k_values)) return(print("Please specify k_values as an integer vector of neightborhood sizes (k) to be tuned"))
   cv_results <- data.frame(k=k_values,error = NA)
   for(k_idx in 1:length(k_values)){
-    cv_preds <- cv_pred_knn_class(dat, y_name, x_names, cv_method="kfold", cv_k = cv_k, k=k_values[k_idx], knn_algorithm = "brute")
-    cv_results$error[k_idx] <- sum(cv_preds!=dat[,y_name]) / nrow(dat)
+    cv_preds <- cv_pred_knn_class(data, y_name, x_names, cv_method="kfold", cv_k = cv_k, k=k_values[k_idx], knn_algorithm = "brute")
+    cv_results$error[k_idx] <- sum(cv_preds!=data[,y_name]) / nrow(data)
   }
   return(cv_results)
 }
 # timer <- Sys.time()
-# tune_iris <- tune_knn_class(dat=iris, y_name="Species", x_names=c("Petal.Length","Sepal.Length"),
-#                                cv_method="kfold", cv_k = nrow(iris), k_values=1:40, knn_algorithm = "brute")
+tune_iris <- tune_knn_class(data=iris, y_name="Species", x_names=c("Petal.Length","Sepal.Length"),
+                               cv_method="kfold", cv_k = nrow(iris), k_values=1:40, knn_algorithm = "brute")
 # Sys.time()-timer
 # tune_iris
-# 
+tune_iris$k[which.min(tune_iris$error)]
 # tune_knn_class
+
+#--------------------------------------
+### Tuning function for knn that searches over Orders-of-Magnitude first, then fine within
+tune_knn_oom <- function(data, y_name, x_names, mod_type="reg", cv_method="kfold", cv_k = 10, base=2, knn_algorithm = "brute"){
+  fold_n <- floor(.9*nrow(data))
+  oom <- as.integer(base^(1:floor(log(fold_n, base=base))))
+  if(mod_type=="class") tune_oom <- tune_knn_class(data, y_name, x_names, cv_method, cv_k, k_values=oom, knn_algorithm)
+  if(mod_type=="reg") tune_oom <- tune_knn_reg(data, y_name, x_names, cv_method, cv_k, k_values=oom, knn_algorithm)
+  oom[which.min(tune_oom$error)]
+}
 
 #--------------------------------------
 #helper function to standardize and drop non-numeric/constant-valued input variables
@@ -245,13 +255,6 @@ kdtree_nn_cv_pred_timer <- function(data, y, x_names, cv_k = 10, k=5, eps = 0, s
 
 #make function for finding closest binning structure for a given data size, neighborhood size, and dimensionality
 find_bin_root <- function(n,k,p){
-  # nbins <- rep(1,p)
-  # nbins[1] <- floor((n/k)^(1/p))
-  # for(i in 2:p){
-  #   nbins[i] <- floor((n/k/prod(nbins))^(1/(p-i+1)))
-  # }
-  # return(nbins[length(nbins):1])
-  #--------------------
   # find all possible best ~semi-even nbins vectors
   nbins_list <- iqbin::make_nbins_list(c(floor((n/k)^(1/p)),ceiling((n/k)^(1/p))),p)
   # pick the one that is closest to the k size structure desired
