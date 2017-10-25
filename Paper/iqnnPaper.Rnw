@@ -324,7 +324,7 @@ kd-tree - AKNN    & $O(pn\log(n))$ & $O(n)$ & $O(mc_{p\epsilon}\log(n))$ \\
 
 We use simulated training and test data sets to empirically evaluate the time required for preprocessing and prediction under many controlled scenarios. For simplicity, values for training and test sets are generated using a uniform distribution over continuous intervals; parameterized such that $x_{ij}$ and $y_i$  are independently and identically distributed $Uniform(0,1)$, for all observations $i=1,...,n$ and features $j=1,2$. We will consider only balanced-bin parameterizations for IQNN where $\delta_1=\delta_2$, to allow the most appropriate comparisons with the KNN methods. We generate a new data set for combinations of training data size and neighborhoods size: $n\in\{2^\eta \hspace{.1cm} | \hspace{.1cm} \eta=4,6,8,10,12,14,16,18,20\}$ and $k\in\{2^\kappa \hspace{.1cm} | \hspace{.1cm} \kappa=2,4,6,8,10,12,14\}$, respectively. This corresponds with between 16 to 1048576 observation in the training data, and between 1 to 16384 neighbors. We maintain a constant number of test points with $m=1000$ because all models being considered generate predictions in line, thus timing differnces will reflect the relative speed per prediction. Note that the powers of two for $n$ and $k$ conveniently align the neighborhood sizes with the $\delta$ parameter needed for balanced binning; for the bivariate feature space $\delta = (n/k)^{1/p} = (2^\eta/2^\kappa)^{1/2} = 2^{(\eta-\kappa)/2}$ will provide matching neighborhood sizes for the IQNN and KNN methods. Naturally, we consider only parameterizations where the training set is larger than the neighborhood sizes, $n > k$. We impose one further constraint to $n$ and $k$ combinations such that we place an upper limit at $2^{14}$ IQNN bins. 
 
-For each parameterization described above we repeatedly simulate training and test data sets, then we collect and average timing measurements for training data pre-processing and generating test data predictions using IQNN, KNN and AKNN models. All simulations were run using R \ktm{(cite R)} on a Dell Optiplex 9020(TM) Desktop with an Intel(R) Core(TM) i7-4770 3.40GHz CPU. IQNN methods were implementated in R and are available in the \texttt{iqbin} package \ktm{(cite my package here?)}. The KNN and AKNN methods were run using impementations in the \texttt{FNN} package \ktm{(cite FNN)}, which are highly optimized and drop intensive tasks down into C \ktm{(cite C)}.  
+For each parameterization described above we repeatedly simulate training and test data sets, then we collect and average timing measurements for training data pre-processing and generating test data predictions using IQNN, KNN and AKNN models. All simulations were run using R \ktm{(cite R)} on a Dell Optiplex 9020(TM) Desktop with an Intel(R) Core(TM) i7-4770 3.40GHz CPU. IQNN methods were implementated in R and are available in the \texttt{iqbin} package \ktm{(cite my package here?)}. The KNN and AKNN methods were run using impementations in the \texttt{FNN} package \ktm{(cite FNN)}, which are highly optimized and drop computationally intensive tasks down into C \ktm{(cite C)}.  
 
 To account for variation in processing speed we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations and the order of the model fitting was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 25 times for each parameterization. For smaller training sets, $n \le 2^{14}$ we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences manifest much more strongly when $n$ is large. See Table\ktm{AddRefHere} in Appendix\ktm{addAppendixRefHere} for all parameter combinations and average timing measurements.  
 
@@ -396,7 +396,7 @@ Similar timing results hold in higher dimensonal feature spaces, where IQNN outp
 \subsection{Predictive Accuracy}
 \label{accuracy}
 
-While computational efficiency is important, a new method must demonstract comparable or favorable predictive accuracy to existing method to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models; using mean squared error (MSE) and misclassification error rates to assess regression and classification models, respectively. Eight real world data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, eight data sets with continuous response values and continuous features variables were selected to test regression accuracy. These data sets range in size from $n=150$ to $n=\ktm{12345}$, and number of features variable from $p=2$ to $p=\ktm{123}$. All data sets come from the University of California Irvin (UCI) Machine Learning Repository \ktm{(put repo citation here)} and \ktm{--Walter's Repos--} Machine Learning Repository \ktm{(put repo citation here)}. See Table \ktm{Tab\#} in Appendix \ktm{(ref here)} for a more detailed summary of each data set considered below.
+While computational efficiency is important, a new method must demonstract comparable or favorable predictive accuracy to existing method to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models; using mean squared error (MSE) and misclassification error rates to assess regression and classification models, respectively. Eight real world data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, eight data sets with continuous response values and continuous features variables were selected to test regression accuracy. These data sets range in size from $n=150$ to $n=\ktm{12345}$, and number of features variable from $p=2$ to $p=\ktm{123}$. All data sets come from the University of California Irvin (UCI) Machine Learning Repository \citep{Lichman2013}, and the Knowledge Extraction based on Evolutionary Learning (KEEL) data repository \citep{alcala2011keel}. See Table~\ref{tab:classData} in Appendix~\ref{dataAppend} for a more detailed summary of each data set considered below.
 
 The units associated with each feature varible and the number of feature variables differed across all data sets, so a consistent data pre-processing was implemented to allow for more uniform comparisons of accuracy for IQNN, KNN and AKNN models. First, a center/scale transformation was used to standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Secondly, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all eight cases. This was done by fitting a random forest to part of the training data removing all but variables with the two highest importance scores; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. The added complexity of using high importance variables is done to allow stronger predictions under the constraint than might be had by selecting two features at random. The added benefit of this variable selection approach is that the order of importance scores suggests an feature ordering that will is used in the iterative-quantile binning algorithm.
 
@@ -441,6 +441,38 @@ In Section~\ref{accuracy} that
 %----------------------------------------------------------------------------
 \newpage
 \begin{appendix}
+\section{Appendix A: Empirical Data Sets}  
+\label{dataAppend}
+
+<<data_tables, eval=F, include=F>>=
+library(xtable)
+xtable(data.frame(name=all_sets, n=all_sizes))
+@
+
+\begin{table}[h]
+\small
+\centering
+\begin{tabular}{lrl} \hline
+Data & n & Web Address (Accessed: 10/25/17) \\ 
+\hline  
+iris & 150 & http://archive.ics.uci.edu/ml/machine-learning-databases/iris/ \\
+pima & 768 & http://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes/ \\
+yeast & 1484 & http://archive.ics.uci.edu/ml/machine-learning-databases/yeast/ \\
+waveform & 5000 & https://archive.ics.uci.edu/ml/machine-learning-databases/waveform/ \\ 
+optdigits & 5620 & http://sci2s.ugr.es/keel/dataset.php?cod=199 \\ 
+satimage & 6435 & http://sci2s.ugr.es/keel/dataset.php?cod=71 \\ 
+marketing & 6876 & http://sci2s.ugr.es/keel/dataset.php?cod=163 \\ 
+youtube & 168286 & https://archive.ics.uci.edu/ml/machine-learning-databases/00335/ \\ 
+skin & 245057 & https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation \\ 
+\hline
+\end{tabular}
+\caption{Data sets used in testing classification accuracies.}
+\label{tab:classData}
+\end{table}
+\normalsize
+
+%----------------------------------------------------------------------------
+
 \section{Appendix for Origin Offset Proof}  
 %----------------------------------------------------------------------------
 %\subsection{}
