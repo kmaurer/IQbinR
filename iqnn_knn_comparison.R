@@ -260,6 +260,56 @@ setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression
 #   save(data,file=paste0(all_reg_sets[set],"_cleaned.Rdata"))
 # }
 
+# Tune neighborhood/bin parameters for each data set using 10-fold cv then save results for running accuracy tests
+setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression")
+
+max_p <- 2 # max number of dimensions for inputs
+cv_k <- 100 # cv folds
+
+all_reg_sets <- c("air_quality","casp","ccpp","laser","puma","quake","skillcraft","treasury","wankara","wpbc")
+
+tuned_reg_param_list <- list(NULL)
+tuned_reg_performance_list <- list(iqnn=list(NULL),knn=list(NULL))
+for(set in 1:length(all_reg_sets)){
+  print(set)
+  load(file=paste0(all_reg_sets[set],"_cleaned.Rdata"))
+  head(data)
+  
+  ## Variable selection
+  # Find column names in order of importance for randomForest (heuristic for doing variable selection)
+  set.seed(12345)
+  myforest <- randomForest(y~. , data=sample_n(data,min(1000,nrow(data))))
+  important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
+  # allow a cap to be put on number of variables considered
+  # p <- min(length(important_cols),max_p)
+  p=2
+  
+  ## Parameterize for binning to best match k-nn structure specified with n, k, p, and cv_k
+  train_n <- floor(nrow(data)*((cv_k-1)/cv_k))
+  bin_cols <- important_cols[1:p]
+  
+  ## Tune the iqnn shoot for no fewer than 2 per bin (otherwise problems with allocation on boundaries)
+  set.seed(1234)
+  tune_iqnn_out <- iqnn_tune(data=data, y="y", mod_type = "reg", bin_cols=bin_cols, nbins_range=c(2,floor((train_n/2)^(1/p))),
+                             jit = rep(0.0001,length(bin_cols)), stretch = FALSE,strict=FALSE,oom_search = ifelse(nrow(data)>100000, TRUE,FALSE), cv_k=cv_k)
+  nbins <- tune_iqnn_out$nbins[[which.min(tune_iqnn_out$MSE)]]
+  tuned_reg_performance_list$iqnn[[set]] <- tune_iqnn_out
+  
+  ## Tune the knn over same range of neighborhood size equivalents
+  set.seed(1234)
+  tune_knn_out <- tune_knn_reg(dat=data, y_name="y", x_names=bin_cols, cv_method="kfold", cv_k = cv_k,
+                                 k_values=as.integer(round(tune_iqnn_out$nn_equiv)), knn_algorithm = "brute")
+  k <- tune_knn_out$k[which.min(tune_knn_out$MSE)]
+  tuned_reg_performance_list$knn[[set]] <- tune_knn_out
+  
+  tuned_reg_param_list[[set]] <- list(bin_cols=bin_cols, nbins=nbins, k=k, n=nrow(data), cv_k=cv_k)
+}
+tuned_reg_param_list
+tuned_reg_performance_list
+# save(tuned_reg_param_list,tuned_reg_performance_list, file="tuned_reg_param_list.Rdata")
+# load(file="tuned_param_list.Rdata")
+
+
 
 #---------------------------------------------------------------------------------------------------
 
