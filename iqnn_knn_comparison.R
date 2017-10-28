@@ -158,7 +158,8 @@ results_class <- data.frame(do.call("rbind", accuracy_results_list),
   na.omit() %>%
   mutate(diff_acc = avg_cv_accuracy - avg_cv_accuracy[2]) %>% #!# only works due to knn brute being 2nd in order - danger of hard coding (don't know simple alternative)
   ungroup() %>%
-  mutate(data_name = factor(data_name, levels=all_sets[order(all_sizes)])) %>%
+  mutate(data_name = factor(data_name, levels=all_sets[order(all_sizes)]),
+         diff_acc_perc = diff_acc*100) %>%
   as.data.frame()
 
 head(results_class)

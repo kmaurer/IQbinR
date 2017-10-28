@@ -422,27 +422,33 @@ combined_times$type_pretty <- factor(combined_times$type, labels=c("IQNN   ","KN
 \subsection{Predictive Accuracy}
 \label{accuracy}
 
-While computational efficiency is important, a new method must demonstract comparable or favorable predictive accuracy to existing method to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models; using mean squared error (MSE) and misclassification error rates to assess regression and classification models, respectively. Eight real world data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, eight data sets with continuous response values and continuous features variables were selected to test regression accuracy. These data sets range in size from $n=150$ to $n=\ktm{12345}$, and number of features variable from $p=2$ to $p=\ktm{123}$. All data sets come from the University of California Irvin (UCI) Machine Learning Repository \citep{Lichman2013}, and the Knowledge Extraction based on Evolutionary Learning (KEEL) data repository \citep{alcala2011keel}. See Table~\ref{tab:classData} in Appendix~\ref{dataAppend} for a more detailed summary of each data set considered below.
+While computational efficiency is important, a new nearest-neighbor method must demonstract comparable or favorable predictive accuracy to existing methods to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models using standard loss metrics; mean squared error (MSE) to assess regression models and misclassification error rates to assess classifiers. Ten real data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, ten data sets with continuous response values and continuous features variables were selected to test regression accuracy. Each data set contains at least two continuous numeric feature variables and range in size from $n=150$ to $n=\ktm{12345}$. All data sets come from the University of California Irvin (\textit{UCI}) Machine Learning Repository and the Knowledge Extraction based on Evolutionary Learning (\textit{KEEL}) data repository (\citealt{Lichman2013}; \citealt{alcala2011keel}). See Table~\ref{tab:data_class} and Table~\ref{tab:data_reg} in Appendix~\ref{dataAppend} for a more detailed summary of each data set used for testing classification and regression, respectively.
 
-The units associated with each feature varible and the number of feature variables differed across all data sets, so a consistent data pre-processing was implemented to allow for more uniform comparisons of accuracy for IQNN, KNN and AKNN models. First, a center/scale transformation was used to standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Secondly, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all eight cases. This was done by fitting a random forest to part of the training data removing all but variables with the two highest importance scores; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. The added complexity of using high importance variables is done to allow stronger predictions under the constraint than might be had by selecting two features at random. The added benefit of this variable selection approach is that the order of importance scores suggests an feature ordering that will is used in the iterative-quantile binning algorithm.
+Before fitting or testing the models, we cleaned and scaled each data set such that clear comparison of model can be made across all data sets. The units associated with each feature varible and the number of feature variables differed across all data sets, so data pre-processing was implemented to allow for more uniform comparisons of accuracy for IQNN, KNN and AKNN models. First, a center/scale transformation was used to standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Secondly, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all ten cases. This was done by fitting a random forest to part of the training data removing all but variables with the two highest importance scores; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. While the variable selection method is somewhat arbitrary here, using high importance variables is done to allow stronger predictions under the constraint than might be had by selecting two features at random. Additionally, we elect to specify the iterative-quantile algorithm to bin the features in order of importance scores. 
 
-In model specification we aim for the number of iterative-quantile neighbors and k-nearest neightbors to be as close as possible. Each KNN and AKNN model is set to construct three-nearest neighborhoods, and the IQNN models use the nearly-balanced binning parameterization ($\gamma$=1) that provides three points per bin. Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the three neighbor regression and classification models for all considered real-world data sets. In each plot the accuracy values come from average accuracies across 1000 initializations of ten-fold cross validation for each datas et. These are visualized relative change in accuracy compared to the KNN model - fit with brute force - as the baseline model. For regression, we compare the percent change from the KNN cross-validated MSE to remove differences response units across data sets. For classification, we can simply compare the diffence from KNN in cross-validated percent misclassified. 
+Next for each data set we tune each model using 100-fold cross-validation to select parameter values that minimizes the loss metric. For IQNN this entailed tuning across ($\delta_1$,$\delta_2$) pairs that control the number of bins in each dimesion. To avoid tuning exhaustively over all possible bin parameterization, we narrowed our tuning to use nearly-balanced bins ($\gamma=1$) that provide binned-neighborhood sizes closest to powers of two; thus tuning over pairs in the set $D=\{(\delta_1,\delta_2)  \hspace{.1cm} \mid \hspace{.1cm} \delta_1 = \delta_2 \pm 1 \hspace{.1cm} \text{and} \hspace{.1cm} \displaystyle\min_{\delta_1,\delta_2} | \frac{n}{\delta_1\delta_2} - 2^d|  \hspace{.1cm} \forall  \hspace{.1cm} d=1,2,\dots \}$.
+sWe then tuned the KNN and AKNN models over the corresponding set of neighborhood sizes $K = \{k | k=\text{round}(\frac{n}{\delta_1\delta_2}) \hspace{.1cm} \forall \hspace{.1cm} (\delta_1,\delta_2) \in D \}$. The loss values from the tuned models were then collected for 100 additional initializations of 100-fold cross-validation for each data set to account for variation that could arise from the random initialization of cross-validation. See Table~\ref{tab:tuning_class} and Table~\ref{tab:tuning_reg} in Appendix~\ref{dataAppend} for the tuned parameters and average 100-fold cross-validated accuracy values from each data set.
 
-<<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=8, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="3-nn examples times...",warning=FALSE>>=
-# load(file="../plot_data_3nn.Rdata")
-# plot the accuracy/fit time/prediction time
+Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned regression and classification models for all considered data sets. These are visualized relative change in accuracy compared to the KNN model - fit with brute force - as the baseline model. For classification, we can compare the diffence from KNN in average cross-validated percent misclassified.  For regression, we compare the \ktm{average percent change from the KNN cross-validated MSE to remove differences response units across data sets.}
+
+<<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=4, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="3-nn examples times...",warning=FALSE>>=
+load(file="../DataRepo/classification/classification_testing.Rdata")
+
+results_class$type_pretty <- factor(results_class$type, labels=c("IQNN   ","KNN-brute   ","AKNN-cover   ", "AKNN-kd   ")) 
+class_n <- sapply(1:length(tuned_param_list), function(x) tuned_param_list[[x]]$n)
+results_class$name_size <- factor(paste(results_class$data_name, results_class$obs,sep="\n n="), 
+                                  levels=paste(levels(results_class$data_name), class_n,sep="\n n="))
+
 ggplot()+
-  geom_hline(yintercept = 0)+
-  geom_line(aes(x=data_name, y=value,color=type, group=type),size=1, data=results_all_3nn)+
-  facet_grid(metric_pretty ~ ., scales="free_y") +
+  geom_line(aes(x=name_size,y=-diff_acc*100,color=type_pretty,group=type_pretty),size=1,data=results_class)+
+  scale_y_continuous("Relative Misclassification Error Rates \n (% Difference from KNN-brute)",
+                     breaks=seq(-0.5,1.5,by=.5),labels=c("-0.5%","0.0%","0.5%","1.0%","1.5%")) +
   theme_bw()+
-  labs(title="3-NN Classifier vs IQNN Classifier (~3 per bin)",
-       subtitle="Based on averages across 1000 repetitions of 10-fold CV",
-       x="Data Set", y="")+
-  geom_text(aes(x=data_name, label=n), y=.2,data=label_data)
+  labs(x="") + 
+  theme(legend.position = "bottom")
 @
 
-In Figure~\ref{fig:categorical_accuracy} we see that for all regression models \ktm{there are ...}. For the classification models we see that IQNN has mixed performance with \ktm{four} case of lower and \ktm{two} cases with higher accuracy than KNN. Noteably, the misclassification error rates for all IQNN classifier models were consistantly within 0.5\% of the KNN accuracy. The accuracy of IQNN models display very similar behavior to that exhibited by the AKNN models. 
+In Figure~\ref{fig:categorical_accuracy} we see that for all regression models \ktm{there are ...}. For the classification models we see that IQNN has mixed performance with cases above and below the misclassification rates from KNN; whereas, the AKNN models tend to be at or above the misclassification rates from KNN. 
 
 
 %-----------------------------------------------------------------------------
@@ -456,7 +462,7 @@ It is important to consider the real-time costs to an analyst in choosing betwee
  
 Uniquely, the storage size of the IQNN r-tree and time required for prediction is not tied to the training set size. The aggregation within iterative-quantile bins provides an option for scaling a KNN-style method to cases with truly "big $n$" data scenarios if sufficient computational infrastructure is available at the time of model fitting to create bins. The iterative quantile binning algorithm could be implemented using a database query language to scale to situations with huge numbers of training observations because the iterative-quantile binning algorithm only requires tracking indeces in a sequence of quantile calculation, then calculating simple summary statistics over the resulting index groups. 
 
-In Section~\ref{accuracy} that
+In Section~\ref{accuracy} that misclassification error rates for IQNN were quite comparable to that of the KNN and AKNN models. Notably, the misclassification error rates for all IQNN classifier models in our empirical analysis of tuned models was consistently within a few percent above or below the KNN accuracy.
 
 \newpage
 
@@ -475,7 +481,7 @@ library(xtable)
 xtable(data.frame(name=all_sets, n=all_sizes))
 @
 
-\begin{table}[h]
+\begin{table}[H]
 \small
 \centering
 \begin{tabular}{lrl} \hline
@@ -493,10 +499,61 @@ skin & 245057 & https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation \\
 \hline
 \end{tabular}
 \caption{Data sets used in testing classification accuracies.}
-\label{tab:classData}
+\label{tab:data_class}
 \end{table}
 \normalsize
 
+
+\begin{table}[H]
+\small
+\centering
+\begin{tabular}{lrl} \hline
+Data & n & Web Address (Accessed: 10/25/17) \\ 
+\hline  
+iris & 150 & http://archive.ics.uci.edu/ml/machine-learning-databases/iris/ \\
+pima & 768 & http://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes/ \\
+yeast & 1484 & http://archive.ics.uci.edu/ml/machine-learning-databases/yeast/ \\
+waveform & 5000 & https://archive.ics.uci.edu/ml/machine-learning-databases/waveform/ \\ 
+optdigits & 5620 & http://sci2s.ugr.es/keel/dataset.php?cod=199 \\ 
+satimage & 6435 & http://sci2s.ugr.es/keel/dataset.php?cod=71 \\ 
+marketing & 6876 & http://sci2s.ugr.es/keel/dataset.php?cod=163 \\ 
+youtube & 168286 & https://archive.ics.uci.edu/ml/machine-learning-databases/00335/ \\ 
+skin & 245057 & https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation \\ 
+\hline
+\end{tabular}
+\caption{Data sets used in testing regression accuracies.}
+\label{tab:data_reg}
+\end{table}
+\normalsize
+
+\begin{table}[H]
+\small
+\centering
+\begin{tabular}{|l|ll|llll|} \hline
+Data & tuned-$k$ & tuned-$(\delta_1,\delta_2)$ & IQNN & KNN-brute & AKNN-cover &  AKNN-kd  \\
+\hline  
+  &  &  &  &  &  &  \\
+\hline
+\end{tabular}
+\caption{Put tuned parameters and 100-fold cv classification error rates here}
+\label{tab:tuning_class}
+\end{table}
+
+
+
+
+\begin{table}[H]
+\small
+\centering
+\begin{tabular}{|l|ll|llll|} \hline
+Data & tuned-$k$ & tuned-$(\delta_1,\delta_2)$ & IQNN & KNN-brute & AKNN-cover &  AKNN-kd  \\
+\hline  
+  &  &  &  &  &  &  \\
+\hline
+\end{tabular}
+\caption{Put tuned parameters and regression 100-fold cv MSEs here}
+\label{tab:tuning_reg}
+\end{table}
 %----------------------------------------------------------------------------
 
 \section{Appendix for Origin Offset Proof}  

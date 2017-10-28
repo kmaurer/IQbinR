@@ -34,6 +34,15 @@ medium_sizes <- c(4174,5000,5620,6435,6876)
 #   save(data, file=paste0(medium_sets[set],"_raw.Rdata"))
 # }
 
+
+### Magic data n=19020, y=binary, p=10
+# http://sci2s.ugr.es/keel/dataset.php?cod=102 
+# data <- as.data.frame(fread("magic.dat"))
+# head(data)
+# names(data)[which(names(data)=="V11")] <- "y"
+# save(data, file="magic_raw.Rdata")
+
+
 ## Large classifier set attributes
 large_sets <- c("youtube", "skin")
 large_responses <- c("category", "V4")
