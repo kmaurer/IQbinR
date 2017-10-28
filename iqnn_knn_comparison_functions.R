@@ -159,6 +159,7 @@ tune_knn_oom <- function(data, y_name, x_names, mod_type="reg", cv_method="kfold
 #--------------------------------------
 #helper function to standardize and drop non-numeric/constant-valued input variables
 clean_data_for_iqnn_knn <- function(data,y){
+  data <- as.data.frame(data)
   # Fix accidental spaces before some column names
   names(data) <- stringr::str_replace_all(names(data), " ", "")  
   names(data) <- stringr::str_replace_all(names(data), "\\.", "")
