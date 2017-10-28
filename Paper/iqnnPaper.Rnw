@@ -330,8 +330,7 @@ For each parameterization described above we repeatedly simulate training and te
 To account for variation in processing speed we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations and the order of the model fitting was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 25 times for each parameterization. For smaller training sets, $n \le 2^{14}$ we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences manifest much more strongly when $n$ is large. See Table\ktm{AddRefHere} in Appendix\ktm{addAppendixRefHere} for all parameter combinations and average timing measurements.  
 
 Figure~\ref{fig:sim_time} displays the average time for pre-processing and predicting using each method in each simulated scenario. We see that for small training set sizes and for small numbers of neighbors, the KNN and AKNN models outperform the IQNN model. The KNN model using brute-force requires no time to pre-precess but requires substantially more time to predict in the test set as the training set size increases. The IQNN and both AKNN methods have increasing pre-processing time as the training and/or neighborhood sizes grow. Interestingly, the pre-processing time grows more rapidly as a function of $n$ but less rapidly as a function of $k$ for the IQNN model than the AKNN models. Pre-processing in AKNN models tends to be more efficient than IQNN for small training sets and neighborhoods, but less efficient as these increase. For prediction, the AKNN methods require increasing time as training and neighborhood sizes increase, whereas the IQNN models require nearly constant time across all scenarios. As with pre-processing, AKNN models are more efficient for prediction than IQNN for small $n$ and $k$, but less efficient as these sizes grow. 
-<<sim_time, echo=F,include=T,eval=T,fig.width=9, fig.height=3, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Sim Sample times...",warning=FALSE, message=FALSE>>=
-
+<<sim_time, echo=F,include=T,eval=T,fig.width=9, fig.height=5, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Empirical timing measurements from preprocessing and prediction stages using each algorithm on simulated data sets across combinations of neighborhood sizes ($k$) and training set sizes ($n$).",warning=FALSE, message=FALSE>>=
 
 # pull out fittimes and move from wide to tall
 sim_fit_times <- sim_times_agg %>%
@@ -352,44 +351,71 @@ sim_pred_times <- sim_times_agg %>%
          klabel = factor(paste0("k == 2^",log2(k)), levels=paste0("k == 2^",sort(unique(log2(sim_times_agg$k))))),
          dlabel = factor(paste0("delta == 2^",log2(d)), levels=paste0("delta == 2^",sort(unique(log2(sim_times_agg$d))))) )
 
-# plot fit times
-fit_times <- ggplot()+
-  geom_hline(yintercept = 0)+
-  # geom_vline(xintercept = 2^14)+
-  geom_line(aes(x=n, y=time, color=type),
-            size=1.2,data=sim_fit_times) +
-  facet_grid(.~klabel, labeller = label_parsed)+
-  scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.0001,.001,.01,.1,1,10)) +
-  scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
-                     labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
-  scale_color_brewer(palette="Set2")+
-  labs(title="Training Data Pre-Processing Times", x=" ")+
-  theme_bw()+
-  theme(legend.position = "none")
+my_colors <- RColorBrewer::brewer.pal(n=4,name="Set1")
+# my_colors <- RColorBrewer::brewer.pal(n=7,name="Set1")[c(1,2,3,7)] # rearrange to highlight iqnn and knn
+# The colorblind palette with black: from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
+# my_colors <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
-# plot pred times
-pred_times <- ggplot()+
+# # plot fit times
+# fit_times <- ggplot()+
+#   geom_hline(yintercept = 0)+
+#   # geom_vline(xintercept = 2^14)+
+#   geom_line(aes(x=n, y=time, color=type),
+#             size=1.2,data=sim_fit_times) +
+#   facet_grid(.~klabel, labeller = label_parsed)+
+#   scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.0001,.001,.01,.1,1,10)) +
+#   scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
+#                      labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
+#   # scale_color_brewer(palette="Set1")+
+#   scale_color_manual(values=my_colors)+
+#   labs(title="Training Data Pre-Processing Times", x=" ")+
+#   theme_bw()+
+#   theme(legend.position = "none")
+# 
+# # plot pred times
+# pred_times <- ggplot()+
+#   geom_hline(yintercept = 0)+
+#   # geom_vline(xintercept = 2^14)+
+#   geom_line(aes(x=n, y=time, color=type),
+#             size=1.2,data=sim_pred_times) +
+#   # geom_text(aes(x=n, y=time, label=dlabel),
+#   #           data=filter(sim_pred_times, type=="iqnn"), parse=TRUE) +
+#   facet_grid(.~klabel, labeller = label_parsed)+
+#   scale_y_continuous("Time in log(mins)", trans="log", breaks=c(0.0001,.001,.01,.1,1,10,100)) +
+#   scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
+#                      labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
+#   # scale_color_brewer(palette="Set1")+
+#   scale_color_manual(values=my_colors)+
+#   labs(title="Test Data Prediction Times", x="Training Size (n)")+
+#   theme_bw()+
+#   theme(legend.position = "bottom")
+# grid.arrange(fit_times,pred_times,nrow=2, heights=c(1,1.2))
+
+combined_times <- rbind(data.frame(sim_fit_times,dlabel=NA),
+                        sim_pred_times)
+
+combined_times$stage_pretty <- factor(ifelse(combined_times$stage=="fitting","Preprocessing","Prediction"),
+                                      levels=c("Preprocessing","Prediction"))
+combined_times$type_pretty <- factor(combined_times$type, labels=c("IQNN   ","KNN-brute   ","AKNN-cover   ", "AKNN-kd   "))
+ ggplot()+
   geom_hline(yintercept = 0)+
   # geom_vline(xintercept = 2^14)+
-  geom_line(aes(x=n, y=time, color=type),
-            size=1.2,data=sim_pred_times) +
+  geom_line(aes(x=n, y=time, color=type_pretty),
+            size=1.2,data=combined_times) +
   # geom_text(aes(x=n, y=time, label=dlabel),
   #           data=filter(sim_pred_times, type=="iqnn"), parse=TRUE) +
-  facet_grid(.~klabel, labeller = label_parsed)+
-  scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.001,.01,.1,1,10,100)) +
+  facet_grid(stage_pretty~klabel, labeller = label_parsed)+
+  scale_y_continuous("Time in log(mins)", trans="log", breaks=c(0.0001,.001,.01,.1,1,10,100)) +
   scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
                      labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
-  scale_color_brewer(palette="Set2")+
-  labs(title="Test Data Prediction Times")+
+  # scale_color_brewer(palette="Set1")+
+  scale_color_manual("Neighborhood Algorithm:  ", values=my_colors)+
+  labs(x="Training Size (n)")+
   theme_bw()+
   theme(legend.position = "bottom")
- 
-# grid.arrange(fit_times,pred_times,nrow=2)
-fit_times
-pred_times
 @
 
-Similar timing results hold in higher dimensonal feature spaces, where IQNN outperforms the KNN and AKNN methods for "big $n$ - big $k$" cases. See Appendix \ktm{(ref here)} for the timing results for analogous explorations using simulations with $p=4$ and $p=8$ dimensional feature spaces. 
+\ktm{ (Remove only add if asked: Similar timing results hold in higher dimensonal feature spaces, where IQNN outperforms the KNN and AKNN methods for "big $n$ - big $k$" cases. See Appendix YYY for the timing results for analogous explorations using simulations with $p=4$ and $p=8$ dimensional feature spaces.) }
 
 
 %-----------------------------------------------------------------------
