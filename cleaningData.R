@@ -100,7 +100,7 @@ setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression
 # names(data)[which(names(data)=="CO(GT)")] <- "y"
 # save(data, file="air_quality_raw.Rdata")
 # 
-# # CASP data n=45730
+# # CASP data n=45730 #!# drop for time
 # data <- as.data.frame(fread("http://archive.ics.uci.edu/ml/machine-learning-databases/00265/CASP.csv"))
 # head(data)
 # names(data)[which(names(data)=="RMSD")] <- "y"
@@ -110,35 +110,42 @@ setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression
 ## FROM KEEL Repo 
 # *note: all sets downloaded in zip files from from http://sci2s.ugr.es/keel/category.php?cat=reg&order=ins#sub2 on 10/27/17
 #--------------------------
-# # Quake data (KEEL) n=2178
-# data <- as.data.frame(fread("quake.dat"))
-# head(data)
-# names(data)[which(names(data)=="V4")] <- "y"
-# save(data, file="quake_raw.Rdata")
-# 
-# # Laser data (KEEL) n=993
-# data <- as.data.frame(fread("laser.dat"))
-# head(data)
-# names(data)[which(names(data)=="V5")] <- "y"
-# save(data, file="laser_raw.Rdata")
-# 
-# # Treasury (KEEL) n=1049
-# data <- read.csv("treasury.csv", header=FALSE)
-# head(data)
-# names(data)[which(names(data)=="V16")] <- "y"
-# save(data, file="treasury_raw.Rdata")
-# 
+
 # # Weather ankara (wankara) (KEEL) n=321
 # data <- as.data.frame(fread("wankara.dat"))
 # head(data)
 # names(data)[which(names(data)=="V10")] <- "y"
 # save(data, file="wankara_raw.Rdata")
 # 
-# # Pumadyn data
+# # Laser data (KEEL) n=993
+# data <- as.data.frame(fread("laser.dat"))
+# head(data)
+# names(data)[which(names(data)=="V5")] <- "y"
+# save(data, file="laser_raw.Rdata")
+#
+# # Treasury (KEEL) n=1049
+# data <- read.csv("treasury.csv", header=FALSE)
+# head(data)
+# names(data)[which(names(data)=="V16")] <- "y"
+# save(data, file="treasury_raw.Rdata")
+# 
+# # Quake data (KEEL) n=2178
+# data <- as.data.frame(fread("quake.dat"))
+# head(data)
+# names(data)[which(names(data)=="V4")] <- "y"
+# save(data, file="quake_raw.Rdata")
+# 
+# # ANACALT (KEEL) n=4052
+# data <- as.data.frame(fread("raw/ANACALT.dat"))
+# head(data)
+# names(data)[which(names(data)=="V8")] <- "y"
+# save(data, file="anacalt_raw.Rdata")
+# 
+# # Pumadyn data n=8192
 # data <- as.data.frame(read.csv("puma32h.csv", header=FALSE))
 # head(data)
 # names(data)[which(names(data)=="V33")] <- "y"
 # save(data, file="puma_raw.Rdata")
 
-all_reg_sets <- c("air_quality","casp","ccpp","laser","puma","quake","skillcraft","treasury","wankara","wpbc")
-
+all_reg_sets <- c("wpbc","wankara","laser","treasury","quake","skillcraft","anacalt","puma","air_quality","ccpp")
+all_reg_sizes <- c(198,321,993,1049,2178,3395,4052,8192,9471,9568)

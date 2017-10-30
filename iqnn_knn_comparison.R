@@ -22,20 +22,21 @@ source("iqnn_knn_comparison_functions.R")
 
 ###-----------------------------------------------------------------------------------------------------
 # Organize Classification Data sets
-setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classification")
+
 
 ### combine all sizes
-all_sets <- c("iris","wpbc","pima","yeast","abalone","waveform","optdigits","satimage","marketing","youtube", "skin")
-all_responses <- c("V5","V2","V9","V10","Sex","Class","Class","Class","Sex", "category", "V4")
-all_sizes <- c(150,198,768,1484,4174,5000,5620,6435,6876, 168286,245057)
+all_sets <- c("iris","wpbc","pima","yeast","abalone","waveform","optdigits","satimage","marketing","magic")
+all_responses <- c("V5","V2","V9","V10","Sex","Class","Class","Class","Sex","y")
+all_sizes <- c(150,198,768,1484,4174,5000,5620,6435,6876,19020)
 
 # # Clean all using helper function
+# setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classification\\raw")
 # for(set in 1:length(all_sets)){
 #   load(file=paste0(all_sets[set],"_raw.Rdata"))
 #   # name of response variable
 #   y <- all_responses[set]
 #   # use helper function to standardize and drop non-numeric/constant-valued input variables
-#   data <- clean_data_for_iqnn_knn(as.data.frame(data),y)
+#   data <- clean_data_for_iqnn_knn(as.data.frame(data),"y")
 #   save(data,file=paste0(all_sets[set],"_cleaned.Rdata"))
 # }
 
@@ -44,11 +45,11 @@ all_sizes <- c(150,198,768,1484,4174,5000,5620,6435,6876, 168286,245057)
 setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classification")
 
 max_p <- 2 # max number of dimensions for inputs
-cv_k <- 100 # cv folds
+cv_k <- 10 # cv folds
 
-tuned_param_list <- list(NULL)
-tuned_performance_list <- list(iqnn=list(NULL),knn=list(NULL))
-for(set in 1:9){
+# tuned_param_list <- list(NULL)
+# tuned_performance_list <- list(iqnn=list(NULL),knn=list(NULL))
+for(set in 1:10){
   print(set)
   load(file=paste0(all_sets[set],"_cleaned.Rdata"))
   y <- all_responses[set]
@@ -69,7 +70,7 @@ for(set in 1:9){
   ## Tune the iqnn shoot for no fewer than 2 per bin (otherwise problems with allocation on boundaries)
   set.seed(1234)
   tune_iqnn_out <- iqnn_tune(data=data, y=y, mod_type = "class", bin_cols=bin_cols, nbins_range=c(2,floor((train_n/2)^(1/p))),
-                             jit = rep(0.0001,length(bin_cols)), stretch = FALSE,strict=FALSE,oom_search = ifelse(nrow(data)>100000, TRUE,FALSE), cv_k=cv_k)
+                             jit = rep(0.0001,length(bin_cols)), stretch = FALSE,strict=FALSE,oom_search = FALSE, cv_k=cv_k)
   nbins <- tune_iqnn_out$nbins[[which.min(tune_iqnn_out$error)]]
   tuned_performance_list$iqnn[[set]] <- tune_iqnn_out
   
@@ -87,6 +88,11 @@ tuned_performance_list
 # save(tuned_param_list,tuned_performance_list, file="tuned_param_list.Rdata")
 # load(file="tuned_param_list.Rdata")
 
+# save(tuned_param_list,tuned_performance_list, file="tuned_param_list_oom.Rdata")
+# load(file="tuned_param_list_oom.Rdata")
+
+
+
 #--------------------------------------------------------------------------------------------------------
 # Collecting Accuracy : use average over many 10-fold cv results
 
@@ -103,7 +109,7 @@ setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classifica
 big_timer <- Sys.time()
 
 # Loop over all data sets and repetitions to record accuracies and times. 
-for(set in 1:9){
+for(set in 1:10){
   print(all_sets[set])
   
   load(file=paste0(all_sets[set],"_cleaned.Rdata"))
@@ -115,7 +121,7 @@ for(set in 1:9){
   
   ## Compare knn/iqnn method timing and accuracy with k-fold CV
   # loop over nreps for each method
-  for(rep in 1:nreps){
+  for(rep in 1:25){
     print(rep)
     for(method in 1:4){
       seed <- rep # set seed as rep number
@@ -163,15 +169,214 @@ results_class <- data.frame(do.call("rbind", accuracy_results_list),
   as.data.frame()
 
 head(results_class)
+tail(results_class)
 str(results_class)
 
 
 # save(accuracy_results_list, results_class,tuned_param_list,tuned_performance_list, file="classification_testing.Rdata")
-
+# load(file="classification_testing.Rdata")
 ggplot()+
   geom_line(aes(x=data_name,y=diff_acc,color=type,group=type),size=1,data=results_class)+
   theme_bw()
 
+
+###--------------------------------------------------------------------------------------------
+# Accuracy Comparisons for Regression
+
+setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression")
+all_reg_sets <- c("wpbc","wankara","laser","treasury","quake","skillcraft","anacalt","puma","air_quality","ccpp")
+all_reg_sizes <- c(198,321,993,1049,2178,3395,4052,8192,9471,9568)
+
+# # Clean all using helper function
+# for(set in 1:length(all_reg_sets)){
+#   load(file=paste0("raw\\",all_reg_sets[set],"_raw.Rdata"))
+#   # name of response variable
+#   data$y <- scale(data$y)
+#   # use helper function to standardize and drop non-numeric/constant-valued input variables
+#   data <- clean_data_for_iqnn_knn(as.data.frame(data),y)
+#   save(data,file=paste0(all_reg_sets[set],"_cleaned.Rdata"))
+# }
+
+# Tune neighborhood/bin parameters for each data set using 10-fold cv then save results for running accuracy tests
+max_p <- 2 # max number of dimensions for inputs
+cv_k <- 10 # cv folds
+tune_reps <- 100 # number of reps for CV while tuning each parameterization
+
+tuned_reg_param_list <- list(NULL)
+tuned_reg_performance_list <- list(iqnn=list(NULL),knn=list(NULL))
+for(set in 1:length(all_reg_sets)){
+  print(set)
+  load(file=paste0(all_reg_sets[set],"_cleaned.Rdata"))
+  
+  ## Variable selection
+  # Find column names in order of importance for randomForest (heuristic for doing variable selection)
+  set.seed(12345)
+  myforest <- randomForest(y~. , data=sample_n(data,min(1000,nrow(data))))
+  important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
+  # allow a cap to be put on number of variables considered
+  # p <- min(length(important_cols),max_p)
+  p=2
+  
+  ## Parameterize for binning to best match k-nn structure specified with n, k, p, and cv_k
+  train_n <- floor(nrow(data)*((cv_k-1)/cv_k))
+  bin_cols <- important_cols[1:p]
+  
+  ## Tune the iqnn shoot for no fewer than 2 per bin (otherwise problems with allocation on boundaries)
+  set.seed(1234)
+  tune_iqnn_out <- list(NULL)
+  for(tune_rep in 1:tune_reps){
+  tune_iqnn_out[[tune_rep]] <- iqnn_tune(data=data, y="y", mod_type = "reg", bin_cols=bin_cols, nbins_range=c(2,floor((train_n/2)^(1/p))),
+                             jit = rep(0.0001,length(bin_cols)), stretch = FALSE,strict=FALSE,oom_search = ifelse(nrow(data)>100000, TRUE,FALSE), cv_k=cv_k)
+  }
+  tune_iqnn_out_all <- do.call("rbind", tune_iqnn_out) %>%
+    as.data.frame() %>%
+    group_by(nn_equiv, bin_dims,nbins_total) %>%
+    summarize(mse = mean(MSE),
+              se_mse = sd(MSE),
+              reps= n()) %>%
+    as.data.frame()
+  # find smallest MSE row, then figure out which model with lowest number of bins is within 1 SE[MSE] of the lowest (1 SE rule from page 214 in ISL book)
+  lowest_row <- which.min(tune_iqnn_out_all$mse)
+  on_par_lowest <- tune_iqnn_out_all$mse <= tune_iqnn_out_all$mse[lowest_row]+tune_iqnn_out_all$se_mse[lowest_row]
+  tuned_row <- tune_iqnn_out_all$nbins_total== min(tune_iqnn_out_all[on_par_lowest,]$nbins_total)
+  nbins <-  as.numeric(str_split(tune_iqnn_out_all$bin_dims[tuned_row], "X")[[1]])
+  tuned_reg_performance_list$iqnn[[set]] <- tune_iqnn_out_all
+  
+  ## Tune the knn over same range of neighborhood size equivalents
+  set.seed(1234)
+  tune_knn_out <- list(NULL)
+  for(tune_rep in 1:tune_reps){
+    tune_knn_out[[tune_rep]] <- tune_knn_reg(data=data, y_name="y", x_names=bin_cols, cv_k = cv_k,
+                                              k_values=as.integer(round(tune_iqnn_out_all$nn_equiv)), knn_algorithm = "brute")
+  }
+  tune_knn_out_all <- do.call("rbind", tune_knn_out) %>%
+    as.data.frame() %>%
+    group_by(k) %>%
+    summarize(mse = mean(MSE),
+              se_mse = sd(MSE),
+              reps= n()) %>%
+    as.data.frame()
+  # find smallest MSE row, then figure out which model with lowest number of bins is within 1 SE[MSE] of the lowest (1 SE rule from page 214 in ISL book)
+  lowest_row_knn <- which.min(tune_knn_out_all$mse)
+  on_par_lowest_knn <- tune_knn_out_all$mse <= tune_knn_out_all$mse[lowest_row_knn]+tune_knn_out_all$se_mse[lowest_row_knn]
+  k <- max(tune_knn_out_all[on_par_lowest_knn,]$k)
+  
+  tuned_reg_performance_list$knn[[set]] <- tune_knn_out_all
+  
+  tuned_reg_param_list[[set]] <- list(bin_cols=bin_cols, nbins=nbins, k=k, n=nrow(data), cv_k=cv_k)
+}
+tuned_reg_param_list
+tuned_reg_performance_list
+# save(tuned_reg_param_list,tuned_reg_performance_list, file="tuned_reg_param_list.Rdata")
+# load(file="tuned_reg_param_list.Rdata")
+
+
+
+#--------------------------------------------------------------------------------------------------------
+# Collecting Accuracy : use average over many 10-fold cv results
+
+
+nreps <- 100 # number of times to run k-fold comparisons
+# # Initialize an empty data structure to put timing/accuracy measurements into
+# # Use a list with one df for each method, this is done to allow consistant storage when randomizing order of methods in each trial
+results <- data.frame(data_name=rep(all_reg_sets,each=nreps),obs = NA, nn_size = NA, cv_mse = NA, seed = NA)
+mse_results_list <- list(results_iqnn=results, results_knn=results,
+                              results_knn_cover=results, results_knn_kd=results)
+
+setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression")
+big_timer <- Sys.time()
+
+# Loop over all data sets and repetitions to record accuracies and times. 
+for(set in 1:10){
+  print(all_reg_sets[set])
+  load(file=paste0(all_reg_sets[set],"_cleaned.Rdata"))
+  bin_cols <- tuned_reg_param_list[[set]]$bin_cols
+  k <-tuned_reg_param_list[[set]]$k
+  n <- tuned_reg_param_list[[set]]$n
+  nbins <- tuned_reg_param_list[[set]]$nbins
+  # nbins <- tuned_reg_performance_list$iqnn[[set]][tuned_reg_performance_list$knn[[set]]$k ==k,"nbins"][[1]]
+  
+  ## Compare knn/iqnn method MSE with k-fold CV
+  # loop over nreps for each method
+  for(rep in 1:nreps){
+    print(rep)
+    for(method in 1:4){
+      seed <- rep # set seed as rep number
+      # find 10-fold CV predictions, Record time/accuracy for each
+      if(method==1){
+        set.seed(seed)
+        preds <- iqnn_cv_predict(data=data, y="y", mod_type="reg", bin_cols=bin_cols,
+                                                nbins=nbins, jit=rep(0.00001,length(nbins)), strict=FALSE,
+                                                cv_k=cv_k)
+      } else if(method==2){
+        set.seed(seed)
+        preds <- cv_pred_knn(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k, knn_algorithm = "brute")
+      } else if(method==3){
+        set.seed(seed)
+        preds <- cv_pred_knn(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,knn_algorithm = "cover_tree")
+      } else {
+        set.seed(seed)
+        preds<- cv_pred_knn(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,knn_algorithm = "kd_tree")
+      }
+      # store results in proper mehtod/set/rep values
+      mse_results_list[[method]]$obs[(set-1)*nreps + rep] <- nrow(data)
+      mse_results_list[[method]]$nn_size[(set-1)*nreps + rep] <- ifelse(method==1, nrow(data)/prod(nbins), k)
+      mse_results_list[[method]]$cv_mse[(set-1)*nreps + rep] <- mean((preds - data$y)^2)
+      mse_results_list[[method]]$seed[(set-1)*nreps + rep] <- seed
+    }
+  }
+}
+Sys.time() - big_timer
+str(mse_results_list)
+
+results_reg <- data.frame(do.call("rbind", mse_results_list),
+                            type=rep(c("iqnn","knn - brute","knn - cover tree","knn - kd tree"),each=nrow(mse_results_list$results_iqnn))) %>%
+  group_by(data_name,obs,nn_size,type) %>%
+  summarize(avg_cv_mse=mean(cv_mse,na.rm=TRUE)) %>%
+  as.data.frame() %>%
+  arrange(data_name, type) %>%
+  group_by(data_name) %>%
+  na.omit() %>%
+  mutate(mse_ratio = avg_cv_mse/avg_cv_mse[2],
+         rmse = sqrt(avg_cv_mse),
+         rmse_ratio = rmse/rmse[2]) %>% #!# only works due to knn brute being 2nd in order - danger of hard coding (don't know simple alternative)
+  ungroup() %>%
+  mutate(data_name = factor(data_name, levels=all_reg_sets[order(all_reg_sizes)])) %>%
+  as.data.frame()
+
+head(results_reg)
+tail(results_reg)
+str(results_reg)
+
+
+
+
+# save(mse_results_list, results_reg,tuned_reg_param_list,tuned_reg_performance_list, file="regression_testing.Rdata")
+# load(file="classification_testing.Rdata")
+ggplot()+geom_hline(yintercept = 0) +
+  geom_jitter(aes(x=data_name,y=rmse,color=type,group=type),size=4,data=results_reg,width=.15)+
+  theme_bw()
+
+
+ggplot()+
+  # geom_hline(yintercept = 0) +
+  geom_line(aes(x=data_name,y=rmse_ratio,color=type,group=type),size=1,data=results_reg)+
+  theme_bw()
+
+# exploring why certain sets have much higher RMSE
+set=2
+all_reg_sets
+load(file=paste0(all_reg_sets[set],"_cleaned.Rdata"))
+head(data)
+bin_cols <- tuned_reg_param_list[[set]]$bin_cols
+ggplot()+
+  geom_point(aes_string(x=bin_cols[1],y=bin_cols[2],color="y"), data=data) +
+  theme_bw()
+
+
+
+###--------------------------------------------------------------------------------------------------------------
+2
 
 # 
 # 
@@ -242,74 +447,6 @@ ggplot()+
 # }
 # Sys.time() - big_timer
 # str(accuracy_results_list)
-
-
-###--------------------------------------------------------------------------------------------
-# Accuracy Comparisons for Regression
-
-setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression")
-
-# all_reg_sets <- c("air_quality","casp","ccpp","laser","puma","quake","skillcraft","treasury","wankara","wpbc")
-# # Clean all using helper function
-# for(set in 1:length(all_reg_sets)){
-#   load(file=paste0(all_reg_sets[set],"_raw.Rdata"))
-#   # name of response variable
-#   data$y <- scale(data$y)
-#   # use helper function to standardize and drop non-numeric/constant-valued input variables
-#   data <- clean_data_for_iqnn_knn(as.data.frame(data),y)
-#   save(data,file=paste0(all_reg_sets[set],"_cleaned.Rdata"))
-# }
-
-# Tune neighborhood/bin parameters for each data set using 10-fold cv then save results for running accuracy tests
-setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression")
-
-max_p <- 2 # max number of dimensions for inputs
-cv_k <- 100 # cv folds
-
-all_reg_sets <- c("air_quality","casp","ccpp","laser","puma","quake","skillcraft","treasury","wankara","wpbc")
-
-tuned_reg_param_list <- list(NULL)
-tuned_reg_performance_list <- list(iqnn=list(NULL),knn=list(NULL))
-for(set in 1:length(all_reg_sets)){
-  print(set)
-  load(file=paste0(all_reg_sets[set],"_cleaned.Rdata"))
-  head(data)
-  
-  ## Variable selection
-  # Find column names in order of importance for randomForest (heuristic for doing variable selection)
-  set.seed(12345)
-  myforest <- randomForest(y~. , data=sample_n(data,min(1000,nrow(data))))
-  important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
-  # allow a cap to be put on number of variables considered
-  # p <- min(length(important_cols),max_p)
-  p=2
-  
-  ## Parameterize for binning to best match k-nn structure specified with n, k, p, and cv_k
-  train_n <- floor(nrow(data)*((cv_k-1)/cv_k))
-  bin_cols <- important_cols[1:p]
-  
-  ## Tune the iqnn shoot for no fewer than 2 per bin (otherwise problems with allocation on boundaries)
-  set.seed(1234)
-  tune_iqnn_out <- iqnn_tune(data=data, y="y", mod_type = "reg", bin_cols=bin_cols, nbins_range=c(2,floor((train_n/2)^(1/p))),
-                             jit = rep(0.0001,length(bin_cols)), stretch = FALSE,strict=FALSE,oom_search = ifelse(nrow(data)>100000, TRUE,FALSE), cv_k=cv_k)
-  nbins <- tune_iqnn_out$nbins[[which.min(tune_iqnn_out$MSE)]]
-  tuned_reg_performance_list$iqnn[[set]] <- tune_iqnn_out
-  
-  ## Tune the knn over same range of neighborhood size equivalents
-  set.seed(1234)
-  tune_knn_out <- tune_knn_reg(dat=data, y_name="y", x_names=bin_cols, cv_method="kfold", cv_k = cv_k,
-                                 k_values=as.integer(round(tune_iqnn_out$nn_equiv)), knn_algorithm = "brute")
-  k <- tune_knn_out$k[which.min(tune_knn_out$MSE)]
-  tuned_reg_performance_list$knn[[set]] <- tune_knn_out
-  
-  tuned_reg_param_list[[set]] <- list(bin_cols=bin_cols, nbins=nbins, k=k, n=nrow(data), cv_k=cv_k)
-}
-tuned_reg_param_list
-tuned_reg_performance_list
-# save(tuned_reg_param_list,tuned_reg_performance_list, file="tuned_reg_param_list.Rdata")
-# load(file="tuned_param_list.Rdata")
-
-
 
 #---------------------------------------------------------------------------------------------------
 

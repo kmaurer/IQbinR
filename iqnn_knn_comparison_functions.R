@@ -61,23 +61,22 @@ aknn_predict <- function(train_x,test_x,y,mod_type="class",k=10,algorithm="cover
 
 #--------------------------------------
 ### Cross Validated predictions for knn model using knn.reg from FNN package
-cv_pred_knn <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute"){
-  dat <- as.data.frame(dat)
-  if(cv_method=="kfold") cv_cohorts <- make_cv_cohorts(dat, cv_k)
-  if(cv_method=="LOO") cv_cohorts <- 1:nrow(dat)
-  cv_preds <- rep(NA,nrow(dat))
+cv_pred_knn <- function(data, y_name, x_names, cv_k = 10, k=5, knn_algorithm = "brute"){
+  data <- as.data.frame(data)
+  cv_cohorts <- make_cv_cohorts(data, cv_k)
+  cv_preds <- rep(NA,nrow(data))
   for(fold in 1:length(unique(cv_cohorts))){
-    test_index <- which(cv_cohorts==fold)
-    knn_mod <- knn.reg(train=dat[-test_index,x_names], test=dat[test_index,x_names], 
-                       y=dat[-test_index,y_name], k = k, algorithm = knn_algorithm)
+    test_index <- cv_cohorts==fold
+    knn_mod <- knn.reg(train=data[!test_index,x_names], test=data[test_index,x_names], 
+                       y=as.vector(data[!test_index,y_name]), k = k, algorithm = knn_algorithm)
     cv_preds[test_index] <- knn_mod$pred
   }
   cv_preds
 }
-# cv_preds <- cv_pred_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
+# cv_preds <- cv_pred_knn(data=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
 #            cv_method="kfold", cv_k = 10, k=5, knn_algorithm = "brute")
 # head(cv_preds)
-# cv_preds <- cv_pred_knn(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
+# cv_preds <- cv_pred_knn(data=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"),
 #                        cv_method="LOO", k=5, knn_algorithm = "brute")
 # head(cv_preds)
 
@@ -103,16 +102,17 @@ cv_pred_knn_class <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10
 # cv_preds
 #--------------------------------------
 ### Tuning function for knn regression
-tune_knn_reg <- function(dat, y_name, x_names, cv_method="kfold", cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
+tune_knn_reg <- function(data, y_name, x_names, cv_k = 10, k_values=NULL, knn_algorithm = "brute"){
   if(!is.integer(k_values)) return(print("Please specify k_values as an integer vector of neightborhood sizes (k) to be tuned"))
   cv_results <- data.frame(k=k_values,MSE = NA)
   for(k_idx in 1:length(k_values)){
-    cv_preds <- cv_pred_knn(dat, y_name, x_names, cv_method="kfold", cv_k = cv_k, k=k_values[k_idx], knn_algorithm = "brute")
-    cv_results$MSE[k_idx] <- mean((dat[,y_name]-cv_preds)^2)
+    cv_preds <- cv_pred_knn(data, y_name, x_names, cv_k = cv_k, k=k_values[k_idx], knn_algorithm = "brute")
+    cv_results$MSE[k_idx] <- mean((data[,y_name]-cv_preds)^2)
   }
   cv_results$RMSE <- sqrt(cv_results$MSE)
   return(cv_results)
 }
+
 # timer <- Sys.time()
 # tune_knn_results_2 <- tune_knn_reg(dat=bb_players_st, y_name="hr", x_names=c("b2","b3","hit","ab"), k_values=1:50, knn_algorithm = "brute")
 # Sys.time()-timer
