@@ -429,7 +429,7 @@ To prepare for comparing the nearest-neighbor classification models, we cleaned 
 
 Next for each data set we tuned the parameterization for each classifier using twenty initializations of ten-fold cross-validation and make the final model selection using the ``one-standard error" heuristic rule; selecting the most parsimonious parameterization that has an average misclassification rate within one standard error of the lowest observed rate \citep{friedman2001elements}. For IQNN this entailed tuning across ($\delta_1$,$\delta_2$) pairs that control the number of bins in each dimesion. We narrowed our tuning to select from only nearly-balanced bins ($\gamma=1$) that provide average binned-neighborhood sizes that fell nearest to whole integers. This was done to avoid tuning exhaustively over all possible bin parameterizations. We then tuned the KNN and AKNN models over the corresponding set of neighborhood sizes, $k$, to the integers nearest to the average binned-neighborhood sizes from the IQNN tuning. The loss values from the tuned models were then collected for 100 additional initializations of ten-fold cross-validation for each data set. See Table~\ref{tab:tuning_class} in Appendix~\ref{dataAppend} for parameterizations considered in tuning, the parameters selected and average ten-fold cross-validated misclassification error rates from each model on each data set.
 
- <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=3.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="3-nn examples times...",warning=FALSE>>=
+ <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="3-nn examples times...",warning=FALSE>>=
 # load(file="../DataRepo/classification/classification_testing.Rdata")
 # 
 # results_class$type_pretty <- factor(results_class$type, labels=c("IQNN   ","KNN-brute   ","AKNN-cover   ", "AKNN-kd   ")) 
@@ -445,39 +445,72 @@ Next for each data set we tuned the parameterization for each classifier using t
 #   labs(x="") + 
 #   theme(legend.position = "bottom")
 
-load(file="../DataRepo/classification/tuned_classification_testing.Rdata")
+load(file="../DataRepo/classification/tuned_classification_testing.Rdata") 
  
+# clean data for plots of accuracy relative to knn as baseline
+class_plot_data_knn <- results_class %>%
+  filter(type == "knn - brute") %>%
+  mutate(x=as.numeric(data_name)-.5,
+         xend=as.numeric(data_name)+.5)
+class_plot_data_knn$type_pretty <- "KNN-brute"
 
 shiftval=.25
 class_plot_data <- results_class %>%
   filter(type != "knn - brute") %>%
   mutate(shift = (as.numeric(as.factor(as.character(type)))-2)*shiftval,
          diff_err_perc = -diff_acc*100)
-class_plot_data$type_pretty <- factor(class_plot_data$type, labels=c("IQNN   ","AKNN-cover   ", "AKNN-kd   ")) 
+class_plot_data$type_pretty <- factor(class_plot_data$type, labels=c("IQNN   ","AKNN-cover ", "AKNN-kd   ")) 
 
 x_label_sizes <- as.numeric(sapply(levels(class_plot_data$data_name), function(x) class_plot_data$obs[class_plot_data$data_name==x][1]))
 my_x_ticks <- paste0(levels(class_plot_data$data_name), "\n n=",x_label_sizes)
 
-ggplot()+
-  geom_hline(yintercept=0,size=1, color=RColorBrewer::brewer.pal(4,"Set1")[4])+
+# plot relative to KNN
+p1 <- ggplot()+
+  geom_segment(aes(x=x, xend=xend,y=100-avg_cv_accuracy*100,yend=100-avg_cv_accuracy*100, linetype="KNN-brute"),
+               color=RColorBrewer::brewer.pal(4,"Set1")[4], size=1, data=class_plot_data_knn) +
   geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
-  geom_point(aes(x=as.numeric(data_name)+shift,y=diff_err_perc,color=type_pretty,shape=type_pretty),
+  geom_point(aes(x=as.numeric(data_name)+shift,y=100-avg_cv_accuracy*100,color=type_pretty,shape=type_pretty),
              size=3,data=class_plot_data)+
-  theme_bw()+
-  scale_x_continuous("Data Set", breaks=1:10,
+  theme_bw() +
+  scale_linetype_manual("Baseline: ", values=1)+
+  scale_x_continuous("", breaks=1:10,
                      labels=my_x_ticks,
-                     limits=c(0,10.5))+
-  scale_y_continuous("Relative Misclassification Error Rates \n (% Difference from KNN-brute)",
-                     breaks=seq(-0.5,1.5,by=.5),labels=c("-0.5%","0.0%","0.5%","1.0%","1.5%"),
-                     limits=c(min(-.5,min(class_plot_data$diff_err_perc)),max(1.5,max(class_plot_data$diff_err_perc)))) +
+                     limits=c(0.5,10.5)) +
+  scale_y_continuous(" \n Misclassification Error Rates",
+                     breaks=seq(0,100,by=10),labels=paste0("  ",seq(0,100,by=10),"% ")) +
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
   scale_shape_manual("Model Type: ", values=c(17,15,19))+
   theme(panel.grid.major.x =element_blank(),
         panel.grid.minor.x =element_blank(),
         axis.ticks.x = element_blank(),
-        panel.border = element_blank(),
-        legend.position = "bottom")+
-  annotate(geom="text",x=0,y=0,label="bold(KNN-brute)", color=RColorBrewer::brewer.pal(4,"Set1")[4], parse=T,vjust=-.2,hjust=0.4)
+        # panel.border = element_blank(),
+        legend.position = "none")
+
+
+# plot relative to KNN
+p2 <- ggplot()+
+  geom_segment(aes(x=.5, xend=10.5,y=0,yend=0, linetype="KNN-brute"),size=1, color=RColorBrewer::brewer.pal(4,"Set1")[4])+
+  geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
+  geom_point(aes(x=as.numeric(data_name)+shift,y=diff_err_perc,color=type_pretty,shape=type_pretty),
+             size=3,data=class_plot_data)+
+  theme_bw()+
+  scale_linetype_manual("Baseline: ", values=1)+
+  scale_x_continuous("Data Set", breaks=1:10,
+                     labels=my_x_ticks,
+                     limits=c(0.5,10.5))+
+  scale_y_continuous("Relative Misclassification Error Rates \n (% Difference from KNN-brute)",
+                     breaks=seq(-0.5,1.5,by=.5),labels=c("-0.5%","0.0%","0.5%","1.0%","1.5%"),
+                     limits=c(min(-.5,min(class_plot_data$diff_err_perc)),max(1.5,max(class_plot_data$diff_err_perc)))) +
+  scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
+  scale_shape_manual("Model Type: ", values=c(17,15,19))+
+  # annotate(geom="text",x=0,y=0,label="bold(KNN-brute)", color=RColorBrewer::brewer.pal(4,"Set1")[4], parse=T,vjust=-.2,hjust=0.4)+
+  theme(panel.grid.major.x =element_blank(),
+        panel.grid.minor.x =element_blank(),
+        axis.ticks.x = element_blank(),
+        # panel.border = element_blank(),
+        legend.position = "bottom")
+
+grid.arrange(p1,p2,nrow=2,heights=c(1,1.2))
 
 @
 
