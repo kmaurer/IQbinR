@@ -34,9 +34,13 @@ medium_sizes <- c(4174,5000,5620,6435,6876)
 #   save(data, file=paste0(medium_sets[set],"_raw.Rdata"))
 # }
 
+### Epileptic Seizure Recognition data n=11500, y=5-group, p=10
+data <- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/00388/data.csv")
+head(data)
+save(data, file="seizure_raw.Rdata")
 
 ### Magic data n=19020, y=binary, p=10
-# http://sci2s.ugr.es/keel/dataset.php?cod=102 
+# http://sci2s.ugr.es/keel/dataset.php?cod=102
 # data <- as.data.frame(fread("magic.dat"))
 # head(data)
 # names(data)[which(names(data)=="V11")] <- "y"

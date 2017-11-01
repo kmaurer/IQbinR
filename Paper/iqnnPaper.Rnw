@@ -351,7 +351,7 @@ sim_pred_times <- sim_times_agg %>%
          klabel = factor(paste0("k == 2^",log2(k)), levels=paste0("k == 2^",sort(unique(log2(sim_times_agg$k))))),
          dlabel = factor(paste0("delta == 2^",log2(d)), levels=paste0("delta == 2^",sort(unique(log2(sim_times_agg$d))))) )
 
-my_colors <- RColorBrewer::brewer.pal(n=4,name="Set1")
+my_colors <- RColorBrewer::brewer.pal(n=4,name="Set1")[c(1,4,2,3)]
 # my_colors <- RColorBrewer::brewer.pal(n=7,name="Set1")[c(1,2,3,7)] # rearrange to highlight iqnn and knn
 # The colorblind palette with black: from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
 # my_colors <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -427,23 +427,58 @@ While computational efficiency is important, a new nearest-neighbor method must 
 
 To prepare for comparing the nearest-neighbor classification models, we cleaned and scaled each data set such that clear comparison of model can be made across all data sets. \ktm{(Perhaps move the details of data cleaning discussion to appendix?)} The units associated with each feature varible and the number of feature variables differed across all data sets, so data pre-processing was implemented to allow for more uniform comparisons of accuracy for IQNN, KNN and AKNN models. First, a center/scale transformation was used to standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Secondly, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all ten cases. This was done by fitting a random forest to part of the training data removing all but variables with the two highest importance scores; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. While the variable selection method is somewhat arbitrary here, using high importance variables is done to allow stronger predictions under the constraint than might be had by selecting two features at random. Additionally, we elect to specify the iterative-quantile algorithm to bin the features in order of importance scores. 
 
-Next for each data set we tuned the parameterization for each classifier using 100 initializations of ten-fold cross-validation and make the final model selection using the ``one-standard error" heuristic rule; selecting the most parsimonious parameterization that has an average misclassification rate within one standard error of the lowest observed rate \citep{friedman2001elements}. For IQNN this entailed tuning across ($\delta_1$,$\delta_2$) pairs that control the number of bins in each dimesion. We narrowed our tuning to select from only nearly-balanced bins ($\gamma=1$) that provide average binned-neighborhood sizes that fell nearest to whole integers. This was done to avoid tuning exhaustively over all possible bin parameterizations. We then tuned the KNN and AKNN models over the corresponding set of neighborhood sizes, $k$, to the integers nearest to the average binned-neighborhood sizes from the IQNN tuning. The loss values from the tuned models were then collected for 100 additional initializations of ten-fold cross-validation for each data set. See Table~\ref{tab:tuning_class} in Appendix~\ref{dataAppend} for parameterizations considered in tuning, the parameters selected and average ten-fold cross-validated misclassification error rates from each model on each data set.
+Next for each data set we tuned the parameterization for each classifier using twenty initializations of ten-fold cross-validation and make the final model selection using the ``one-standard error" heuristic rule; selecting the most parsimonious parameterization that has an average misclassification rate within one standard error of the lowest observed rate \citep{friedman2001elements}. For IQNN this entailed tuning across ($\delta_1$,$\delta_2$) pairs that control the number of bins in each dimesion. We narrowed our tuning to select from only nearly-balanced bins ($\gamma=1$) that provide average binned-neighborhood sizes that fell nearest to whole integers. This was done to avoid tuning exhaustively over all possible bin parameterizations. We then tuned the KNN and AKNN models over the corresponding set of neighborhood sizes, $k$, to the integers nearest to the average binned-neighborhood sizes from the IQNN tuning. The loss values from the tuned models were then collected for 100 additional initializations of ten-fold cross-validation for each data set. See Table~\ref{tab:tuning_class} in Appendix~\ref{dataAppend} for parameterizations considered in tuning, the parameters selected and average ten-fold cross-validated misclassification error rates from each model on each data set.
 
  <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=3.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="3-nn examples times...",warning=FALSE>>=
-load(file="../DataRepo/classification/classification_testing.Rdata")
+# load(file="../DataRepo/classification/classification_testing.Rdata")
+# 
+# results_class$type_pretty <- factor(results_class$type, labels=c("IQNN   ","KNN-brute   ","AKNN-cover   ", "AKNN-kd   ")) 
+# class_n <- sapply(1:length(tuned_param_list), function(x) tuned_param_list[[x]]$n)
+# results_class$name_size <- factor(paste(results_class$data_name, results_class$obs,sep="\n n="), 
+#                                   levels=paste(levels(results_class$data_name), class_n,sep="\n n="))
+# 
+# ggplot()+
+#   geom_line(aes(x=name_size,y=-diff_acc*100,color=type_pretty,group=type_pretty),size=1,data=results_class)+
+#   scale_y_continuous("Relative Misclassification Error Rates \n (% Difference from KNN-brute)",
+#                      breaks=seq(-0.5,1.5,by=.5),labels=c("-0.5%","0.0%","0.5%","1.0%","1.5%")) +
+#   theme_bw()+
+#   labs(x="") + 
+#   theme(legend.position = "bottom")
 
-results_class$type_pretty <- factor(results_class$type, labels=c("IQNN   ","KNN-brute   ","AKNN-cover   ", "AKNN-kd   ")) 
-class_n <- sapply(1:length(tuned_param_list), function(x) tuned_param_list[[x]]$n)
-results_class$name_size <- factor(paste(results_class$data_name, results_class$obs,sep="\n n="), 
-                                  levels=paste(levels(results_class$data_name), class_n,sep="\n n="))
+load(file="../DataRepo/classification/tuned_classification_testing.Rdata")
+ 
+
+shiftval=.25
+class_plot_data <- results_class %>%
+  filter(type != "knn - brute") %>%
+  mutate(shift = (as.numeric(as.factor(as.character(type)))-2)*shiftval,
+         diff_err_perc = -diff_acc*100)
+class_plot_data$type_pretty <- factor(class_plot_data$type, labels=c("IQNN   ","AKNN-cover   ", "AKNN-kd   ")) 
+
+x_label_sizes <- as.numeric(sapply(levels(class_plot_data$data_name), function(x) class_plot_data$obs[class_plot_data$data_name==x][1]))
+my_x_ticks <- paste0(levels(class_plot_data$data_name), "\n n=",x_label_sizes)
 
 ggplot()+
-  geom_line(aes(x=name_size,y=-diff_acc*100,color=type_pretty,group=type_pretty),size=1,data=results_class)+
-  scale_y_continuous("Relative Misclassification Error Rates \n (% Difference from KNN-brute)",
-                     breaks=seq(-0.5,1.5,by=.5),labels=c("-0.5%","0.0%","0.5%","1.0%","1.5%")) +
+  geom_hline(yintercept=0,size=1, color=RColorBrewer::brewer.pal(4,"Set1")[4])+
+  geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
+  geom_point(aes(x=as.numeric(data_name)+shift,y=diff_err_perc,color=type_pretty,shape=type_pretty),
+             size=3,data=class_plot_data)+
   theme_bw()+
-  labs(x="") + 
-  theme(legend.position = "bottom")
+  scale_x_continuous("Data Set", breaks=1:10,
+                     labels=my_x_ticks,
+                     limits=c(0,10.5))+
+  scale_y_continuous("Relative Misclassification Error Rates \n (% Difference from KNN-brute)",
+                     breaks=seq(-0.5,1.5,by=.5),labels=c("-0.5%","0.0%","0.5%","1.0%","1.5%"),
+                     limits=c(min(-.5,min(class_plot_data$diff_err_perc)),max(1.5,max(class_plot_data$diff_err_perc)))) +
+  scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
+  scale_shape_manual("Model Type: ", values=c(17,15,19))+
+  theme(panel.grid.major.x =element_blank(),
+        panel.grid.minor.x =element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.border = element_blank(),
+        legend.position = "bottom")+
+  annotate(geom="text",x=0,y=0,label="bold(KNN-brute)", color=RColorBrewer::brewer.pal(4,"Set1")[4], parse=T,vjust=-.2,hjust=0.4)
+
 @
 
 Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned classification models for all considered data sets. This visualization compares the diffence in average cross-validated percent misclassified relative to brute-force KNN as a baseline.
