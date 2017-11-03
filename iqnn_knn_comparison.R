@@ -340,7 +340,7 @@ all_reg_sizes <- c(198,321,993,1049,2178,3395,4052,8192,9471,9568)
 # Tune neighborhood/bin parameters for each data set using 10-fold cv then save results for running accuracy tests
 max_p <- 2 # max number of dimensions for inputs
 cv_k <- 10 # cv folds
-tune_reps <- 10 # number of reps for CV while tuning each parameterization
+tune_reps <- 20 # number of reps for CV while tuning each parameterization
 
 tuned_reg_param_list <- list(NULL)
 tuned_reg_performance_list <- list(iqnn=list(NULL),knn=list(NULL))
@@ -377,9 +377,10 @@ for(set in 1:length(all_reg_sets)){
     as.data.frame()
   # find smallest MSE row, then figure out which model with lowest number of bins is within 1 SE[MSE] of the lowest (1 SE rule from page 214 in ISL book)
   lowest_row <- which.min(tune_iqnn_out_all$mse)
-  on_par_lowest <- tune_iqnn_out_all$mse <= tune_iqnn_out_all$mse[lowest_row]+tune_iqnn_out_all$se_mse[lowest_row]
-  tuned_row <- tune_iqnn_out_all$nbins_total== min(tune_iqnn_out_all[on_par_lowest,]$nbins_total)
-  nbins <-  as.numeric(str_split(tune_iqnn_out_all$bin_dims[tuned_row], "X")[[1]])
+  nbins <-  as.numeric(str_split(tune_iqnn_out_all$bin_dims[lowest_row], "X")[[1]])
+  # on_par_lowest <- tune_iqnn_out_all$mse <= tune_iqnn_out_all$mse[lowest_row]+tune_iqnn_out_all$se_mse[lowest_row]
+  # tuned_row <- tune_iqnn_out_all$nbins_total== min(tune_iqnn_out_all[on_par_lowest,]$nbins_total)
+  # nbins <-  as.numeric(str_split(tune_iqnn_out_all$bin_dims[tuned_row], "X")[[1]])
   tuned_reg_performance_list$iqnn[[set]] <- tune_iqnn_out_all
   
   ## Tune the knn over same range of neighborhood size equivalents
@@ -398,8 +399,9 @@ for(set in 1:length(all_reg_sets)){
     as.data.frame()
   # find smallest MSE row, then figure out which model with lowest number of bins is within 1 SE[MSE] of the lowest (1 SE rule from page 214 in ISL book)
   lowest_row_knn <- which.min(tune_knn_out_all$mse)
-  on_par_lowest_knn <- tune_knn_out_all$mse <= tune_knn_out_all$mse[lowest_row_knn]+tune_knn_out_all$se_mse[lowest_row_knn]
-  k <- max(tune_knn_out_all[on_par_lowest_knn,]$k)
+  k <- tune_knn_out_all$k[lowest_row_knn]
+  # on_par_lowest_knn <- tune_knn_out_all$mse <= tune_knn_out_all$mse[lowest_row_knn]+tune_knn_out_all$se_mse[lowest_row_knn]
+  # k <- max(tune_knn_out_all[on_par_lowest_knn,]$k)
   
   tuned_reg_performance_list$knn[[set]] <- tune_knn_out_all
   
@@ -414,7 +416,7 @@ tuned_reg_performance_list
 # Collecting Accuracy : use average over many 10-fold cv results
 
 
-nreps <- 10# number of times to run k-fold comparisons
+nreps <- 100# number of times to run k-fold comparisons
 # # Initialize an empty data structure to put timing/accuracy measurements into
 # # Use a list with one df for each method, this is done to allow consistant storage when randomizing order of methods in each trial
 results <- data.frame(data_name=rep(all_reg_sets,each=nreps),obs = NA, nn_size = NA, cv_mse = NA, seed = NA)
@@ -448,13 +450,13 @@ for(set in 1:10){
                                                 cv_k=cv_k)
       } else if(method==2){
         set.seed(seed)
-        preds <- cv_pred_knn(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k, knn_algorithm = "brute")
+        preds <- cv_pred_knn(data=data, y="y", x_names=bin_cols, cv_k=cv_k, k=k, knn_algorithm = "brute")
       } else if(method==3){
         set.seed(seed)
-        preds <- cv_pred_knn(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,knn_algorithm = "cover_tree")
+        preds <- cv_pred_knn(data=data, y="y", x_names=bin_cols, cv_k=cv_k, k=k,knn_algorithm = "cover_tree")
       } else {
         set.seed(seed)
-        preds<- cv_pred_knn(data=data, y=y, x_names=bin_cols, cv_k=cv_k, k=k,knn_algorithm = "kd_tree")
+        preds<- cv_pred_knn(data=data, y="y", x_names=bin_cols, cv_k=cv_k, k=k,knn_algorithm = "kd_tree")
       }
       # store results in proper mehtod/set/rep values
       mse_results_list[[method]]$obs[(set-1)*nreps + rep] <- nrow(data)
@@ -490,9 +492,97 @@ str(results_reg)
 
 
 
-
+### Old save (delete after confirmed results)
 # save(mse_results_list, results_reg,tuned_reg_param_list,tuned_reg_performance_list, file="regression_testing.Rdata")
 # load(file="regression_testing.Rdata")
+
+### New Save
+# save(mse_results_list, results_reg,tuned_reg_param_list,tuned_reg_performance_list, file="tuned_regression_testing.Rdata")
+# load(file="tuned_regression_testing.Rdata")
+
+
+
+# clean data for plots of accuracy relative to knn as baseline
+reg_plot_data_knn <- results_reg %>%
+  filter(type == "knn - brute") %>%
+  mutate(x=as.numeric(data_name)-.5,
+         xend=as.numeric(data_name)+.5)
+reg_plot_data_knn$type_pretty <- "KNN-brute"
+head(reg_plot_data_knn)
+
+shiftval=.25
+reg_plot_data <- results_reg %>%
+  filter(type != "knn - brute") %>%
+  mutate(shift = (as.numeric(as.factor(as.character(type)))-2)*shiftval)
+reg_plot_data$type_pretty <- factor(reg_plot_data$type, labels=c("IQNN   ","AKNN-cover ", "AKNN-kd   ")) 
+head(reg_plot_data)
+
+
+x_label_sizes_reg <- as.numeric(sapply(levels(reg_plot_data$data_name), function(x) reg_plot_data$obs[reg_plot_data$data_name==x][1]))
+my_x_ticks_reg <- paste0(levels(reg_plot_data$data_name), "\n n=",x_label_sizes_reg)
+
+# plot relative to KNN on raw RMSE scale
+#   - use vertical lines to partition between datasets
+#   - baseline KNN-brute as flat line segment
+#   - consistently offset points for IWNN and AKNN on X, y=accuracy
+#   - scale / theme to match previous plots
+ggplot()+
+  geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
+  geom_segment(aes(x=x, xend=xend,y=avg_cv_mse,yend=avg_cv_mse, linetype="KNN-brute"),
+               color=RColorBrewer::brewer.pal(4,"Set1")[4], size=1, data=reg_plot_data_knn) +
+  geom_point(aes(x=as.numeric(data_name)+shift,y=avg_cv_mse,color=type_pretty,shape=type_pretty),
+             size=3,data=reg_plot_data)+
+  theme_bw() +
+  scale_linetype_manual("Baseline: ", values=1)+
+  scale_x_continuous("", breaks=1:10,
+                     labels=my_x_ticks,
+                     limits=c(0,10.5)) +
+  labs(y="Average CV-RMSE\n (units of std dev)")+
+  scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
+  scale_shape_manual("Model Type: ", values=c(17,15,19))+
+  theme(panel.grid.major.x =element_blank(),
+        panel.grid.minor.x =element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.border = element_blank(),
+        legend.position = "bottom")
+
+
+# plot relative to KNN as difference in RMSE from KNN-brute
+#   - use vertical lines to partition between datasets
+#   - baseline at 0 to represent KNN-brute
+#   - consistently offset points for IWNN and AKNN on X, y=accuracy
+#   - scale / theme to match previous plots
+ggplot()+
+  geom_segment(aes(x=.5, xend=10.5,y=0,yend=0, linetype="KNN-brute"),size=1, color=RColorBrewer::brewer.pal(4,"Set1")[4])+
+  geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
+  geom_point(aes(x=as.numeric(data_name)+shift,y=rmse_diff,color=type_pretty,shape=type_pretty),
+             size=3,data=reg_plot_data)+
+  theme_bw() +
+  scale_x_continuous(" ", breaks=1:10,
+                     labels=my_x_ticks,
+                     limits=c(0.5,10.5)) +
+  labs(y="Relative CV-RMSE \n (Difference from KNN-brute)")+
+  # scale_y_continuous("Relative CV-RMSE \n (Difference from KNN-brute)", breaks=seq(-.01,.04,by=.01),limits=c(-0.01,0.04)) +
+  scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
+  scale_shape_manual("Model Type: ", values=c(17,15,19))+
+  scale_linetype_manual("Baseline: ", values=1)+
+  theme(panel.grid.major.x =element_blank(),
+        panel.grid.minor.x =element_blank(),
+        axis.ticks.x = element_blank(),
+        panel.border = element_blank(),
+        legend.position = "bottom") +
+  annotate(geom="text",x=0,y=0,label="bold(KNN-brute)", color=RColorBrewer::brewer.pal(4,"Set1")[4], parse=T,vjust=-.2,hjust=0.4)
+
+
+
+
+
+
+
+
+
+
+
 ggplot()+geom_hline(yintercept = 0) +
   geom_jitter(aes(x=data_name,y=rmse,color=type,group=type),size=4,data=results_reg,width=.15)+
   theme_bw()
