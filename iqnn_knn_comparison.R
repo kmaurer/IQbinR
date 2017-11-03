@@ -47,51 +47,6 @@ setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classifica
 max_p <- 2 # max number of dimensions for inputs
 cv_k <- 10 # cv folds
 
-# tuned_param_list <- list(NULL)
-# tuned_performance_list <- list(iqnn=list(NULL),knn=list(NULL))
-# for(set in 1:10){
-#   print(set)
-#   load(file=paste0(all_sets[set],"_cleaned.Rdata"))
-#   y <- all_responses[set]
-#   data[,y] <- factor(data[,y])
-#   
-#   ## Variable selection
-#   # Find column names in order of importance for randomForest (heuristic for doing variable selection)
-#   set.seed(12345)
-#   myforest <- randomForest(as.formula(paste0("as.factor(as.character(",y,"))~ .")) , data=sample_n(data,min(1000,nrow(data))))
-#   important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
-#   # allow a cap to be put on number of variables considered
-#   p <- min(length(important_cols),max_p)
-#   
-#   ## Parameterize for binning to best match k-nn structure specified with n, k, p, and cv_k
-#   train_n <- floor(nrow(data)*((cv_k-1)/cv_k))
-#   bin_cols <- important_cols[1:p]
-#   
-#   ## Tune the iqnn shoot for no fewer than 2 per bin (otherwise problems with allocation on boundaries)
-#   set.seed(1234)
-#   tune_iqnn_out <- iqnn_tune(data=data, y=y, mod_type = "class", bin_cols=bin_cols, nbins_range=c(2,floor((train_n/2)^(1/p))),
-#                              jit = rep(0.0001,length(bin_cols)), stretch = FALSE,strict=FALSE,oom_search = FALSE, cv_k=cv_k)
-#   nbins <- tune_iqnn_out$nbins[[which.min(tune_iqnn_out$error)]]
-#   tuned_performance_list$iqnn[[set]] <- tune_iqnn_out
-#   
-#   ## Tune the knn over same range of neighborhood size equivalents
-#   set.seed(1234)
-#   tune_knn_out <- tune_knn_class(data=data, y_name=y, x_names=bin_cols, cv_method="kfold", cv_k = cv_k,
-#                                  k_values=as.integer(round(tune_iqnn_out$nn_equiv)), knn_algorithm = "brute")
-#   k <- tune_knn_out$k[which.min(tune_knn_out$error)]
-#   tuned_performance_list$knn[[set]] <- tune_knn_out
-#  
-#   tuned_param_list[[set]] <- list(bin_cols=bin_cols, nbins=nbins, k=k, n=nrow(data), cv_k=cv_k)
-# }
-# tuned_param_list
-# tuned_performance_list
-# save(tuned_param_list,tuned_performance_list, file="tuned_param_list.Rdata")
-# load(file="tuned_param_list.Rdata")
-
-# save(tuned_param_list,tuned_performance_list, file="tuned_param_list_oom.Rdata")
-# load(file="tuned_param_list_oom.Rdata")
-
-
 tuned_param_list <- list(NULL)
 tuned_performance_list <- list(iqnn=list(NULL),knn=list(NULL))
 tune_reps <- 10
@@ -574,47 +529,7 @@ ggplot()+
   annotate(geom="text",x=0,y=0,label="bold(KNN-brute)", color=RColorBrewer::brewer.pal(4,"Set1")[4], parse=T,vjust=-.2,hjust=0.4)
 
 
-
-
-
-
-
-
-
-
-
-ggplot()+geom_hline(yintercept = 0) +
-  geom_jitter(aes(x=data_name,y=rmse,color=type,group=type),size=4,data=results_reg,width=.15)+
-  theme_bw()
-
-ggplot()+
-  # geom_hline(yintercept = 0) +
-  geom_line(aes(x=data_name,y=rmse_diff,color=type,group=type),size=1,data=results_reg)+
-  theme_bw()
-
-ggplot()+
-  # geom_hline(yintercept = 0) +
-  geom_line(aes(x=data_name,y=rmse_ratio,color=type,group=type),size=1,data=results_reg)+
-  theme_bw()
-
-# exploring why certain sets have much higher RMSE
-set=4
-all_reg_sets
-load(file=paste0(all_reg_sets[set],"_cleaned.Rdata"))
-head(data)
-bin_cols <- tuned_reg_param_list[[set]]$bin_cols
-
-mybins <- iqbin(data=data, bin_cols = bin_cols,nbins = nbins, jit)
-
-ggplot()+
-  geom_point(aes_string(x=bin_cols[1],y=bin_cols[2],color="y"), data=data) +
-  theme_bw()
-
-
-
 ###--------------------------------------------------------------------------------------------------------------
-2
-
 # 
 # 
 # 

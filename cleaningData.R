@@ -90,6 +90,7 @@ setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression
 # save(data, file="skillcraft_raw.Rdata")
 # 
 # # Combined+Cycle+Power+Plant n=9568
+# # http://archive.ics.uci.edu/ml/machine-learning-databases/00294/
 # # Download CCPP.zip then save Folds5X2_pp.xlsx to csv, load from csv
 # data <- as.data.frame(fread("ccpp.csv"))
 # head(data)
@@ -97,22 +98,17 @@ setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression
 # save(data, file="ccpp_raw.Rdata")
 # 
 # # Air Quality n=9471
+# # http://archive.ics.uci.edu/ml/machine-learning-databases/00360/
 # # Download AirQualityUCI.zip then load from AirQualityUCI.csv
 # data <- as.data.frame(fread("AirQualityUCI.csv", dec=","))
 # head(data)
 # data <- select(data, -Time,-Date)
 # names(data)[which(names(data)=="CO(GT)")] <- "y"
 # save(data, file="air_quality_raw.Rdata")
-# 
-# # CASP data n=45730 #!# drop for time
-# data <- as.data.frame(fread("http://archive.ics.uci.edu/ml/machine-learning-databases/00265/CASP.csv"))
-# head(data)
-# names(data)[which(names(data)=="RMSD")] <- "y"
-# save(data, file="casp_raw.Rdata")
 
 #--------------------------
 ## FROM KEEL Repo 
-# *note: all sets downloaded in zip files from from http://sci2s.ugr.es/keel/category.php?cat=reg&order=ins#sub2 on 10/27/17
+# *note: all sets downloaded in zip files from http://sci2s.ugr.es/keel/category.php?cat=reg&order=ins#sub2 on 10/27/17
 #--------------------------
 
 # # Weather ankara (wankara) (KEEL) n=321

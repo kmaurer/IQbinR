@@ -420,16 +420,14 @@ combined_times$type_pretty <- factor(combined_times$type, labels=c("IQNN   ","KN
 \subsection{Empirical Assessment of Predictive Accuracy}
 \label{accuracy}
 
-While computational efficiency is important, a new nearest-neighbor method must demonstract comparable or favorable predictive accuracy to existing methods to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models using standard loss metrics; mean squared error (MSE) to assess regression models and misclassification error rates to assess classifiers. Ten real data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, ten data sets with continuous response values and continuous features variables were selected to test regression accuracy. Each data set contains at least two continuous numeric feature variables and range in size from $n=150$ to $n=19020$. All data sets come from the University of California Irvin (\textit{UCI}) Machine Learning Repository and the Knowledge Extraction based on Evolutionary Learning (\textit{KEEL}) data repository (\citealt{Lichman2013}; \citealt{alcala2011keel}). See Table~\ref{tab:data_class} and Table~\ref{tab:data_reg} in Appendix~\ref{dataAppend} for a more detailed summary of each data set used for testing classification and regression, respectively.
+While computational efficiency is important, a new nearest-neighbor method must demonstract comparable or favorable predictive accuracy to existing methods to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models using standard loss metrics; mean squared error (MSE) to assess regression models and misclassification error rates to assess classifiers. Ten real data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, ten data sets with continuous response values and continuous features variables were selected to test regression accuracy. Each data set contains at least two continuous numeric feature variables and range in size from $n=150$ to $n=19020$. All data sets come from the University of California Irvin (\textit{UCI}) Machine Learning Repository and the Knowledge Extraction based on Evolutionary Learning (\textit{KEEL}) data repository (\citealt{Lichman2013}; \citealt{alcala2011keel}). See Table~\ref{tab:data_repos} in Appendix~\ref{dataAppend} for a more detailed summary of each data set used for testing classification and regression, respectively. To provide consistent comparison, we select and rescale two continuous numeric feature variables from each data set using the procedure described in Appendix~\ref{accuracyAppend}. These cleaned variable pairs are used as the bivariate features for testing the predictive accuracy of each model. 
 
 \subsubsection{Classification Accuracy}
 \label{classacc}
 
-To prepare for comparing the nearest-neighbor classification models, we cleaned and scaled each data set such that clear comparison of model can be made across all data sets. \ktm{(Perhaps move the details of data cleaning discussion to appendix?)} The units associated with each feature varible and the number of feature variables differed across all data sets, so data pre-processing was implemented to allow for more uniform comparisons of accuracy for IQNN, KNN and AKNN models. First, a center/scale transformation was used to standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Secondly, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all ten cases. This was done by fitting a random forest to part of the training data removing all but variables with the two highest importance scores; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. While the variable selection method is somewhat arbitrary here, using high importance variables is done to allow stronger predictions under the constraint than might be had by selecting two features at random. Additionally, we elect to specify the iterative-quantile algorithm to bin the features in order of importance scores. 
+To prepare for comparing the nearest-neighbor classification models, we first tuned the parameterization for each classifier using ten initializations of ten-fold cross-validation and make the final model selection using the parameterization with the minimum average misclassification rate. For IQNN this entailed tuning across ($\delta_1$,$\delta_2$) pairs that control the number of bins in each feature dimesion. We narrowed our tuning to select from only nearly-balanced bins ($\gamma=1$) that provide average binned-neighborhood sizes that fell nearest to whole integers. This was done to avoid tuning exhaustively over all possible bin parameterizations. We then tuned the KNN models over the set of neighborhood sizes, $k$, that corresponded to the integers nearest to the average binned-neighborhood sizes from the IQNN tuning. In this way we tune over the same number of similar-sized neighborhoods for each method. The misclassification rates from the tuned models were then collected for 100 additional initializations of ten-fold cross-validation for each data set. See Table~\ref{tab:tuning_class} in Appendix~\ref{accuracyAppend} for the parameters selected in tuning and average ten-fold cross-validated misclassification error rates from each model on each data set.
 
-Next for each data set we tuned the parameterization for each classifier using twenty initializations of ten-fold cross-validation and make the final model selection using the ``one-standard error" heuristic rule; selecting the most parsimonious parameterization that has an average misclassification rate within one standard error of the lowest observed rate \citep{friedman2001elements}. For IQNN this entailed tuning across ($\delta_1$,$\delta_2$) pairs that control the number of bins in each dimesion. We narrowed our tuning to select from only nearly-balanced bins ($\gamma=1$) that provide average binned-neighborhood sizes that fell nearest to whole integers. This was done to avoid tuning exhaustively over all possible bin parameterizations. We then tuned the KNN and AKNN models over the corresponding set of neighborhood sizes, $k$, to the integers nearest to the average binned-neighborhood sizes from the IQNN tuning. The loss values from the tuned models were then collected for 100 additional initializations of ten-fold cross-validation for each data set. See Table~\ref{tab:tuning_class} in Appendix~\ref{dataAppend} for parameterizations considered in tuning, the parameters selected and average ten-fold cross-validated misclassification error rates from each model on each data set.
-
- <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="3-nn examples times...",warning=FALSE>>=
+ <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average misclassification error rates from 100 initializations of ten-fold cross-validatation on all tuned models as both raw percentages (top) and difference relative to KNN as a baseline (bottom).",warning=FALSE>>=
 load(file="../DataRepo/classification/tuned_classification_testing.Rdata") 
  
 #Setting order of data sets
@@ -514,14 +512,14 @@ grid.arrange(p1,p2,nrow=2,heights=c(1,1.2))
 
 @
 
-Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned classification models for all considered data sets. This visualization compares the diffence in average cross-validated percent misclassified relative to brute-force KNN as a baseline.
+Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned classification models for all considered data sets. This visualization emphasizes the difference in average cross-validated percent misclassified relative to brute-force KNN as a baseline. We see that the data sets are shown from left to right in descending order of misclassification rates; indicating a relative level of difficulty for each classification task. From this we see that the IQNN method performs very similar to the KNN and AKNN methods; between 0.3\% better and 1.8\% worse for all sets tested. In three of the ten scenarios....
 
 %-----------------------------------------------------------------------------
 
 \subsubsection{Regression Accuracy}
 \label{regacc}
 
-To compare regression accuracy across the nearest-neighbor style models we assess the root mean squared error (RMSE) for the ten regression data sets in an analogous process to that used in subsection~\ref{classacc} above. We first clean, rescale and select the feature variables for the regression data sets. We additionally standardized the continous response value to eliminate the inconsistent units when comparing across data sets; thus the RMSE is in units of standard-deviation for all sets. The tuning process for each model again uses the "one standard-error" rule with 100 initializations of ten-fold cross-validation. See Table~\ref{tab:tuning_reg} in Appendix~\ref{dataAppend} for parameterizations considered in tuning, the parameters selected and average ten-fold cross-validated misclassification error rates from each regression model on each data set.
+To compare the predictive accuracy across the nearest-neighbor style regresson models we collect the root mean squared error (RMSE) for the ten regression data sets in an analogous process to that used for classification in subsection~\ref{classacc} above. We first clean, rescale and select the feature variables for each regression data set. We additionally standardized the continous response value to eliminate the inconsistent units when comparing across data sets; thus the RMSE is in units of standard-deviation for all sets. The tuning process for each model again selects the parameterizations that minimize the average RMSE from ten initializations of ten-fold cross-validation. Then an additional 100 initializations of ten-fold cross-validation are run for each tuned model to assess average performance of IQNN, KNN and AKNN methods on each data set. See Table~\ref{tab:tuning_reg} in Appendix~\ref{accuracyAppend} the parameters selected in tuning and average ten-fold cross-validated RMSE values from each regression model on each data set.
 
 In Figure~\ref{fig:regression_accuracy} we see that for all regression models \ktm{there are ...}. For the classification models we see that IQNN has mixed performance with cases above and below the misclassification rates from KNN; whereas, the AKNN models tend to be at or above the misclassification rates from KNN. 
 
@@ -636,77 +634,136 @@ In Section~\ref{accuracy} that misclassification error rates for IQNN were quite
 
 <<data_tables, eval=F, include=F>>=
 library(xtable)
-xtable(data.frame(name=all_sets, n=all_sizes))
+library(tidyverse)
+
+# create basis for class data table
+organized_class_data <- arrange(unique(results_class[,1:2]),obs)
+print(xtable(organized_class_data), include.rownames=FALSE)
+
+# create class data performance table
+all_sets <- c("iris","wpbc","pima","yeast","abalone","waveform","optdigits","satimage","marketing","seizure")
+class_tune_table <- data.frame(data=all_sets, 
+                               n=sapply(tuned_param_list, function(x) x$n),
+                               nbins=paste0("(",sapply(tuned_param_list, function(x) paste(x$nbins,collapse=",")),")"),
+                               k=sapply(tuned_param_list, function(x) x$k) )
+organized_class_param <- arrange(class_tune_table,n)
+
+results_class_wide <- results_class%>%
+  mutate(avg_misclass = 1-avg_cv_accuracy) %>%
+  select(data_name,type,avg_misclass) %>%
+  spread(key=type,value=avg_misclass)
+
+full_class <- inner_join(organized_class_param,results_class_wide, by=c(data="data_name"))
+print(xtable(full_class,digits=4), include.rownames=FALSE)
+
+
+
+# create basis for reg data table
+organized_reg_data <- arrange(unique(results_reg[,1:2]),obs)
+print(xtable(organized_reg_data), include.rownames=FALSE)
+
+# create reg data performance table
+all_reg_sets <- c("wpbc","wankara","laser","treasury","quake","skillcraft","anacalt","puma","air_quality","ccpp")
+reg_tune_table <- data.frame(data=all_reg_sets, 
+                               n=sapply(tuned_reg_param_list, function(x) x$n),
+                               nbins=paste0("(",sapply(tuned_reg_param_list, function(x) paste(x$nbins,collapse=",")),")"),
+                               k=sapply(tuned_reg_param_list, function(x) x$k) )
+organized_reg_param <- arrange(reg_tune_table,n)
+
+results_reg_wide <- results_reg%>%
+  select(data_name,type,rmse) %>%
+  spread(key=type,value=rmse)
+
+full_reg <- inner_join(organized_reg_param,results_reg_wide, by=c(data="data_name"))
+print(xtable(full_reg,digits=4), include.rownames=FALSE)
 @
 
 \begin{table}[H]
 \small
 \centering
-\begin{tabular}{lrl} \hline
+\begin{tabular}{lrl}
+ 
+\textbf{Classification} & & \\
+\hline 
 Data & n & Web Address (Accessed: 10/25/17) \\ 
-\hline  
-iris & 150 & http://archive.ics.uci.edu/ml/machine-learning-databases/iris/ \\
-pima & 768 & http://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes/ \\
-yeast & 1484 & http://archive.ics.uci.edu/ml/machine-learning-databases/yeast/ \\
-waveform & 5000 & https://archive.ics.uci.edu/ml/machine-learning-databases/waveform/ \\ 
-optdigits & 5620 & http://sci2s.ugr.es/keel/dataset.php?cod=199 \\ 
-satimage & 6435 & http://sci2s.ugr.es/keel/dataset.php?cod=71 \\ 
-marketing & 6876 & http://sci2s.ugr.es/keel/dataset.php?cod=163 \\ 
-youtube & 168286 & https://archive.ics.uci.edu/ml/machine-learning-databases/00335/ \\ 
-skin & 245057 & https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation \\ 
-\hline
+\hline 
+  iris & 150 & archive.ics.uci.edu/ml/machine-learning-databases/iris\\ 
+  wpbc & 198 & archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin \\ 
+  pima & 768 & archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes \\
+  yeast & 1484 & archive.ics.uci.edu/ml/machine-learning-databases/yeast \\ 
+  abalone & 4174 & archive.ics.uci.edu/ml/machine-learning-databases/abalone \\ 
+  waveform & 5000 & archive.ics.uci.edu/ml/machine-learning-databases/waveform \\ 
+  optdigits & 5620 & sci2s.ugr.es/keel/dataset.php?cod=199 \\ 
+  satimage & 6435 & sci2s.ugr.es/keel/dataset.php?cod=71 \\ 
+  marketing & 8494 & sci2s.ugr.es/keel/dataset.php?cod=163 \\
+  seizure & 11500 & archive.ics.uci.edu/ml/machine-learning-databases/00388 \\ 
+\hline 
+ & & \\
+\textbf{Regression} & & \\ 
+\hline 
+Data & n & Web Address (Accessed: 10/25/17) \\ 
+\hline 
+  wpbc & 198 & archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin \\ 
+  wankara & 321 & sci2s.ugr.es/keel/category.php?cat=reg?cod=41 \\ 
+  laser & 993 & sci2s.ugr.es/keel/category.php?cat=reg?cod=47 \\ 
+  treasury & 1049 & sci2s.ugr.es/keel/category.php?cat=reg?cod=42 \\
+  quake & 2178 & sci2s.ugr.es/keel/category.php?cat=reg?cod=75 \\ 
+  skillcraft & 3395 & archive.ics.uci.edu/ml/machine-learning-databases/00272 \\
+  anacalt & 4052 & sci2s.ugr.es/keel/category.php?cat=reg?cod=159 \\
+  puma & 8192 & sci2s.ugr.es/keel/category.php?cat=reg?cod=1291 \\
+  air quality & 9357 & archive.ics.uci.edu/ml/machine-learning-databases/00360 \\
+  ccpp & 9568 & archive.ics.uci.edu/ml/machine-learning-databases/00294 \\
+   \hline
 \end{tabular}
-\caption{Data sets used in testing classification accuracies.}
-\label{tab:data_class}
+\caption{Sources for data sets used for testing predictive accuracy for models in Section~\ref{accuracy}.}
+\label{tab:data_repos}
 \end{table}
 \normalsize
 
 
-\begin{table}[H]
-\small
-\centering
-\begin{tabular}{lrl} \hline
-Data & n & Web Address (Accessed: 10/25/17) \\ 
-\hline  
-iris & 150 & http://archive.ics.uci.edu/ml/machine-learning-databases/iris/ \\
-pima & 768 & http://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes/ \\
-yeast & 1484 & http://archive.ics.uci.edu/ml/machine-learning-databases/yeast/ \\
-waveform & 5000 & https://archive.ics.uci.edu/ml/machine-learning-databases/waveform/ \\ 
-optdigits & 5620 & http://sci2s.ugr.es/keel/dataset.php?cod=199 \\ 
-satimage & 6435 & http://sci2s.ugr.es/keel/dataset.php?cod=71 \\ 
-marketing & 6876 & http://sci2s.ugr.es/keel/dataset.php?cod=163 \\ 
-youtube & 168286 & https://archive.ics.uci.edu/ml/machine-learning-databases/00335/ \\ 
-skin & 245057 & https://archive.ics.uci.edu/ml/datasets/Skin+Segmentation \\ 
-\hline
-\end{tabular}
-\caption{Data sets used in testing regression accuracies.}
-\label{tab:data_reg}
-\end{table}
-\normalsize
+\section{Appendix B: Model Parameters and Performance}  
+\label{accuracyAppend}
+
+The units associated with each feature varible and the number of feature variables differed across all data sets, so data pre-processing was implemented to allow for more uniform comparisons of accuracy for IQNN, KNN and AKNN models. First, we consider only feature variables that are numeric with at least $\sqrt{n}/10$ unique values, thus displaying at least somewhat continuous behavior. Then, a center/scale transformation was used to standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Next, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all ten cases. This was done by fitting a random forest to part of the training data removing all but variables with the two highest importance scores; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. While the variable selection method is somewhat arbitrary here, using high importance variables is done to allow stronger predictions under the constraint than might be had by selecting two features at random. Additionally, we elect to specify the iterative-quantile algorithm to bin the features in order of importance scores. 
 
 \begin{table}[H]
 \small
 \centering
-\begin{tabular}{|l|ll|llll|} \hline
-Data & tuned-$k$ & tuned-$(\delta_1,\delta_2)$ & IQNN & KNN-brute & AKNN-cover &  AKNN-kd  \\
-\hline  
-  &  &  &  &  &  &  \\
+\begin{tabular}{|l|rcr|rrrr|} \hline
+Data & n & tuned-$(\delta_1,\delta_2)$ & tuned-$k$ & IQNN & KNN-brute & AKNN-cover &  AKNN-kd  \\
+  \hline
+  wpbc &   198 & (3,2) &    30 & 0.9322 & 0.9129 & 0.9129 & 0.9129 \\ 
+  wankara &   321 & (9,8) &     3 & 0.1664 & 0.1277 & 0.1277 & 0.1277 \\ 
+  laser &   993 & (5,5) &    25 & 0.5694 & 0.5645 & 0.5643 & 0.5643 \\ 
+  treasury &  1049 & (14,14) &     9 & 0.0953 & 0.0772 & 0.0772 & 0.0772 \\ 
+  quake &  2178 & (2,2) &   490 & 0.9989 & 0.9990 & 0.9990 & 0.9990 \\ 
+  skillcraft &  3395 & (13,12) &    48 & 0.6325 & 0.6163 & 0.6163 & 0.6163 \\ 
+  anacalt &  4052 & (30,30) &     8 & 0.1551 & 0.1445 & 0.1477 & 0.1445 \\ 
+  puma &  8192 & (26,26) &    33 & 0.2666 & 0.2504 & 0.2504 & 0.2504 \\ 
+  air\_quality &  9357 & (9,9) &   117 & 0.7188 & 0.7145 & 0.7149 & 0.7231 \\ 
+  ccpp &  9568 & (38,38) &    13 & 0.2513 & 0.2519 & 0.2519 & 0.2519 \\ 
 \hline
 \end{tabular}
 \caption{Put tuned parameters and 100-fold cv classification error rates here}
 \label{tab:tuning_class}
 \end{table}
 
-
-
-
 \begin{table}[H]
 \small
 \centering
-\begin{tabular}{|l|ll|llll|} \hline
-Data & tuned-$k$ & tuned-$(\delta_1,\delta_2)$ & IQNN & KNN-brute & AKNN-cover &  AKNN-kd  \\
+\begin{tabular}{|l|rcr|rrrr|} \hline
+Data & n & tuned-$(\delta_1,\delta_2)$ & tuned-$k$ & IQNN & KNN-brute & AKNN-cover &  AKNN-kd  \\
 \hline  
-  &  &  &  &  &  &  \\
+ iris &   150 & (3,3) &     7 & 0.0543 & 0.0363 & 0.0363 & 0.0363 \\ 
+  wpbc &   198 & (3,2) &    45 & 0.2388 & 0.2374 & 0.2374 & 0.2374 \\ 
+  pima &   768 & (6,5) &   115 & 0.2495 & 0.2465 & 0.2464 & 0.2465 \\ 
+  yeast &  1484 & (10,9) &   111 & 0.5541 & 0.5546 & 0.5544 & 0.5549 \\ 
+  abalone &  4174 & (6,6) &   313 & 0.4564 & 0.4595 & 0.4595 & 0.4595 \\ 
+  waveform &  5000 & (6,5) &   750 & 0.3895 & 0.3900 & 0.3900 & 0.3900 \\ 
+  optdigits &  5620 & (8,7) &    70 & 0.5854 & 0.5835 & 0.5850 & 0.5866 \\ 
+  satimage &  6435 & (15,15) &    37 & 0.2115 & 0.2039 & 0.2041 & 0.2039 \\ 
+  marketing &  8494 & (10,9) &   137 & 0.3802 & 0.3736 & 0.3779 & 0.3841 \\ 
+  seizure & 11500 & (14,13) &    94 & 0.6146 & 0.6013 & 0.6013 & 0.6012 \\ 
 \hline
 \end{tabular}
 \caption{Put tuned parameters and regression 100-fold cv MSEs here}
