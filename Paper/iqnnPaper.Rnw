@@ -5,6 +5,7 @@
 \usepackage{natbib}
 \usepackage{url} % not crucial - just used below for the URL 
 \usepackage{algorithm2e}
+\usepackage{array}
 
 % DON'T change margins - should be 1 inch all around.
 \addtolength{\oddsidemargin}{-.5in}%
@@ -36,6 +37,7 @@ library(randomForest)
 library(RANN)
 library(mvtnorm)
 library(gridExtra)
+library(xtable)
 
 # source in functions
 
@@ -100,7 +102,7 @@ Algorithms have been developed to improve the speed at which queries are able to
 
 \ktm{paragraph transitioning to discussions on predictive modeling goals of KNN classification/regression. Include discussion about how KNN is a voroni partitioning of the feature space, can we approximate this partitioning roughly but faster? \citep{aurenhammer1991voronoi}}
 
-We propose \textit{iterative-quantile nearest-neighbor} (IQNN) models for classification and regression that provides a rough approximation to $k$-nearest-neighborhood models through the use of an iterative process of partitioning the feature space using empirical-quantiles of the variable from the training data. In Section~\ref{iqnn} we explain the intuition and procedural details of the IQNN algorithm. The method requires at most $O(pn\log(n))$ time to construct the nested quantile based partitions on $p$-dimensional features, which are then stored into an R-tree structure using at most $O(pn)$\ktm{???} space, and iterative-quantile neighborhoods queried in $O(\sum_{j=1}^{p}\delta_j)$ time, where $\delta_j$ is the number of partitions in the $j^{th}$ feature dimension. In Section~\ref{eval} we evaluate the theoretically expected computational costs of the IQNN approach and then compare the timing performance and predictive accuracy of the IQNN models to the KNN, kd-tree AKNN, and cover-tree AKNN on a number of simulated and real data sets with both numeric and categorical response values. Finally, in Section~\ref{discussion} we discuss the results of our computational testing and identify areas for future research.  
+We propose \textit{iterative-quantile nearest-neighbor} (IQNN) models for classification and regression that provides a rough approximation to $k$-nearest-neighborhood models through the use of an iterative process of partitioning the feature space using empirical-quantiles of the variable from the training data. In Section~\ref{iqnn} we explain the intuition and procedural details of the IQNN algorithm. The method requires at most $O(pn\log(n))$ time to construct the nested quantile based partitions on $p$-dimensional features, which are then stored into an R-tree structure where the iterative-quantile neighborhoods can be queried in $O(\sum_{j=1}^{p}\delta_j)$ time, where $\delta_j$ is the number of partitions in the $j^{th}$ feature dimension. In Section~\ref{eval} we evaluate the theoretically expected computational costs of the IQNN approach and then compare the timing performance and predictive accuracy of the IQNN models to the KNN, kd-tree AKNN, and cover-tree AKNN on a number of simulated and real data sets with both numeric and categorical response values. Finally, in Section~\ref{discussion} we discuss the results of our computational testing and identify areas for future research.  
 
 \section{Iterative Quantile Nearest-Neighbors}
 \label{iqnn}
@@ -299,7 +301,7 @@ These models requires computational investment for the construction of the R-tre
 $O(nlog(n) + \displaystyle\sum_{j=2}^{p-1} L_j \frac{n}{L_j}\log(\frac{n}{L_j})) \hspace{.25cm} = \hspace{.25cm} O(nlog(n) + n\displaystyle\sum_{j=2}^{p-1}\log(\frac{n}{L_j})) $,
 \end{center}
 %
-where $L_j = \displaystyle\prod_{m=1}^{j}\delta_m$ is the number of partitions at iteration $j$; thus $\frac{n}{L_j}$ is the average number of observations per partition at iteration $j$. Note that because $L_j \ge 2$ when $j \ge 2$, the time is bounded above by $O(pn\log(n))$.    
+where $L_j = \displaystyle\prod_{d=1}^{j}\delta_d$ is the number of partitions at iteration $j$; thus $\frac{n}{L_j}$ is the average number of observations per partition at iteration $j$. Note that because $L_j \ge 2$ when $j \ge 2$, the time is bounded above by $O(pn\log(n))$.    
 
 The storage size of the resulting bin structure will however increase as the number of partitions increase because the $j^{th}$ level of the R-tree requires $O(L_j)$ space; a total space of size $O(\sum_j^p\{L_j)\})$. Note that the computational time required decreases and the computation storage increases as the number of partitions, $\delta_j$, at each iteration increases. Thus partitioning to smaller and more bins requires less time but more storage space.
 
@@ -327,7 +329,7 @@ We use simulated training and test data sets to empirically evaluate the time re
 
 For each parameterization described above we repeatedly simulate training and test data sets, then we collect and average timing measurements for training data pre-processing and generating test data predictions using IQNN, KNN and AKNN models. All simulations were run using R on a Dell Optiplex 9020(TM) Desktop with an Intel(R) Core(TM) i7-4770 3.40GHz CPU \citep{R}. \ktm{IQNN methods were implementated in R and are available in the \texttt{iqbin} package (cite my package here?)}. The KNN and AKNN methods were run using impementations in the \texttt{FNN} package \citep{FNN}, which are highly optimized and drop computationally intensive tasks down into C \citep{kernighan2006c}.  
 
-To account for variation in processing speed we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations and the order of the model fitting was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 25 times for each parameterization. For smaller training sets, $n \le 2^{14}$ we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences manifest much more strongly when $n$ is large. See Table\ktm{AddRefHere} in Appendix\ktm{addAppendixRefHere} for all parameter combinations and average timing measurements.  
+To account for variation in processing speed we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations and the order of the model fitting was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 25 times for each parameterization. For smaller training sets, $n \le 2^{14}$ we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences manifest much more strongly when $n$ is large. See Table~\ref{tab:sim_times_table} in Appendix~\ref{timingAppend} for all parameter combinations and average timing measurements.  
 
 Figure~\ref{fig:sim_time} displays the average time for pre-processing and predicting using each method in each simulated scenario. We see that for small training set sizes and for small numbers of neighbors, the KNN and AKNN models outperform the IQNN model. The KNN model using brute-force requires no time to pre-precess but requires substantially more time to predict in the test set as the training set size increases. The IQNN and both AKNN methods have increasing pre-processing time as the training and/or neighborhood sizes grow. Interestingly, the pre-processing time grows more rapidly as a function of $n$ but less rapidly as a function of $k$ for the IQNN model than the AKNN models. Pre-processing in AKNN models tends to be more efficient than IQNN for small training sets and neighborhoods, but less efficient as these increase. For prediction, the AKNN methods require increasing time as training and neighborhood sizes increase, whereas the IQNN models require nearly constant time across all scenarios. As with pre-processing, AKNN models are more efficient for prediction than IQNN for small $n$ and $k$, but less efficient as these sizes grow. 
 <<sim_time, echo=F,include=T,eval=T,fig.width=9, fig.height=5, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Empirical timing measurements from pre-processing and prediction stages using each algorithm on simulated data sets across combinations of neighborhood sizes ($k$) and training set sizes ($n$).",warning=FALSE, message=FALSE>>=
@@ -420,12 +422,18 @@ combined_times$type_pretty <- factor(combined_times$type, labels=c("IQNN   ","KN
 \subsection{Empirical Assessment of Predictive Accuracy}
 \label{accuracy}
 
-While computational efficiency is important, a new nearest-neighbor method must demonstract comparable or favorable predictive accuracy to existing methods to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models using standard loss metrics; mean squared error (MSE) to assess regression models and misclassification error rates to assess classifiers. Ten real data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, ten data sets with continuous response values and continuous features variables were selected to test regression accuracy. Each data set contains at least two continuous numeric feature variables and range in size from $n=150$ to $n=19020$. All data sets come from the University of California Irvin (\textit{UCI}) Machine Learning Repository and the Knowledge Extraction based on Evolutionary Learning (\textit{KEEL}) data repository (\citealt{Lichman2013}; \citealt{alcala2011keel}). See Table~\ref{tab:data_repos} in Appendix~\ref{dataAppend} for a more detailed summary of each data set used for testing classification and regression, respectively. To provide consistent comparison, we select and rescale two continuous numeric feature variables from each data set using the procedure described in Appendix~\ref{accuracyAppend}. These cleaned variable pairs are used as the bivariate features for testing the predictive accuracy of each model. 
+While computational efficiency is important, a new nearest-neighbor method must demonstract comparable or favorable predictive accuracy to existing methods to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models using standard loss metrics; mean squared error (MSE) to assess regression models and misclassification error rates to assess classifiers. Ten real data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, ten data sets with continuous response values and continuous features variables were selected to test regression accuracy. Each data set contains at least two continuous numeric feature variables and range in size from $n=150$ to $n=19020$. All data sets come from the University of California Irvin (\textit{UCI}) Machine Learning Repository and the Knowledge Extraction based on Evolutionary Learning (\textit{KEEL}) data repository (\citealt{Lichman2013}; \citealt{alcala2011keel}).  See Table~\ref{tab:data_repos} in Appendix~\ref{dataAppend} for a more summary and source citation for each data set used for testing classification and regression. 
+
+To provide consistent comparison, we select and rescale two continuous numeric feature variables from each data set. First, we consider only feature variables that are numeric with at least $\sqrt{n}/10$ unique values, thus displaying at least somewhat continuous behavior. Then, we standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Next, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all ten cases. This was done by selecting the variables with the two highest importance scores from a random forest fit to the training data; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. While the variable selection method is somewhat arbitrary here, using high importance variables should provide models with strong predictions under the bivariate feature constraint. 
+%Additionally, we elect to specify the iterative-quantile algorithm to bin the features in order of importance scores. 
+See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} contains the selected pair of feature variables that are used when testing the predictive accuracy of each model. 
 
 \subsubsection{Classification Accuracy}
 \label{classacc}
 
-To prepare for comparing the nearest-neighbor classification models, we first tuned the parameterization for each classifier using ten initializations of ten-fold cross-validation and make the final model selection using the parameterization with the minimum average misclassification rate. For IQNN this entailed tuning across ($\delta_1$,$\delta_2$) pairs that control the number of bins in each feature dimesion. We narrowed our tuning to select from only nearly-balanced bins ($\gamma=1$) that provide average binned-neighborhood sizes that fell nearest to whole integers. This was done to avoid tuning exhaustively over all possible bin parameterizations. We then tuned the KNN models over the set of neighborhood sizes, $k$, that corresponded to the integers nearest to the average binned-neighborhood sizes from the IQNN tuning. In this way we tune over the same number of similar-sized neighborhoods for each method. The misclassification rates from the tuned models were then collected for 100 additional initializations of ten-fold cross-validation for each data set. See Table~\ref{tab:tuning_class} in Appendix~\ref{accuracyAppend} for the parameters selected in tuning and average ten-fold cross-validated misclassification error rates from each model on each data set.
+To prepare for comparing the nearest-neighbor classification models, we first tuned the parameterization for each classifier using ten initializations of ten-fold cross-validation and make the final model selection using the parameterization with the minimum average misclassification rate. For IQNN this entailed tuning across ($\delta_1$,$\delta_2$) pairs that control the number of bins in each feature dimesion. We narrowed our tuning to select from only nearly-balanced bins ($\gamma=1$) that provide average binned-neighborhood sizes that fell nearest to whole integers. This was done to avoid tuning exhaustively over all possible bin parameterizations. We then tuned the KNN models over the set of neighborhood sizes, $k$, that corresponded to the integers nearest to the average binned-neighborhood sizes from the IQNN tuning. In this way we tune over the same number of similar-sized neighborhoods for each method. The misclassification rates from the tuned models were then collected for 100 additional initializations of ten-fold cross-validation for each data set. See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} for the parameters selected in tuning and average ten-fold cross-validated misclassification error rates from each model on each data set.
+
+Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned classification models for all considered data sets. This visualization emphasizes the difference in average cross-validated percent misclassified relative to brute-force KNN as a baseline. We see that the data sets are shown from left to right in descending order of misclassification rates; indicating a relative level of difficulty for each classification task. From this we see that the IQNN method performs very similar to the KNN and AKNN methods; between 0.3\% better and 1.8\% worse for all sets tested. In three of the ten scenarios tuned IQNN model has a lower error rate than all other tuned KNN and AKNN models.  
 
  <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average misclassification error rates from 100 initializations of ten-fold cross-validatation on all tuned models as both raw percentages (top) and difference relative to KNN as a baseline (bottom).",warning=FALSE>>=
 load(file="../DataRepo/classification/tuned_classification_testing.Rdata") 
@@ -512,14 +520,13 @@ grid.arrange(p1,p2,nrow=2,heights=c(1,1.2))
 
 @
 
-Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned classification models for all considered data sets. This visualization emphasizes the difference in average cross-validated percent misclassified relative to brute-force KNN as a baseline. We see that the data sets are shown from left to right in descending order of misclassification rates; indicating a relative level of difficulty for each classification task. From this we see that the IQNN method performs very similar to the KNN and AKNN methods; between 0.3\% better and 1.8\% worse for all sets tested. In three of the ten scenarios....
 
 %-----------------------------------------------------------------------------
 
 \subsubsection{Regression Accuracy}
 \label{regacc}
 
-To compare the predictive accuracy across the nearest-neighbor style regresson models we collect the root mean squared error (RMSE) for the ten regression data sets in an analogous process to that used for classification in subsection~\ref{classacc} above. We first clean, rescale and select the feature variables for each regression data set. We additionally standardized the continous response value to eliminate the inconsistent units when comparing across data sets; thus the RMSE is in units of standard-deviation for all sets. The tuning process for each model again selects the parameterizations that minimize the average RMSE from ten initializations of ten-fold cross-validation. Then an additional 100 initializations of ten-fold cross-validation are run for each tuned model to assess average performance of IQNN, KNN and AKNN methods on each data set. See Table~\ref{tab:tuning_reg} in Appendix~\ref{accuracyAppend} the parameters selected in tuning and average ten-fold cross-validated RMSE values from each regression model on each data set.
+To compare the predictive accuracy across the nearest-neighbor style regresson models we collect the root mean squared error (RMSE) for the ten regression data sets in an analogous process to that used for classification in subsection~\ref{classacc} above. We first clean, rescale and select the feature variables for each regression data set. We additionally standardized the continous response value to eliminate the inconsistent units when comparing across data sets; thus the RMSE is in units of standard-deviation for all sets. The tuning process for each model again selects the parameterizations that minimize the average RMSE from ten initializations of ten-fold cross-validation. Then an additional 100 initializations of ten-fold cross-validation are run for each tuned model to assess average performance of IQNN, KNN and AKNN methods on each data set. See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} the parameters selected in tuning and average ten-fold cross-validated RMSE values from each regression model on each data set.
 
 In Figure~\ref{fig:regression_accuracy} we see that for all regression models \ktm{there are ...}. For the classification models we see that IQNN has mixed performance with cases above and below the misclassification rates from KNN; whereas, the AKNN models tend to be at or above the misclassification rates from KNN. 
 
@@ -629,60 +636,89 @@ In Section~\ref{accuracy} that misclassification error rates for IQNN were quite
 %----------------------------------------------------------------------------
 \newpage
 \begin{appendix}
-\section{Appendix A: Empirical Data Sets}  
-\label{dataAppend}
 
-<<data_tables, eval=F, include=F>>=
-library(xtable)
-library(tidyverse)
+%-------------------------------------------
+\section{Appendix A: Timing Simulations}  
+\label{timingAppend}
 
-# create basis for class data table
-organized_class_data <- arrange(unique(results_class[,1:2]),obs)
-print(xtable(organized_class_data), include.rownames=FALSE)
-
-# create class data performance table
-all_sets <- c("iris","wpbc","pima","yeast","abalone","waveform","optdigits","satimage","marketing","seizure")
-class_tune_table <- data.frame(data=all_sets, 
-                               n=sapply(tuned_param_list, function(x) x$n),
-                               nbins=paste0("(",sapply(tuned_param_list, function(x) paste(x$nbins,collapse=",")),")"),
-                               k=sapply(tuned_param_list, function(x) x$k) )
-organized_class_param <- arrange(class_tune_table,n)
-
-results_class_wide <- results_class%>%
-  mutate(avg_misclass = 1-avg_cv_accuracy) %>%
-  select(data_name,type,avg_misclass) %>%
-  spread(key=type,value=avg_misclass)
-
-full_class <- inner_join(organized_class_param,results_class_wide, by=c(data="data_name"))
-print(xtable(full_class,digits=4), include.rownames=FALSE)
-
-
-
-# create basis for reg data table
-organized_reg_data <- arrange(unique(results_reg[,1:2]),obs)
-print(xtable(organized_reg_data), include.rownames=FALSE)
-
-# create reg data performance table
-all_reg_sets <- c("wpbc","wankara","laser","treasury","quake","skillcraft","anacalt","puma","air_quality","ccpp")
-reg_tune_table <- data.frame(data=all_reg_sets, 
-                               n=sapply(tuned_reg_param_list, function(x) x$n),
-                               nbins=paste0("(",sapply(tuned_reg_param_list, function(x) paste(x$nbins,collapse=",")),")"),
-                               k=sapply(tuned_reg_param_list, function(x) x$k) )
-organized_reg_param <- arrange(reg_tune_table,n)
-
-results_reg_wide <- results_reg%>%
-  select(data_name,type,rmse) %>%
-  spread(key=type,value=rmse)
-
-full_reg <- inner_join(organized_reg_param,results_reg_wide, by=c(data="data_name"))
-print(xtable(full_reg,digits=4), include.rownames=FALSE)
+<<sim_times_tables, eval=F, include=F>>=
+sim_times_tables <- sim_times_agg %>%
+  select(n, k, d, iqnn_fittime,knn_cover_fittime,knn_kd_fittime,
+        iqnn_predtime, knn_brute_predtime, knn_cover_predtime, knn_kd_predtime) %>%
+  arrange(n,k,d)
+print(xtable(sim_times_tables,digits=c(0,0,0,0,6,6,6,6,6,6,6)), include.rownames=FALSE)
 @
 
+\renewcommand{\arraystretch}{0.7}% Tighter
 \begin{table}[H]
-\small
+\centering
+\footnotesize
+\begin{tabular}{rrr|rrr|rrrr}
+  \hline
+\multicolumn{3}{l|}{Parameters} & \multicolumn{3}{l|}{Pre-processing Time (minutes)} & \multicolumn{4}{l}{Prediction Time (minutes)} \\   
+n & $k$ & $\delta$ & IQNN & cover & kd & IQNN & KNN & cover & kd \\ 
+  \hline
+  16 & 1 & 4 & 0.000057 & 0.000028 & 0.000008 & 0.001213 & 0.000014 & 0.000103 & 0.000103 \\ 
+  16 & 4 & 2 & 0.000050 & 0.000037 & 0.000012 & 0.001289 & 0.000019 & 0.000117 & 0.000123 \\ 
+  64 & 1 & 8 & 0.000145 & 0.000030 & 0.000010 & 0.001279 & 0.000020 & 0.000112 & 0.000110 \\ 
+  64 & 4 & 4 & 0.000081 & 0.000038 & 0.000017 & 0.001298 & 0.000023 & 0.000118 & 0.000120 \\ 
+  64 & 16 & 2 & 0.000058 & 0.000061 & 0.000026 & 0.001294 & 0.000032 & 0.000130 & 0.000120 \\ 
+  256 & 1 & 16 & 0.000460 & 0.000040 & 0.000012 & 0.001294 & 0.000035 & 0.000110 & 0.000114 \\ 
+  256 & 4 & 8 & 0.000229 & 0.000057 & 0.000017 & 0.001322 & 0.000034 & 0.000124 & 0.000116 \\ 
+  256 & 16 & 4 & 0.000124 & 0.000078 & 0.000036 & 0.001311 & 0.000057 & 0.000123 & 0.000133 \\ 
+  256 & 64 & 2 & 0.000087 & 0.000202 & 0.000087 & 0.001311 & 0.000142 & 0.000156 & 0.000149 \\ 
+  1024 & 1 & 32 & 0.002319 & 0.000070 & 0.000015 & 0.001283 & 0.000079 & 0.000120 & 0.000121 \\ 
+  1024 & 4 & 16 & 0.001039 & 0.000081 & 0.000021 & 0.001296 & 0.000099 & 0.000120 & 0.000111 \\ 
+  1024 & 16 & 8 & 0.000553 & 0.000123 & 0.000044 & 0.001298 & 0.000114 & 0.000128 & 0.000120 \\ 
+  1024 & 64 & 4 & 0.000326 & 0.000297 & 0.000109 & 0.001316 & 0.000259 & 0.000154 & 0.000159 \\ 
+  1024 & 256 & 2 & 0.000247 & 0.001283 & 0.000438 & 0.001331 & 0.001096 & 0.000212 & 0.000223 \\ 
+  4096 & 1 & 64 & 0.014388 & 0.000146 & 0.000032 & 0.001268 & 0.000284 & 0.000113 & 0.000117 \\ 
+  4096 & 4 & 32 & 0.006602 & 0.000165 & 0.000042 & 0.001287 & 0.000294 & 0.000127 & 0.000117 \\ 
+  4096 & 16 & 16 & 0.003252 & 0.000226 & 0.000063 & 0.001286 & 0.000330 & 0.000125 & 0.000139 \\ 
+  4096 & 64 & 8 & 0.001827 & 0.000468 & 0.000152 & 0.001294 & 0.000520 & 0.000165 & 0.000156 \\ 
+  4096 & 256 & 4 & 0.001164 & 0.001815 & 0.000543 & 0.001304 & 0.001969 & 0.000225 & 0.000228 \\ 
+  4096 & 1024 & 2 & 0.000816 & 0.012749 & 0.003413 & 0.001316 & 0.013068 & 0.000567 & 0.000584 \\ 
+  16384 & 1 & 128 & 0.111621 & 0.000466 & 0.000122 & 0.001206 & 0.001073 & 0.000102 & 0.000112 \\ 
+  16384 & 4 & 64 & 0.048643 & 0.000483 & 0.000135 & 0.001229 & 0.001084 & 0.000122 & 0.000124 \\ 
+  16384 & 16 & 32 & 0.022962 & 0.000576 & 0.000154 & 0.001242 & 0.001141 & 0.000124 & 0.000129 \\ 
+  16384 & 64 & 16 & 0.012068 & 0.000913 & 0.000260 & 0.001289 & 0.001393 & 0.000155 & 0.000149 \\ 
+  16384 & 256 & 8 & 0.006921 & 0.002773 & 0.000760 & 0.001308 & 0.003451 & 0.000226 & 0.000232 \\ 
+  16384 & 1024 & 4 & 0.004244 & 0.018174 & 0.004600 & 0.001311 & 0.022881 & 0.000602 & 0.000636 \\ 
+  16384 & 4096 & 2 & 0.002915 & 0.171400 & 0.042028 & 0.001296 & 0.204892 & 0.001689 & 0.002087 \\ 
+  65536 & 4 & 128 & 0.406102 & 0.001919 & 0.000603 & 0.001146 & 0.004226 & 0.000103 & 0.000106 \\ 
+  65536 & 16 & 64 & 0.176751 & 0.001958 & 0.000653 & 0.001206 & 0.004240 & 0.000117 & 0.000131 \\ 
+  65536 & 64 & 32 & 0.087728 & 0.002432 & 0.000785 & 0.001175 & 0.004580 & 0.000144 & 0.000141 \\ 
+  65536 & 256 & 16 & 0.048294 & 0.004817 & 0.001376 & 0.001213 & 0.007136 & 0.000260 & 0.000280 \\ 
+  65536 & 1024 & 8 & 0.025948 & 0.025055 & 0.005823 & 0.001234 & 0.034723 & 0.000717 & 0.000793 \\ 
+  65536 & 4096 & 4 & 0.015947 & 0.246432 & 0.054589 & 0.001247 & 0.355684 & 0.001843 & 0.001896 \\ 
+  65536 & 16384 & 2 & 0.011769 & 2.726151 & 0.633031 & 0.001275 & 3.301747 & 0.006239 & 0.007206 \\ 
+  262144 & 16 & 128 & 1.577832 & 0.008750 & 0.002914 & 0.001166 & 0.016989 & 0.000166 & 0.000143 \\ 
+  262144 & 64 & 64 & 0.697907 & 0.009569 & 0.003276 & 0.001162 & 0.017434 & 0.000213 & 0.000262 \\ 
+  262144 & 256 & 32 & 0.339445 & 0.012685 & 0.004424 & 0.001138 & 0.020513 & 0.000301 & 0.000334 \\ 
+  262144 & 1024 & 16 & 0.180536 & 0.038859 & 0.011281 & 0.001192 & 0.056422 & 0.001010 & 0.000748 \\ 
+  262144 & 4096 & 8 & 0.102174 & 0.334415 & 0.073338 & 0.001202 & 0.518069 & 0.002273 & 0.002231 \\ 
+  262144 & 16384 & 4 & 0.066457 & 3.962837 & 0.837682 & 0.001373 & 5.744885 & 0.007897 & 0.008069 \\ 
+  1048576 & 64 & 128 & 6.359297 & 0.041474 & 0.015857 & 0.001130 & 0.070609 & 0.000781 & 0.000337 \\ 
+  1048576 & 256 & 64 & 2.773028 & 0.045912 & 0.016926 & 0.001121 & 0.074784 & 0.001376 & 0.000580 \\ 
+  1048576 & 1024 & 32 & 1.337717 & 0.080840 & 0.025407 & 0.001136 & 0.120404 & 0.002076 & 0.001233 \\ 
+  1048576 & 4096 & 16 & 0.712297 & 0.455469 & 0.094837 & 0.001143 & 0.721843 & 0.003800 & 0.003342 \\ 
+  1048576 & 16384 & 8 & 0.423727 & 5.236268 & 0.954038 & 0.001210 & 8.229757 & 0.010522 & 0.010947 \\ 
+   \hline
+\end{tabular}
+\caption{\small Average pre-processing and prediction times from 500 simulations per parameterization.}
+\label{tab:sim_times_table}
+\end{table}
+\normalsize
+
+%-------------------------------------------
+\section{Appendix B: Empirical Data Sets}  
+\label{dataAppend}
+
+
+\begin{table}[H]
+\footnotesize
 \centering
 \begin{tabular}{lrl}
- 
 \textbf{Classification} & & \\
 \hline 
 Data & n & Web Address (Accessed: 10/25/17) \\ 
@@ -715,23 +751,84 @@ Data & n & Web Address (Accessed: 10/25/17) \\
   ccpp & 9568 & archive.ics.uci.edu/ml/machine-learning-databases/00294 \\
    \hline
 \end{tabular}
-\caption{Sources for data sets used for testing predictive accuracy for models in Section~\ref{accuracy}.}
+\caption{\small Sources for data sets used for testing predictive accuracy for models in Section~\ref{accuracy}.}
 \label{tab:data_repos}
 \end{table}
 \normalsize
 
+%-------------------------------------------
 
-\section{Appendix B: Model Parameters and Performance}  
+\section{Appendix C: Model Parameters and Performance}  
 \label{accuracyAppend}
 
-The units associated with each feature varible and the number of feature variables differed across all data sets, so data pre-processing was implemented to allow for more uniform comparisons of accuracy for IQNN, KNN and AKNN models. First, we consider only feature variables that are numeric with at least $\sqrt{n}/10$ unique values, thus displaying at least somewhat continuous behavior. Then, a center/scale transformation was used to standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Next, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all ten cases. This was done by fitting a random forest to part of the training data removing all but variables with the two highest importance scores; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. While the variable selection method is somewhat arbitrary here, using high importance variables is done to allow stronger predictions under the constraint than might be had by selecting two features at random. Additionally, we elect to specify the iterative-quantile algorithm to bin the features in order of importance scores. 
+<<data_tables, eval=F, include=F>>=
+# create basis for class data table
+organized_class_data <- arrange(unique(results_class[,1:2]),obs)
+print(xtable(organized_class_data), include.rownames=FALSE)
+
+# create class data performance table
+all_sets <- c("iris","wpbc","pima","yeast","abalone","waveform","optdigits","satimage","marketing","seizure")
+class_tune_table <- data.frame(data=all_sets, 
+                               n=sapply(tuned_param_list, function(x) x$n),
+                               nbins=paste0("(",sapply(tuned_param_list, function(x) paste(x$nbins,collapse=",")),")"),
+                               k=sapply(tuned_param_list, function(x) x$k) )
+organized_class_param <- arrange(class_tune_table,n)
+
+results_class_wide <- results_class%>%
+  mutate(avg_misclass = 1-avg_cv_accuracy) %>%
+  select(data_name,type,avg_misclass) %>%
+  spread(key=type,value=avg_misclass)
+
+full_class <- inner_join(organized_class_param,results_class_wide, by=c(data="data_name"))
+print(xtable(full_class,digits=4), include.rownames=FALSE)
+
+# create basis for reg data table
+organized_reg_data <- arrange(unique(results_reg[,1:2]),obs)
+print(xtable(organized_reg_data), include.rownames=FALSE)
+
+# create reg data performance table
+all_reg_sets <- c("wpbc","wankara","laser","treasury","quake","skillcraft","anacalt","puma","air_quality","ccpp")
+reg_tune_table <- data.frame(data=all_reg_sets, 
+                               n=sapply(tuned_reg_param_list, function(x) x$n),
+                               nbins=paste0("(",sapply(tuned_reg_param_list, function(x) paste(x$nbins,collapse=",")),")"),
+                               k=sapply(tuned_reg_param_list, function(x) x$k) )
+organized_reg_param <- arrange(reg_tune_table,n)
+
+results_reg_wide <- results_reg%>%
+  select(data_name,type,rmse) %>%
+  spread(key=type,value=rmse)
+
+full_reg <- inner_join(organized_reg_param,results_reg_wide, by=c(data="data_name"))
+print(xtable(full_reg,digits=4), include.rownames=FALSE)
+@
+
 
 \begin{table}[H]
-\small
+\footnotesize
 \centering
-\begin{tabular}{|l|rcr|rrrr|} \hline
-Data & n & tuned-$(\delta_1,\delta_2)$ & tuned-$k$ & IQNN & KNN-brute & AKNN-cover &  AKNN-kd  \\
-  \hline
+\begin{tabular}{lr|cr|rrrr} 
+\textbf{Classification}\\
+\hline
+\multicolumn{2}{l|}{ } & \multicolumn{2}{c|}{Tuned Parameters} & \multicolumn{4}{c}{Average Prop. Misclassified} \\
+Data & n & $(\delta_1,\delta_2)$ & $k$ & IQNN & KNN & cover &  kd  \\
+\hline  
+ iris &   150 & (3,3) &     7 & 0.0543 & 0.0363 & 0.0363 & 0.0363 \\ 
+  wpbc &   198 & (3,2) &    45 & 0.2388 & 0.2374 & 0.2374 & 0.2374 \\ 
+  pima &   768 & (6,5) &   115 & 0.2495 & 0.2465 & 0.2464 & 0.2465 \\ 
+  yeast &  1484 & (10,9) &   111 & 0.5541 & 0.5546 & 0.5544 & 0.5549 \\ 
+  abalone &  4174 & (6,6) &   313 & 0.4564 & 0.4595 & 0.4595 & 0.4595 \\ 
+  waveform &  5000 & (6,5) &   750 & 0.3895 & 0.3900 & 0.3900 & 0.3900 \\ 
+  optdigits &  5620 & (8,7) &    70 & 0.5854 & 0.5835 & 0.5850 & 0.5866 \\ 
+  satimage &  6435 & (15,15) &    37 & 0.2115 & 0.2039 & 0.2041 & 0.2039 \\ 
+  marketing &  8494 & (10,9) &   137 & 0.3802 & 0.3736 & 0.3779 & 0.3841 \\ 
+  seizure & 11500 & (14,13) &    94 & 0.6146 & 0.6013 & 0.6013 & 0.6012 \\ 
+    \hline
+    \\
+    \textbf{Regression} \\
+    \hline
+\multicolumn{2}{l|}{ } & \multicolumn{2}{c|}{Tuned Parameters} & \multicolumn{4}{c}{Average RMSE} \\
+Data & n & $(\delta_1,\delta_2)$ & $k$ & IQNN & KNN & cover &  kd  \\
+\hline
   wpbc &   198 & (3,2) &    30 & 0.9322 & 0.9129 & 0.9129 & 0.9129 \\ 
   wankara &   321 & (9,8) &     3 & 0.1664 & 0.1277 & 0.1277 & 0.1277 \\ 
   laser &   993 & (5,5) &    25 & 0.5694 & 0.5645 & 0.5643 & 0.5643 \\ 
@@ -744,31 +841,32 @@ Data & n & tuned-$(\delta_1,\delta_2)$ & tuned-$k$ & IQNN & KNN-brute & AKNN-cov
   ccpp &  9568 & (38,38) &    13 & 0.2513 & 0.2519 & 0.2519 & 0.2519 \\ 
 \hline
 \end{tabular}
-\caption{Put tuned parameters and 100-fold cv classification error rates here}
-\label{tab:tuning_class}
+\caption{\small Parameters selected through tuning and average model error rates from 100 initialization of ten-fold cross-validation. Classification models evaluated using misclassification error proportions. Regression models evaluated with root mean-squared error.}
+\label{tab:tuning_reg_class}
 \end{table}
+% 
+% \begin{table}[H]
+% \small
+% \centering
+% \begin{tabular}{|lr|cr|rrrr|} \hline
+% Data & n & tuned-$(\delta_1,\delta_2)$ & tuned-$k$ & IQNN & KNN & cover &  kd  \\
+%   \hline
+%   wpbc &   198 & (3,2) &    30 & 0.9322 & 0.9129 & 0.9129 & 0.9129 \\ 
+%   wankara &   321 & (9,8) &     3 & 0.1664 & 0.1277 & 0.1277 & 0.1277 \\ 
+%   laser &   993 & (5,5) &    25 & 0.5694 & 0.5645 & 0.5643 & 0.5643 \\ 
+%   treasury &  1049 & (14,14) &     9 & 0.0953 & 0.0772 & 0.0772 & 0.0772 \\ 
+%   quake &  2178 & (2,2) &   490 & 0.9989 & 0.9990 & 0.9990 & 0.9990 \\ 
+%   skillcraft &  3395 & (13,12) &    48 & 0.6325 & 0.6163 & 0.6163 & 0.6163 \\ 
+%   anacalt &  4052 & (30,30) &     8 & 0.1551 & 0.1445 & 0.1477 & 0.1445 \\ 
+%   puma &  8192 & (26,26) &    33 & 0.2666 & 0.2504 & 0.2504 & 0.2504 \\ 
+%   air\_quality &  9357 & (9,9) &   117 & 0.7188 & 0.7145 & 0.7149 & 0.7231 \\ 
+%   ccpp &  9568 & (38,38) &    13 & 0.2513 & 0.2519 & 0.2519 & 0.2519 \\ 
+% \hline
+% \end{tabular}
+% \caption{Tuned parameters for regression models and average RMSE from 100 initialization of ten-fold cross-validation}
+% \label{tab:tuning_class}
+% \end{table}
 
-\begin{table}[H]
-\small
-\centering
-\begin{tabular}{|l|rcr|rrrr|} \hline
-Data & n & tuned-$(\delta_1,\delta_2)$ & tuned-$k$ & IQNN & KNN-brute & AKNN-cover &  AKNN-kd  \\
-\hline  
- iris &   150 & (3,3) &     7 & 0.0543 & 0.0363 & 0.0363 & 0.0363 \\ 
-  wpbc &   198 & (3,2) &    45 & 0.2388 & 0.2374 & 0.2374 & 0.2374 \\ 
-  pima &   768 & (6,5) &   115 & 0.2495 & 0.2465 & 0.2464 & 0.2465 \\ 
-  yeast &  1484 & (10,9) &   111 & 0.5541 & 0.5546 & 0.5544 & 0.5549 \\ 
-  abalone &  4174 & (6,6) &   313 & 0.4564 & 0.4595 & 0.4595 & 0.4595 \\ 
-  waveform &  5000 & (6,5) &   750 & 0.3895 & 0.3900 & 0.3900 & 0.3900 \\ 
-  optdigits &  5620 & (8,7) &    70 & 0.5854 & 0.5835 & 0.5850 & 0.5866 \\ 
-  satimage &  6435 & (15,15) &    37 & 0.2115 & 0.2039 & 0.2041 & 0.2039 \\ 
-  marketing &  8494 & (10,9) &   137 & 0.3802 & 0.3736 & 0.3779 & 0.3841 \\ 
-  seizure & 11500 & (14,13) &    94 & 0.6146 & 0.6013 & 0.6013 & 0.6012 \\ 
-\hline
-\end{tabular}
-\caption{Put tuned parameters and regression 100-fold cv MSEs here}
-\label{tab:tuning_reg}
-\end{table}
 %----------------------------------------------------------------------------
 
 \section{Appendix for Origin Offset Proof}  

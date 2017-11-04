@@ -46,18 +46,29 @@ save(data, file="seizure_raw.Rdata")
 # names(data)[which(names(data)=="V11")] <- "y"
 # save(data, file="magic_raw.Rdata")
 
+all_sets <- c("iris","wpbc","pima","yeast","abalone","waveform","optdigits","satimage","marketing","seizure")
+all_responses <- c("V5","V2","V9","V10","Sex","Class","Class","Class","Sex","y")
+all_sizes <- c(150,198,768,1484,4174,5000,5620,6435,6876,11500)
+setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classification")
+for(set in 1:10){
+  print(set)
+  load(file=paste0(all_sets[set],"_cleaned.Rdata"))
+  y <- all_responses[set]
+  data[,y] <- factor(data[,y])
+  
+  set.seed(12345)
+  myforest <- randomForest(as.formula(paste0("as.factor(as.character(",y,"))~ .")) , data=sample_n(data,min(1000,nrow(data))))
+  important_cols <- dimnames(importance(myforest))[[1]][order(importance(myforest),decreasing=TRUE)]
+  # allow a cap to be put on number of variables considered
+  p <- min(length(important_cols),max_p)
+  
+  ## Parameterize for binning to best match k-nn structure specified with n, k, p, and cv_k
+  train_n <- floor(nrow(data)*((cv_k-1)/cv_k))
+  bin_cols <- important_cols[1:p]
+  print(bin_cols)
+}
 
-## Large classifier set attributes
-large_sets <- c("youtube", "skin")
-large_responses <- c("category", "V4")
-large_sizes <- c(168286,245057)
 
-# # download zipfolder containing youtube_videos.tsv from https://archive.ics.uci.edu/ml/datasets/Online+Video+Characteristics+and+Transcoding+Time+Dataset
-# data <- fread("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\classification\\youtube_videos.tsv")
-# save(data, file="youtube_raw.Rdata")
-# # read skin segmentation data directly from web
-# data <- fread("https://archive.ics.uci.edu/ml/machine-learning-databases/00229/Skin_NonSkin.txt")
-# save(data, file="skin_raw.Rdata")
 
 
 ###-----------------------------------------------------------------------------------------------------
@@ -149,3 +160,5 @@ setwd("C:\\Users\\maurerkt\\Documents\\GitHub\\iqnnProject\\DataRepo\\regression
 
 all_reg_sets <- c("wpbc","wankara","laser","treasury","quake","skillcraft","anacalt","puma","air_quality","ccpp")
 all_reg_sizes <- c(198,321,993,1049,2178,3395,4052,8192,9471,9568)
+
+
