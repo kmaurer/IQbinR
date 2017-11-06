@@ -714,32 +714,32 @@ n & $k$ & $\delta$ & IQNN & cover & kd & IQNN & KNN & cover & kd \\
 \hline 
 Data & n & Web Address (Accessed: 10/25/17) \\ 
 \hline 
-  iris & 150 & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/iris} \\ 
-  wpbc & 198 & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
-  pima & 768 & \url{archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes} \\
-  yeast & 1484 & \url{archive.ics.uci.edu/ml/machine-learning-databases/yeast} \\ 
-  abalone & 4174 & \url{archive.ics.uci.edu/ml/machine-learning-databases/abalone} \\ 
-  waveform & 5000 & \url{archive.ics.uci.edu/ml/machine-learning-databases/waveform} \\ 
-  optdigits & 5620 & \url{sci2s.ugr.es/keel/dataset.php?cod=199} \\ 
-  satimage & 6435 & \url{sci2s.ugr.es/keel/dataset.php?cod=71} \\ 
-  marketing & 8494 & \url{sci2s.ugr.es/keel/dataset.php?cod=163} \\
-  seizure & 11500 & \url{archive.ics.uci.edu/ml/machine-learning-databases/00388} \\ 
+  iris & 150 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/iris} \\ 
+  wpbc & 198 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
+  pima & 768 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes} \\
+  yeast & 1484 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/yeast} \\ 
+  abalone & 4174 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/abalone} \\ 
+  waveform & 5000 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/waveform} \\ 
+  optdigits & 5620 & \html{http://sci2s.ugr.es/keel/dataset.php?cod=199} \\ 
+  satimage & 6435 & \html{http://sci2s.ugr.es/keel/dataset.php?cod=71} \\ 
+  marketing & 8494 & \html{http://sci2s.ugr.es/keel/dataset.php?cod=163} \\
+  seizure & 11500 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00388} \\ 
 \hline 
  & & \\
 \textbf{Regression} & & \\ 
 \hline 
 Data & n & Web Address (Accessed: 10/25/17) \\ 
 \hline 
-  wpbc & 198 &  \url{archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
-  wankara & 321 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=41} \\ 
-  laser & 993 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=47} \\ 
-  treasury & 1049 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=42} \\
-  quake & 2178 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=75} \\ 
-  skillcraft & 3395 &  \url{archive.ics.uci.edu/ml/machine-learning-databases/00272} \\
-  anacalt & 4052 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=159} \\
-  puma & 8192 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=1291} \\
-  air quality & 9357 &  \url{archive.ics.uci.edu/ml/machine-learning-databases/00360} \\
-  ccpp & 9568 &  \url{archive.ics.uci.edu/ml/machine-learning-databases/00294} \\
+  wpbc & 198 &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
+  wankara & 321 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=41} \\ 
+  laser & 993 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=47} \\ 
+  treasury & 1049 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=42} \\
+  quake & 2178 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=75} \\ 
+  skillcraft & 3395 &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00272} \\
+  anacalt & 4052 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=159} \\
+  puma & 8192 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=1291} \\
+  air quality & 9357 &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00360} \\
+  ccpp & 9568 &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00294} \\
    \hline
 \end{tabular}
 \caption{\small Sources for data sets used for testing predictive accuracy for models in Section~\ref{accuracy}.}
