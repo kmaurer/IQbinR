@@ -422,9 +422,9 @@ combined_times$type_pretty <- factor(combined_times$type, labels=c("IQNN   ","KN
 \subsection{Empirical Assessment of Predictive Accuracy}
 \label{accuracy}
 
-While computational efficiency is important, a new nearest-neighbor method must demonstract comparable or favorable predictive accuracy to existing methods to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models using standard loss metrics; mean squared error (MSE) to assess regression models and misclassification error rates to assess classifiers. Ten real data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, ten data sets with continuous response values and continuous features variables were selected to test regression accuracy. Each data set contains at least two continuous numeric feature variables and range in size from $n=150$ to $n=19020$. All data sets come from the University of California Irvin (\textit{UCI}) Machine Learning Repository and the Knowledge Extraction based on Evolutionary Learning (\textit{KEEL}) data repository (\citealt{Lichman2013}; \citealt{alcala2011keel}).  See Table~\ref{tab:data_repos} in Appendix~\ref{dataAppend} for a more summary and source citation for each data set used for testing classification and regression. 
+While computational efficiency is important, a new nearest-neighbor method must demonstract comparable or favorable predictive accuracy to existing methods to be considered viable. In this section we compare test accuracy of the IQNN models against those of KNN and AKNN models using standard loss metrics; mean squared error (MSE) to assess regression models and misclassification error rates to assess classifiers. Ten real data sets with categorical responses and continuous features variables were selected to test classification accuracy; likewise, ten data sets with continuous response values and continuous features variables were selected to test regression accuracy. All data sets come from the University of California Irvin (\textit{UCI}) Machine Learning Repository and the Knowledge Extraction based on Evolutionary Learning (\textit{KEEL}) data repository (\citealt{Lichman2013}; \citealt{alcala2011keel}).  See Table~\ref{tab:data_repos} in Appendix~\ref{dataAppend} for a summary and source citation for each data set used for testing classification and regression. 
 
-To provide consistent comparison, we select and rescale two continuous numeric feature variables from each data set. First, we consider only feature variables that are numeric with at least $\sqrt{n}/10$ unique values, thus displaying at least somewhat continuous behavior. Then, we standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Next, variable selection was performed to narrow the feature space to only two features per data set to simplify comparison across all ten cases. This was done by selecting the variables with the two highest importance scores from a random forest fit to the training data; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. While the variable selection method is somewhat arbitrary here, using high importance variables should provide models with strong predictions under the bivariate feature constraint. 
+To provide consistent comparison, we select and rescale two continuous numeric feature variables from each data set to be used for making predictions in each data scenario. First, we consider only feature variables that are numeric with at least $\sqrt{n}/10$ unique values, thus displaying relatively continuous behavior. Then, we standardize each feature variable to negate the impact of diverse meaurement units on the distance calculations necessary for the KNN and AKNN approaches. Next, variable selection was performed to narrow the feature space to only two features per data set. This was done by selecting the variables with the two highest importance scores from a random forest fit to the training data; using the average reductions in MSE and Gini index as importance metrics for regression and classification case, respectively. While the variable selection method is somewhat arbitrary here, using high importance variables should provide models with strong predictions under the bivariate feature constraint. 
 %Additionally, we elect to specify the iterative-quantile algorithm to bin the features in order of importance scores. 
 See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} contains the selected pair of feature variables that are used when testing the predictive accuracy of each model. 
 
@@ -435,7 +435,7 @@ To prepare for comparing the nearest-neighbor classification models, we first tu
 
 Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned classification models for all considered data sets. This visualization emphasizes the difference in average cross-validated percent misclassified relative to brute-force KNN as a baseline. We see that the data sets are shown from left to right in descending order of misclassification rates; indicating a relative level of difficulty for each classification task. From this we see that the IQNN method performs very similar to the KNN and AKNN methods; between 0.3\% better and 1.8\% worse for all sets tested. In three of the ten scenarios tuned IQNN model has a lower error rate than all other tuned KNN and AKNN models.  
 
- <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average misclassification error rates from 100 initializations of ten-fold cross-validatation on all tuned models as both raw percentages (top) and difference relative to KNN as a baseline (bottom).",warning=FALSE>>=
+ <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average misclassification error rates from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in misclassification error rates relative to KNN as a baseline (bottom).",warning=FALSE>>=
 load(file="../DataRepo/classification/tuned_classification_testing.Rdata") 
  
 #Setting order of data sets
@@ -478,7 +478,7 @@ p1 <- ggplot()+
   scale_x_continuous("", breaks=1:10,
                      labels=my_x_ticks,
                      limits=c(0.5,10.5)) +
-  scale_y_continuous(" \n Misclassification Error Rates",
+  scale_y_continuous("Misclassification Rates\n (units of % error)",
                      breaks=seq(0,100,by=10),labels=paste0("  ",seq(0,100,by=10),"% ")) +
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
   scale_shape_manual("Model Type: ", values=c(17,15,19))+
@@ -504,7 +504,7 @@ p2 <- ggplot()+
   scale_x_continuous(" ", breaks=1:10,
                      labels=my_x_ticks,
                      limits=c(0.5,10.5))+
-  scale_y_continuous("Relative Misclassification Error Rates \n (% Difference from KNN-brute)",
+  scale_y_continuous("Difference from KNN-brute\n (units of % error)",
                      breaks=seq(-0.5,1.5,by=.5),labels=c("-0.5%","0.0%","0.5%","1.0%","1.5%"),
                      limits=c(min(-.5,min(class_plot_data$diff_err_perc)),max(1.5,max(class_plot_data$diff_err_perc)))) +
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
@@ -528,9 +528,9 @@ grid.arrange(p1,p2,nrow=2,heights=c(1,1.2))
 
 To compare the predictive accuracy across the nearest-neighbor style regresson models we collect the root mean squared error (RMSE) for the ten regression data sets in an analogous process to that used for classification in subsection~\ref{classacc} above. We first clean, rescale and select the feature variables for each regression data set. We additionally standardized the continous response value to eliminate the inconsistent units when comparing across data sets; thus the RMSE is in units of standard-deviation for all sets. The tuning process for each model again selects the parameterizations that minimize the average RMSE from ten initializations of ten-fold cross-validation. Then an additional 100 initializations of ten-fold cross-validation are run for each tuned model to assess average performance of IQNN, KNN and AKNN methods on each data set. See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} the parameters selected in tuning and average ten-fold cross-validated RMSE values from each regression model on each data set.
 
-In Figure~\ref{fig:regression_accuracy} we see that for all regression models \ktm{there are ...}. For the classification models we see that IQNN has mixed performance with cases above and below the misclassification rates from KNN; whereas, the AKNN models tend to be at or above the misclassification rates from KNN. 
+In Figure~\ref{fig:regression_accuracy} we see that the IQNN made less accurate predictions than the KNN for most of the regression data sets; however the loss of accuracy was small relative to the units of the response variable. Typically the RMSE for IQNN is within 0.02 response standard deviations from the KNN and AKNN models. The Wisconsin Prognostic Breast Cancer (wpbc) data is the case with the difference in predictive accuracy with the tuned IQNN model have an RMSE value of 0.039 standardized units higher than the tuned KNN model.
 
- <<regression_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="regression trials...",warning=FALSE>>=
+ <<regression_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average RMSE from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in RMSE relative to KNN as a baseline (bottom).",warning=FALSE>>=
 load(file="../DataRepo/regression/tuned_regression_testing.Rdata") 
  
 #Setting order of data sets
@@ -573,7 +573,7 @@ p3 <- ggplot()+
   scale_x_continuous("", breaks=1:10,
                      labels=my_x_ticks,
                      limits=c(0.5,10.5)) +
-  labs(y="Average CV-RMSE\n (units of std dev)")+
+  labs(y="Average RMSE\n (units of std dev)")+
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
   scale_shape_manual("Model Type: ", values=c(17,15,19))+
   theme(panel.grid.major.x =element_blank(),
@@ -597,7 +597,7 @@ p4 <- ggplot()+
   scale_x_continuous(" ", breaks=1:10,
                      labels=my_x_ticks,
                      limits=c(0.5,10.5)) +
-  labs(y="Relative CV-RMSE \n (Difference from KNN-brute)")+
+  labs(y="Difference from KNN-brute\n (units of std dev)")+
   # scale_y_continuous("Relative CV-RMSE \n (Difference from KNN-brute)", breaks=seq(-.01,.04,by=.01),limits=c(-0.01,0.04)) +
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
   scale_shape_manual("Model Type: ", values=c(17,15,19))+
@@ -613,7 +613,6 @@ grid.arrange(p3,p4,nrow=2,heights=c(1,1.2))
 
 @
 
-
 %-----------------------------------------------------------------------------
 
 \section{Discussion and Future Work}
@@ -627,16 +626,8 @@ Uniquely, the storage size of the IQNN r-tree and time required for prediction i
 
 In Section~\ref{accuracy} that misclassification error rates for IQNN were quite comparable to that of the KNN and AKNN models. Notably, the misclassification error rates for all IQNN classifier models in our empirical analysis of tuned models was consistently within a few percent above or below the KNN accuracy.
 
-\newpage
-
-
-
-
-
 %----------------------------------------------------------------------------
-\newpage
 \begin{appendix}
-
 %-------------------------------------------
 \section{Appendix A: Timing Simulations}  
 \label{timingAppend}
@@ -649,7 +640,7 @@ sim_times_tables <- sim_times_agg %>%
 print(xtable(sim_times_tables,digits=c(0,0,0,0,6,6,6,6,6,6,6)), include.rownames=FALSE)
 @
 
-\renewcommand{\arraystretch}{0.7}% Tighter
+\renewcommand{\arraystretch}{0.65}% Tighter
 \begin{table}[H]
 \centering
 \footnotesize
@@ -714,7 +705,7 @@ n & $k$ & $\delta$ & IQNN & cover & kd & IQNN & KNN & cover & kd \\
 \section{Appendix B: Empirical Data Sets}  
 \label{dataAppend}
 
-
+\renewcommand{\arraystretch}{0.75}
 \begin{table}[H]
 \footnotesize
 \centering
@@ -723,32 +714,32 @@ n & $k$ & $\delta$ & IQNN & cover & kd & IQNN & KNN & cover & kd \\
 \hline 
 Data & n & Web Address (Accessed: 10/25/17) \\ 
 \hline 
-  iris & 150 & archive.ics.uci.edu/ml/machine-learning-databases/iris\\ 
-  wpbc & 198 & archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin \\ 
-  pima & 768 & archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes \\
-  yeast & 1484 & archive.ics.uci.edu/ml/machine-learning-databases/yeast \\ 
-  abalone & 4174 & archive.ics.uci.edu/ml/machine-learning-databases/abalone \\ 
-  waveform & 5000 & archive.ics.uci.edu/ml/machine-learning-databases/waveform \\ 
-  optdigits & 5620 & sci2s.ugr.es/keel/dataset.php?cod=199 \\ 
-  satimage & 6435 & sci2s.ugr.es/keel/dataset.php?cod=71 \\ 
-  marketing & 8494 & sci2s.ugr.es/keel/dataset.php?cod=163 \\
-  seizure & 11500 & archive.ics.uci.edu/ml/machine-learning-databases/00388 \\ 
+  iris & 150 & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/iris} \\ 
+  wpbc & 198 & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
+  pima & 768 & \url{archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes} \\
+  yeast & 1484 & \url{archive.ics.uci.edu/ml/machine-learning-databases/yeast} \\ 
+  abalone & 4174 & \url{archive.ics.uci.edu/ml/machine-learning-databases/abalone} \\ 
+  waveform & 5000 & \url{archive.ics.uci.edu/ml/machine-learning-databases/waveform} \\ 
+  optdigits & 5620 & \url{sci2s.ugr.es/keel/dataset.php?cod=199} \\ 
+  satimage & 6435 & \url{sci2s.ugr.es/keel/dataset.php?cod=71} \\ 
+  marketing & 8494 & \url{sci2s.ugr.es/keel/dataset.php?cod=163} \\
+  seizure & 11500 & \url{archive.ics.uci.edu/ml/machine-learning-databases/00388} \\ 
 \hline 
  & & \\
 \textbf{Regression} & & \\ 
 \hline 
 Data & n & Web Address (Accessed: 10/25/17) \\ 
 \hline 
-  wpbc & 198 & archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin \\ 
-  wankara & 321 & sci2s.ugr.es/keel/category.php?cat=reg?cod=41 \\ 
-  laser & 993 & sci2s.ugr.es/keel/category.php?cat=reg?cod=47 \\ 
-  treasury & 1049 & sci2s.ugr.es/keel/category.php?cat=reg?cod=42 \\
-  quake & 2178 & sci2s.ugr.es/keel/category.php?cat=reg?cod=75 \\ 
-  skillcraft & 3395 & archive.ics.uci.edu/ml/machine-learning-databases/00272 \\
-  anacalt & 4052 & sci2s.ugr.es/keel/category.php?cat=reg?cod=159 \\
-  puma & 8192 & sci2s.ugr.es/keel/category.php?cat=reg?cod=1291 \\
-  air quality & 9357 & archive.ics.uci.edu/ml/machine-learning-databases/00360 \\
-  ccpp & 9568 & archive.ics.uci.edu/ml/machine-learning-databases/00294 \\
+  wpbc & 198 &  \url{archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
+  wankara & 321 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=41} \\ 
+  laser & 993 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=47} \\ 
+  treasury & 1049 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=42} \\
+  quake & 2178 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=75} \\ 
+  skillcraft & 3395 &  \url{archive.ics.uci.edu/ml/machine-learning-databases/00272} \\
+  anacalt & 4052 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=159} \\
+  puma & 8192 &  \url{sci2s.ugr.es/keel/category.php?cat=reg?cod=1291} \\
+  air quality & 9357 &  \url{archive.ics.uci.edu/ml/machine-learning-databases/00360} \\
+  ccpp & 9568 &  \url{archive.ics.uci.edu/ml/machine-learning-databases/00294} \\
    \hline
 \end{tabular}
 \caption{\small Sources for data sets used for testing predictive accuracy for models in Section~\ref{accuracy}.}
@@ -868,15 +859,9 @@ Data & n & $(\delta_1,\delta_2)$ & $k$ & IQNN & KNN & cover &  kd  \\
 % \end{table}
 
 %----------------------------------------------------------------------------
-
-\section{Appendix for Origin Offset Proof}  
-%----------------------------------------------------------------------------
-%\subsection{}
-\label{proof:offset}
-
-Appendix stuff goes here
-
 \end{appendix}
+
+\newpage
 
 \bibliographystyle{asa}
 
