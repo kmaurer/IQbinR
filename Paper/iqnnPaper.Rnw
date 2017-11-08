@@ -60,7 +60,7 @@ load(file="../sim_times_agg.Rdata")
 \if0\blind
 {
 %opening
-\title{Iterative-Quantile Nearest-Neighbors}
+\title{Iterative Quantile Nearest-Neighbors}
 \author{author names}
   \maketitle
 } \fi
@@ -77,11 +77,11 @@ load(file="../sim_times_agg.Rdata")
 %-----------------------------------------------------------------------------------------------------
 \bigskip
 \begin{abstract}
-The nearest-neighbor search is a classic computational challenge that has applications within many fields, including predictive modeling. It is important to consider how the computational requirements of statistical learning methods scale with increasing data sizes. Approximate nearest-neighbors algorithms exist to improve the speed at which queries are able to run by pre-processing training data for efficient searches using tree-based structures. We propose \textit{iterative quantile nearest-neighbor} (IQNN) models for classification and regression that provides a rough approximation to $k$-nearest-neighborhood models through the use of an iterative process of partitioning the feature space using empirical quantiles of feature variables, which are then stored as an R-tree of intervals. IQNN models demonstrate comparable predictive accuracy with KNN methods in empirical trials on many data sets and is shown through repeated simulation to be considerably more computationally efficient in cases with very large sample sizes. 
+The nearest-neighbor search is a classic computational challenge that has applications within many fields, including predictive modeling. It is important to consider how the computational requirements of machine learning methods scale with increasing data sizes. $k$-nearest-neighbor (KNN) models struggle to scale with the number of training observations. Approximate nearest-neighbors algorithms exist to improve the speed at which queries are able to run by pre-processing training data for efficient searches using tree-based structures. We propose \textit{iterative quantile nearest-neighbor} (IQNN) models for classification and regression that provide an approximation to $k$-nearest-neighborhoods through the use of an iterative process of partitioning the feature space using empirical quantiles of feature variables, which are then stored as an R-tree of intervals. IQNN models demonstrate comparable predictive accuracy with KNN methods in empirical trials on many data sets and is shown through repeated simulation to be considerably more computationally efficient in cases with very large sample sizes. 
 \end{abstract}
 
 \noindent%
-{\it Keywords:} Non-parametric, Predictive Modeling, Partitioning, KNN, R-Trees
+{\it Keywords:} Non-parametric, Predictive Modeling, Partitioning, KNN, Binning
 \vfill
 
 %-----------------------------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ The nearest-neighbor search is a classic computational challenge that has applic
 
 The nearest-neighbor search is a classic computational challenge that has applications within many fields \citep{bhatia2010survey}. Within the context of machine learning the k-nearest neighbors search is used as a non-parametric method for gathering training observations used for prediction in both regression and classifier models (\citealt{fix1951discriminatory},\citealt{cover1967nearest}). The basic mechanism for $k$-nearest-neighbor (KNN) models is to use numeric feature variables to calculate distances between a new query observation and all the observations in the training data, then create a prediction based on the responses from the $k$ training observations with the smallest distances from the query point \citep{kuncheva2004combining}; commonly using an average of response values for KNN regressions, and the majority vote for KNN classifiers (\citealt{friedman2001elements};\citealt{james2013introduction}). 
 
-Given the rapid growth in data volume and availability, it is important to consider how the computational requirements of a statistical learning method scale with increase training and test data sizes. KNN models rely on calculation of $p$-dimensional distances - typically Euclidean - between the $n$ observations in the training set for each new query observation, which can be solved in $O(n)$ time through a brute force approach. Then the distances must be sorted by magnitude to allow the $k$-nearest points be selected, taking an additional $O(nlog(n))$ time with a quick-sort algorithm. This can clearly become computationally demanding when either the training data size increases. The computational demands are compounded when using KNN models to make a large number of predictions. In a test set with $m$ observations, every new query requires recalculation of distances; solved by brute force computation in $O(mn(1+log(n)))$ time. 
+Given the rapid growth in data volume and availability, it is important to consider how the computational requirements of a machine learning method scale with increase training and test data sizes. KNN models rely on calculation of $p$-dimensional distances - typically Euclidean - between the $n$ observations in the training set for each new query observation, which can be solved in $O(n)$ time through a brute force approach. Then the distances must be sorted by magnitude to allow the $k$-nearest points be selected, taking an additional $O(nlog(n))$ time with a quick-sort algorithm. This can clearly become computationally demanding when either the training data size increases. The computational demands are compounded when using KNN models to make a large number of predictions. In a test set with $m$ observations, every new query requires recalculation of distances; solved by brute force computation in $O(mn(1+log(n)))$ time. 
 
 Algorithms have been developed to improve the speed at which queries are able to run by pre-processing the training data to allow for more efficient nearest-neighbor searches using tree-based structures. Roussopoulos et al. presented the Branch-and-Bound R-tree method, using minimal bounding rectangles to group observations for efficient nearest-neighbor searches. While the method makes clever use of nested hyper-bins, it is fundamentally focused on finding the single nearest-neighbor and the computational gains erode quickly as query neighborhood size, $k$, increases \citep{roussopoulos1995nearest}. Arya and Mount presented another method for pre-processing the training data into a kd-tree structure for efficient \textit{approximate k-nearest-neighbor} (AKNN) queries; a set of $k$ observations with distances within a ratio of $(1+\epsilon)$ to the query point as the true $k^{th}$-nearest-neighbor, for some specified $\epsilon$. This kd-tree AKNN method requires $O(n^2)$ time to organize the data into nested conically shaped search regions that are then stored in $O(n\log(n))$ space, and AKNN queries then require only $O(\log^3(n))$ time \citep{arya1993approximate}. Arya et al. then optimized the AKNN algorithm to pre-process the kd-tree in $O(n\log(n))$ time and store in $O(n)$ space, then able to make AKNN queries in $O(c_{p\epsilon}\log(n))$ time, where $c_{p\epsilon}$ is a constant bounded above by a function of the dimensionality, $p$, and the approximation parameter, $\epsilon$ \citep{arya1998optimal}. Beygelzimer et al. provide the cover-tree method as an alternative for either KNN or AKNN searches. Cover-tree AKNN approach take $O(c^6 n\log(n))$ time to construct the cover-tree, required $O(n)$ storage space and allows nearest-neighbor queries in $O(c^{12} \log(n))$ time, where $c$ is a bounded expansion constant \citep{beygelzimer2006cover}.  
 % 
@@ -104,7 +104,7 @@ Algorithms have been developed to improve the speed at which queries are able to
 % 
 % \ktm{paragraph transitioning to discussions on predictive modeling goals of KNN classification/regression. Include discussion about how KNN is a voroni partitioning of the feature space, can we approximate this partitioning roughly but faster? }
 
-We propose \textit{iterative-quantile nearest-neighbor} (IQNN) models for classification and regression that provides a rough approximation to $k$-nearest-neighborhood models through the use of an iterative process of partitioning the feature space using empirical-quantiles of the variable from the training data. In Section~\ref{iqnn} we explain the intuition and procedural details of the IQNN algorithm. The method requires at most $O(pn\log(n))$ time to construct the nested quantile based partitions on $p$-dimensional features, which are then stored into an R-tree structure where the iterative-quantile neighborhoods can be queried in $O(\sum_{j=1}^{p}\delta_j)$ time, where $\delta_j$ is the number of partitions in the $j^{th}$ feature dimension. In Section~\ref{eval} we evaluate the theoretically expected computational costs of the IQNN approach and then compare the timing performance and predictive accuracy of the IQNN models to the KNN, kd-tree AKNN, and cover-tree AKNN on a number of simulated and real data sets with both numeric and categorical response values. Finally, in Section~\ref{discussion} we discuss the results of our computational testing and identify areas for future research.  
+We propose \textit{iterative quantile nearest-neighbor} (IQNN) models for classification and regression that provide an approximation to $k$-nearest-neighborhoods through the use of an iterative process of partitioning the feature space using empirical quantiles of feature variables. In Section~\ref{iqnn} we explain the intuition and procedural details of the IQNN algorithm. The method requires at most $O(pn\log(n))$ time to construct the nested quantile based partitions on $p$-dimensional features, which are then stored into an R-tree structure where the iterative-quantile neighborhoods can be queried in $O(\sum_{j=1}^{p}\delta_j)$ time, where $\delta_j$ is the number of partitions in the $j^{th}$ feature dimension. In Section~\ref{eval} we evaluate the theoretically expected computational costs of the IQNN approach and then compare the timing performance and predictive accuracy of the IQNN models to the KNN, kd-tree AKNN, and cover-tree AKNN on a number of simulated and real data sets with both numeric and categorical response values. Finally, in Section~\ref{discussion} we discuss the results of our computational testing and identify areas for future research.  
 
 \section{Iterative Quantile Nearest-Neighbors}
 \label{iqnn}
@@ -438,7 +438,7 @@ To prepare for comparing the nearest-neighbor classification models, we first tu
 
 Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned classification models for all considered data sets. This visualization emphasizes the difference in average cross-validated percent misclassified relative to brute-force KNN as a baseline. We see that the data sets are shown from left to right in descending order of misclassification rates; indicating a relative level of difficulty for each classification task. From this we see that the IQNN method performs very similar to the KNN and AKNN methods; between 0.3\% better and 1.8\% worse for all sets tested. In three of the ten scenarios the tuned IQNN model has a lower error rate than all other tuned KNN and AKNN models.  
 
- <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average misclassification error rates from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in misclassification error rates relative to KNN as a baseline (bottom).",warning=FALSE>>=
+ <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.4, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average misclassification error rates from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in misclassification error rates relative to KNN as a baseline (bottom).",warning=FALSE>>=
 load(file="../DataRepo/classification/tuned_classification_testing.Rdata") 
  
 #Setting order of data sets
@@ -531,9 +531,8 @@ grid.arrange(p1,p2,nrow=2,heights=c(1,1.2))
 
 To compare the predictive accuracy across the nearest-neighbor style regression models we collect the root mean squared error (RMSE) for the ten regression data sets in an analogous process to that used for classification in subsection~\ref{classacc} above. We first clean, re-scale and select two feature variables for each regression data set. We additionally standardized the continuous response value to eliminate the inconsistent units when comparing across data sets; thus the RMSE is in units of standard deviation of the response variable for all sets. The tuning process for each model again selects the parameterizations that minimize the average RMSE from ten initializations of ten-fold cross-validation. Then an additional 100 initializations of ten-fold cross-validation are run for each tuned model to assess average performance of IQNN, KNN and AKNN methods on each data set. See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} the parameters selected in tuning and average ten-fold cross-validated RMSE values from each regression model on each data set.
 
-In Figure~\ref{fig:regression_accuracy} we see that the IQNN made less accurate predictions than the KNN for most of the regression data sets; however the loss of accuracy was small relative to the units of the response variable. Typically the RMSE for IQNN is within 0.02 response standard deviations from the KNN and AKNN models. The Wisconsin Prognostic Breast Cancer (wpbc) data is the case with the difference in predictive accuracy with the tuned IQNN model have an RMSE value of 0.039 standardized units higher than the tuned KNN model.
 
- <<regression_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.5, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average RMSE from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in RMSE relative to KNN as a baseline (bottom).",warning=FALSE>>=
+ <<regression_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.4, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average RMSE from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in RMSE relative to KNN as a baseline (bottom).",warning=FALSE>>=
 load(file="../DataRepo/regression/tuned_regression_testing.Rdata") 
  
 #Setting order of data sets
@@ -575,7 +574,7 @@ p3 <- ggplot()+
   theme_bw() +
   scale_linetype_manual("Baseline: ", values=1)+
   scale_x_continuous("", breaks=1:10,
-                     labels=my_x_ticks,
+                     labels=my_x_ticks_reg,
                      limits=c(0.5,10.5)) +
   labs(y="Average RMSE\n (units of std dev)")+
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
@@ -599,7 +598,7 @@ p4 <- ggplot()+
              size=3,data=reg_plot_data)+
   theme_bw() +
   scale_x_continuous(" ", breaks=1:10,
-                     labels=my_x_ticks,
+                     labels=my_x_ticks_reg,
                      limits=c(0.5,10.5)) +
   labs(y="Difference from KNN-brute\n (units of std dev)")+
   # scale_y_continuous("Relative CV-RMSE \n (Difference from KNN-brute)", breaks=seq(-.01,.04,by=.01),limits=c(-0.01,0.04)) +
@@ -616,6 +615,8 @@ p4 <- ggplot()+
 grid.arrange(p3,p4,nrow=2,heights=c(1,1.2))
 
 @
+
+In Figure~\ref{fig:regression_accuracy} we see that the IQNN made less accurate predictions than the KNN for most of the regression data sets; however the loss of accuracy was small relative to the units of the response variable. Typically the RMSE for IQNN is within 0.02 response standard deviations from the KNN and AKNN models. The Wisconsin Prognostic Breast Cancer (wpbc) data is the case with the difference in predictive accuracy with the tuned IQNN model have an RMSE value of 0.039 standardized units higher than the tuned KNN model.
 
 %-----------------------------------------------------------------------------
 
@@ -718,44 +719,44 @@ n & $k$ & $\delta$ & IQNN & cover & kd & IQNN & KNN & cover & kd \\
 \normalsize
 
 %-------------------------------------------
-\section{Appendix B: Empirical Data Sets}  
+\section{Appendix B: Empirical Data Set Sources}  
 \label{dataAppend}
 
 \renewcommand{\arraystretch}{0.75}
 \begin{table}[H]
 \footnotesize
 \centering
-\begin{tabular}{lrl}
-\textbf{Classification} & & \\
+\begin{tabular}{ll}
+\textbf{Classification} & \\
 \hline 
-Data & n & Web Address (Accessed: 10/25/17) \\ 
+Name & Web Address (Accessed: 10/25/17) \\ 
 \hline 
-  iris & 150 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/iris} \\ 
-  wpbc & 198 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
-  pima & 768 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes} \\
-  yeast & 1484 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/yeast} \\ 
-  abalone & 4174 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/abalone} \\ 
-  waveform & 5000 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/waveform} \\ 
-  optdigits & 5620 & \html{http://sci2s.ugr.es/keel/dataset.php?cod=199} \\ 
-  satimage & 6435 & \html{http://sci2s.ugr.es/keel/dataset.php?cod=71} \\ 
-  marketing & 8494 & \html{http://sci2s.ugr.es/keel/dataset.php?cod=163} \\
-  seizure & 11500 & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00388} \\ 
+  iris & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/iris} \\ 
+  wpbc & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
+  pima & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes} \\
+  yeast & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/yeast} \\ 
+  abalone & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/abalone} \\ 
+  waveform & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/waveform} \\ 
+  optdigits & \html{http://sci2s.ugr.es/keel/dataset.php?cod=199} \\ 
+  satimage & \html{http://sci2s.ugr.es/keel/dataset.php?cod=71} \\ 
+  marketing & \html{http://sci2s.ugr.es/keel/dataset.php?cod=163} \\
+  seizure & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00388} \\ 
 \hline 
- & & \\
-\textbf{Regression} & & \\ 
+ & \\
+\textbf{Regression} & \\ 
 \hline 
-Data & n & Web Address (Accessed: 10/25/17) \\ 
+Name & Web Address (Accessed: 10/25/17) \\ 
 \hline 
-  wpbc & 198 &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
-  wankara & 321 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=41} \\ 
-  laser & 993 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=47} \\ 
-  treasury & 1049 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=42} \\
-  quake & 2178 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=75} \\ 
-  skillcraft & 3395 &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00272} \\
-  anacalt & 4052 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=159} \\
-  puma & 8192 &  \html{http://sci2s.ugr.es/keel/category.php?cat=reg?cod=1291} \\
-  air quality & 9357 &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00360} \\
-  ccpp & 9568 &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00294} \\
+  wpbc & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
+  wankara &  \html{http://sci2s.ugr.es/keel/dataset.php?cod=41} \\ 
+  laser &  \html{http://sci2s.ugr.es/keel/dataset.php?cod=47} \\ 
+  treasury &  \html{http://sci2s.ugr.es/keel/dataset.php?cod=42} \\
+  quake & \html{http://sci2s.ugr.es/keel/dataset.php?cod=75} \\ 
+  skillcraft &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00272} \\
+  anacalt & \html{http://sci2s.ugr.es/keel/dataset.php?cod=159} \\
+  puma & \html{http://sci2s.ugr.es/keel/dataset.php?cod=1291} \\
+  air quality & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00360} \\
+  ccpp & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00294} \\
    \hline
 \end{tabular}
 \caption{\small Sources for data sets used for testing predictive accuracy for models in Section~\ref{accuracy}.}
@@ -777,6 +778,8 @@ print(xtable(organized_class_data), include.rownames=FALSE)
 all_sets <- c("iris","wpbc","pima","yeast","abalone","waveform","optdigits","satimage","marketing","seizure")
 class_tune_table <- data.frame(data=all_sets, 
                                n=sapply(tuned_param_list, function(x) x$n),
+                               x1=sapply(tuned_param_list, function(x) x$bin_cols)[1,],
+                               x2=sapply(tuned_param_list, function(x) x$bin_cols)[2,],
                                nbins=paste0("(",sapply(tuned_param_list, function(x) paste(x$nbins,collapse=",")),")"),
                                k=sapply(tuned_param_list, function(x) x$k) )
 organized_class_param <- arrange(class_tune_table,n)
@@ -797,6 +800,8 @@ print(xtable(organized_reg_data), include.rownames=FALSE)
 all_reg_sets <- c("wpbc","wankara","laser","treasury","quake","skillcraft","anacalt","puma","air_quality","ccpp")
 reg_tune_table <- data.frame(data=all_reg_sets, 
                                n=sapply(tuned_reg_param_list, function(x) x$n),
+                               x1=sapply(tuned_reg_param_list, function(x) x$bin_cols)[1,],
+                               x2=sapply(tuned_reg_param_list, function(x) x$bin_cols)[2,],
                                nbins=paste0("(",sapply(tuned_reg_param_list, function(x) paste(x$nbins,collapse=",")),")"),
                                k=sapply(tuned_reg_param_list, function(x) x$k) )
 organized_reg_param <- arrange(reg_tune_table,n)
@@ -807,48 +812,51 @@ results_reg_wide <- results_reg%>%
 
 full_reg <- inner_join(organized_reg_param,results_reg_wide, by=c(data="data_name"))
 print(xtable(full_reg,digits=4), include.rownames=FALSE)
+
+# Variable names from UCI downloads were listed as {V1,V2,...}
+# these are looked up and manually relabeled for reproducibility/readability by reader
 @
 
 
 \begin{table}[H]
 \footnotesize
 \centering
-\begin{tabular}{lr|cr|rrrr} 
-\textbf{Classification}\\
+\begin{tabular}{lr|rr|cr|rrrr} 
+\multicolumn{2}{l}{\textbf{Classification}} \\
 \hline
-\multicolumn{2}{l|}{ } & \multicolumn{2}{c|}{Tuned Parameters} & \multicolumn{4}{c}{Average Prop. Misclassified} \\
-Data & n & $(\delta_1,\delta_2)$ & $k$ & IQNN & KNN & cover &  kd  \\
+\multicolumn{2}{l|}{ } & \multicolumn{2}{c|}{Features Used} & \multicolumn{2}{c|}{Tuned Params} & \multicolumn{4}{c}{Average Prop. Misclassified} \\
+Name & n & $x_1$ & $x_2$ & $(\delta_1,\delta_2)$ & $k$ & IQNN & KNN & cover &  kd  \\
 \hline  
- iris &   150 & (3,3) &     7 & 0.0543 & 0.0363 & 0.0363 & 0.0363 \\ 
-  wpbc &   198 & (3,2) &    45 & 0.2388 & 0.2374 & 0.2374 & 0.2374 \\ 
-  pima &   768 & (6,5) &   115 & 0.2495 & 0.2465 & 0.2464 & 0.2465 \\ 
-  yeast &  1484 & (10,9) &   111 & 0.5541 & 0.5546 & 0.5544 & 0.5549 \\ 
-  abalone &  4174 & (6,6) &   313 & 0.4564 & 0.4595 & 0.4595 & 0.4595 \\ 
-  waveform &  5000 & (6,5) &   750 & 0.3895 & 0.3900 & 0.3900 & 0.3900 \\ 
-  optdigits &  5620 & (8,7) &    70 & 0.5854 & 0.5835 & 0.5850 & 0.5866 \\ 
-  satimage &  6435 & (15,15) &    37 & 0.2115 & 0.2039 & 0.2041 & 0.2039 \\ 
-  marketing &  8494 & (10,9) &   137 & 0.3802 & 0.3736 & 0.3779 & 0.3841 \\ 
-  seizure & 11500 & (14,13) &    94 & 0.6146 & 0.6013 & 0.6013 & 0.6012 \\ 
+ iris &   150 & petal width & petal length & (3,3) &  7 & 0.0543 & 0.0363 & 0.0363 & 0.0363 \\ 
+  wpbc &   198 & tumor size & worst smooth & (3,2) &  45 & 0.2388 & 0.2374 & 0.2374 & 0.2374 \\ 
+  pima &   768 &  glucose & BMI & (6,5) & 115 & 0.2495 & 0.2465 & 0.2464 & 0.2465 \\ 
+  yeast &  1484 & ALM & MCG & (10,9) & 111 & 0.5541 & 0.5546 & 0.5544 & 0.5549 \\ 
+  abalone &  4174 & viscera wgt & whole wgt & (6,6) &   313 & 0.4564 & 0.4595 & 0.4595 & 0.4595 \\ 
+  waveform &  5000 & V11 & V10 & (6,5) &   750 & 0.3895 & 0.3900 & 0.3900 & 0.3900 \\ 
+  optdigits &  5620 & atr21 & atr43 & (8,7) &  70 & 0.5854 & 0.5835 & 0.5850 & 0.5866 \\ 
+  satimage &  6435 & sp28 & sp27 & (15,15) &  37 & 0.2115 & 0.2039 & 0.2041 & 0.2039 \\ 
+  marketing &  8494 & occupation & members & (10,9) &   137 & 0.3802 & 0.3736 & 0.3779 & 0.3841 \\ 
+  seizure & 11500 & X111 & X110 & (14,13) &  94 & 0.6146 & 0.6013 & 0.6013 & 0.6012 \\ 
     \hline
     \\
-    \textbf{Regression} \\
+    \multicolumn{2}{l}{\textbf{Regression}} \\
     \hline
-\multicolumn{2}{l|}{ } & \multicolumn{2}{c|}{Tuned Parameters} & \multicolumn{4}{c}{Average RMSE} \\
-Data & n & $(\delta_1,\delta_2)$ & $k$ & IQNN & KNN & cover &  kd  \\
+\multicolumn{2}{l|}{ }  & \multicolumn{2}{c|}{Features Used} & \multicolumn{2}{c|}{Tuned Params} & \multicolumn{4}{c}{Average RMSE} \\
+Name & n & $x_1$ & $x_2$ & $(\delta_1,\delta_2)$ & $k$ & IQNN & KNN & cover &  kd  \\
 \hline
-  wpbc &   198 & (3,2) &    30 & 0.9322 & 0.9129 & 0.9129 & 0.9129 \\ 
-  wankara &   321 & (9,8) &     3 & 0.1664 & 0.1277 & 0.1277 & 0.1277 \\ 
-  laser &   993 & (5,5) &    25 & 0.5694 & 0.5645 & 0.5643 & 0.5643 \\ 
-  treasury &  1049 & (14,14) &     9 & 0.0953 & 0.0772 & 0.0772 & 0.0772 \\ 
-  quake &  2178 & (2,2) &   490 & 0.9989 & 0.9990 & 0.9990 & 0.9990 \\ 
-  skillcraft &  3395 & (13,12) &    48 & 0.6325 & 0.6163 & 0.6163 & 0.6163 \\ 
-  anacalt &  4052 & (30,30) &     8 & 0.1551 & 0.1445 & 0.1477 & 0.1445 \\ 
-  puma &  8192 & (26,26) &    33 & 0.2666 & 0.2504 & 0.2504 & 0.2504 \\ 
-  air\_quality &  9357 & (9,9) &   117 & 0.7188 & 0.7145 & 0.7149 & 0.7231 \\ 
-  ccpp &  9568 & (38,38) &    13 & 0.2513 & 0.2519 & 0.2519 & 0.2519 \\ 
+wpbc &   198 & mean texture & mean radius & (3,2) &    30 & 0.9322 & 0.9129 & 0.9129 & 0.9129 \\ 
+  wankara &   321 & max temp & min temp & (9,8) &     3 & 0.1664 & 0.1277 & 0.1277 & 0.1277 \\ 
+  laser &   993 & input1 & input2 & (5,5) &    25 & 0.5694 & 0.5645 & 0.5643 & 0.5643 \\ 
+  treasury &  1049 & 3Y-mature & moneystock & (14,14) &     9 & 0.0953 & 0.0772 & 0.0772 & 0.0772 \\ 
+  quake &  2178 & latitude & longitude & (2,2) &   490 & 0.9989 & 0.9990 & 0.9990 & 0.9990 \\ 
+  skillcraft &  3395 & action lat. & number PACs & (13,12) &    48 & 0.6325 & 0.6163 & 0.6163 & 0.6163 \\ 
+  anacalt &  4052 & year & actions & (30,30) &     8 & 0.1551 & 0.1445 & 0.1477 & 0.1445 \\ 
+  puma &  8192 & theta5 & da5 & (26,26) &    33 & 0.2666 & 0.2504 & 0.2504 & 0.2504 \\ 
+  air quality &  9357 & NO2 GT & NOx GT & (9,9) &   117 & 0.7188 & 0.7145 & 0.7149 & 0.7231 \\ 
+  ccpp &  9568 & AT & V & (38,38) &    13 & 0.2513 & 0.2519 & 0.2519 & 0.2519 \\ 
 \hline
 \end{tabular}
-\caption{\small Parameters selected through tuning and average model error rates from 100 initialization of ten-fold cross-validation. Classification models evaluated using misclassification error proportions. Regression models evaluated with root mean-squared error.}
+\caption{\small Feature variables selected, tuned parameters, and average model error rates from 100 initialization of ten-fold cross-validation. Classification models evaluated using misclassification error proportions. Regression models evaluated with root mean-squared error. Note that some data set and variable names have been shortened for brevity.  }
 \label{tab:tuning_reg_class}
 \end{table}
 % 
