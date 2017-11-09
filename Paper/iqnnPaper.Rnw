@@ -573,9 +573,9 @@ my_x_ticks_reg <- paste0(levels(reg_plot_data$data_name), "\n n=",x_label_sizes_
 #   - scale / theme to match previous plots
 p3 <- ggplot()+
   geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
-  geom_segment(aes(x=x, xend=xend,y=avg_cv_mse,yend=avg_cv_mse, linetype="KNN-brute"),
+  geom_segment(aes(x=x, xend=xend,y=rmse,yend=rmse, linetype="KNN-brute"),
                color=RColorBrewer::brewer.pal(4,"Set1")[4], size=1, data=reg_plot_data_knn) +
-  geom_point(aes(x=as.numeric(data_name)+shift,y=avg_cv_mse,color=type_pretty,shape=type_pretty),
+  geom_point(aes(x=as.numeric(data_name)+shift,y=rmse,color=type_pretty,shape=type_pretty),
              size=3,data=reg_plot_data)+
   theme_bw() +
   scale_linetype_manual("Baseline: ", values=1)+
