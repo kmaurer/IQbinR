@@ -167,7 +167,7 @@ mydata$Y <- mydata$X1 + mydata$X2 + rnorm(nsim)
 point_color <- "black"
 line_color <- "black"
 mytheme <- theme_bw() + 
-  theme(legend.position = "bottom",
+  theme(legend.position = "bottom",panel.grid.minor = element_blank(),
                      panel.border = element_blank())
 
 mybins <- iqbin(data=mydata, bin_cols=c("X1","X2"),nbins=c(simbins, simbins), output="both")
@@ -175,22 +175,28 @@ X1_bounds <- unique(c(mybins$bin_def$bin_bounds[,1],mybins$bin_def$bin_bounds[,2
 
 # plot with X1 breaks
 ggplot()+
-  geom_point(aes(x=X1,y=X2, color=Y), data=mydata, size=.8) +
+  geom_point(aes(x=X1,y=X2, color=Y), data=mydata, size=1) +
   geom_vline(xintercept = X1_bounds, size=.6, color=line_color)+
-  scale_color_gradient2("Y",low="#08519c",mid="gray80",high="#a50f15",
-                        midpoint=0,breaks=color_steps, 
+  # scale_color_gradient2("Y",low="#08519c",mid="gray80",high="#a50f15",
+  #                       midpoint=0,breaks=color_steps, 
+  #                       limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+
+    scale_color_gradient("Y",low="gray95",high="gray15",
+                        breaks=color_steps, 
                         limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+
   labs(x=expression(X[1]),y=expression(X[2]))+
   mytheme
 
 #iqbin_plot_2d(mybins) rework from here to allow closer match in progression of 3 plots
 ggplot()+
-  geom_point(aes(x = X1, y = X2,color=Y), data = mydata, size=.8)+  
+  geom_point(aes(x = X1, y = X2,color=Y), data = mydata, size=1)+  
   geom_rect(aes(xmin = X1, xmax = X2, ymin = X3, ymax = X4), 
             data = data.frame(mybins$bin_def$bin_bounds),
             color =line_color, fill = NA, size=.6) +
-  scale_color_gradient2("Y",low="#08519c",mid="gray80",high="#a50f15",
-                        midpoint=0,breaks=color_steps, 
+  # scale_color_gradient2("Y",low="#08519c",mid="gray80",high="#a50f15",
+  #                       midpoint=0,breaks=color_steps, 
+  #                       limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+
+    scale_color_gradient("Y",low="gray95",high="gray15",
+                        breaks=color_steps, 
                         limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+
   labs(x=expression(X[1]),y=expression(X[2]))+
   mytheme
@@ -201,9 +207,12 @@ ggplot()+
   geom_rect(aes(xmin = X1, xmax = X2, ymin = X3, ymax = X4, fill=pred), 
             data = data.frame(mybins$bin_def$bin_bounds,pred=myiqnn$bin_stats$pred),
             color =line_color, size=.6) +
-  scale_fill_gradient2(expression(hat(Y)),low="#08519c",mid="gray80",high="#a50f15",
-                       midpoint=0,breaks=color_steps, 
-                       limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+ 
+  # scale_fill_gradient2(expression(hat(Y)),low="#08519c",mid="gray80",high="#a50f15",
+  #                      midpoint=0,breaks=color_steps, 
+  #                      limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+ 
+  scale_fill_gradient(expression(hat(Y)),low="gray95",high="gray15",
+                        breaks=color_steps, 
+                        limits=c(-max(abs(mydata$Y)),max(abs(mydata$Y))))+
   labs(x=expression(X[1]),y=expression(X[2]))+
   mytheme
 @
@@ -432,7 +441,7 @@ combined_times$type_pretty <- factor(combined_times$type, labels=c("IQNN   ","KN
   # scale_color_brewer(palette="Set1")+
   # scale_linetype_manual("Neighborhood Algorithm:  ",values=c("solid","dotted","twodash","dotdash"))+
   scale_linetype_manual("Neighborhood Algorithm:  ",values=c(1,1,1,1))+
-  scale_shape_manual("Neighborhood Algorithm:  ", values=c(17,18,15,19))+
+  scale_shape_manual("Neighborhood Algorithm:  ", values=c(2,5,0,1))+
   scale_color_manual("Neighborhood Algorithm:  ", values=my_colors)+
   labs(x="Training Size (n)")+
   theme_bw()+
@@ -491,7 +500,7 @@ my_x_ticks <- paste0(levels(class_plot_data$data_name), "\n n=",x_label_sizes)
 #   - scale / theme to match previous plots
 p1 <- ggplot()+
   geom_segment(aes(x=x, xend=xend,y=100-avg_cv_accuracy*100,yend=100-avg_cv_accuracy*100, linetype="KNN-brute"),
-               color=RColorBrewer::brewer.pal(4,"Set1")[4], size=1, data=class_plot_data_knn) +
+               color=RColorBrewer::brewer.pal(4,"Set1")[4], size=.8, data=class_plot_data_knn) +
   geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
   geom_point(aes(x=as.numeric(data_name)+shift,y=100-avg_cv_accuracy*100,color=type_pretty,shape=type_pretty),
              size=3,data=class_plot_data)+
@@ -503,7 +512,7 @@ p1 <- ggplot()+
   scale_y_continuous("Misclassification Rates\n (units of % error)",
                      breaks=seq(0,100,by=10),labels=paste0("  ",seq(0,100,by=10),"% ")) +
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
-  scale_shape_manual("Model Type: ", values=c(17,15,19))+
+  scale_shape_manual("Model Type: ", values=c(2,0,1))+
   theme(panel.grid.major.x =element_blank(),
         panel.grid.minor.x =element_blank(),
         axis.ticks.x = element_blank(),
@@ -517,7 +526,7 @@ p1 <- ggplot()+
 #   - consistently offset points for IWNN and AKNN on X, y=accuracy
 #   - scale / theme to match previous plots
 p2 <- ggplot()+
-  geom_segment(aes(x=.5, xend=10.5,y=0,yend=0, linetype="KNN-brute"),size=1, color=RColorBrewer::brewer.pal(4,"Set1")[4])+
+  geom_segment(aes(x=.5, xend=10.5,y=0,yend=0, linetype="KNN-brute"),size=.8, color=RColorBrewer::brewer.pal(4,"Set1")[4])+
   geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
   geom_point(aes(x=as.numeric(data_name)+shift,y=diff_err_perc,color=type_pretty,shape=type_pretty),
              size=3,data=class_plot_data)+
@@ -530,7 +539,7 @@ p2 <- ggplot()+
                      breaks=seq(-0.5,1.5,by=.5),labels=c("-0.5%","0.0%","0.5%","1.0%","1.5%"),
                      limits=c(min(-.5,min(class_plot_data$diff_err_perc)),max(1.5,max(class_plot_data$diff_err_perc)))) +
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
-  scale_shape_manual("Model Type: ", values=c(17,15,19))+
+  scale_shape_manual("Model Type: ", values=c(2,0,1))+
   # annotate(geom="text",x=0,y=0,label="bold(KNN-brute)", color=RColorBrewer::brewer.pal(4,"Set1")[4], parse=T,vjust=-.2,hjust=0.4)+
   theme(panel.grid.major.x =element_blank(),
         panel.grid.minor.x =element_blank(),
@@ -588,7 +597,7 @@ my_x_ticks_reg <- paste0(levels(reg_plot_data$data_name), "\n n=",x_label_sizes_
 p3 <- ggplot()+
   geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
   geom_segment(aes(x=x, xend=xend,y=rmse,yend=rmse, linetype="KNN-brute"),
-               color=RColorBrewer::brewer.pal(4,"Set1")[4], size=1, data=reg_plot_data_knn) +
+               color=RColorBrewer::brewer.pal(4,"Set1")[4], size=.8, data=reg_plot_data_knn) +
   geom_point(aes(x=as.numeric(data_name)+shift,y=rmse,color=type_pretty,shape=type_pretty),
              size=3,data=reg_plot_data)+
   theme_bw() +
@@ -598,7 +607,7 @@ p3 <- ggplot()+
                      limits=c(0.5,10.5)) +
   labs(y="Average RMSE\n (units of std dev)")+
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
-  scale_shape_manual("Model Type: ", values=c(17,15,19))+
+  scale_shape_manual("Model Type: ", values=c(2,0,1))+
   theme(panel.grid.major.x =element_blank(),
         panel.grid.minor.x =element_blank(),
         axis.ticks.x = element_blank(),
@@ -612,7 +621,7 @@ p3 <- ggplot()+
 #   - consistently offset points for IWNN and AKNN on X, y=accuracy
 #   - scale / theme to match previous plots
 p4 <- ggplot()+
-  geom_segment(aes(x=.5, xend=10.5,y=0,yend=0, linetype="KNN-brute"),size=1, color=RColorBrewer::brewer.pal(4,"Set1")[4])+
+  geom_segment(aes(x=.5, xend=10.5,y=0,yend=0, linetype="KNN-brute"),size=.8, color=RColorBrewer::brewer.pal(4,"Set1")[4])+
   geom_vline(xintercept=seq(0.5,10.5,by=1),linetype=2,color="gray25")+
   geom_point(aes(x=as.numeric(data_name)+shift,y=rmse_diff,color=type_pretty,shape=type_pretty),
              size=3,data=reg_plot_data)+
@@ -623,7 +632,7 @@ p4 <- ggplot()+
   labs(y="Difference from KNN-brute\n (units of std dev)")+
   # scale_y_continuous("Relative CV-RMSE \n (Difference from KNN-brute)", breaks=seq(-.01,.04,by=.01),limits=c(-0.01,0.04)) +
   scale_color_manual("Model Type: ", values=RColorBrewer::brewer.pal(4,"Set1")[c(1,2,3)])+
-  scale_shape_manual("Model Type: ", values=c(17,15,19))+
+  scale_shape_manual("Model Type: ", values=c(2,0,1))+
   scale_linetype_manual("Baseline: ", values=1)+
   theme(panel.grid.major.x =element_blank(),
         panel.grid.minor.x =element_blank(),
