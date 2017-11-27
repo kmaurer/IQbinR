@@ -1,4 +1,4 @@
-\documentclass[12pt]{article}
+\documentclass[smallcondensed]{svjour3}
 \usepackage{amsmath,amsthm,amssymb}
 \usepackage{graphicx,psfrag,epsf,float,wrapfig,subfig,tabularx,ulem}
 \usepackage{enumerate}
@@ -6,6 +6,7 @@
 \usepackage{url} % not crucial - just used below for the URL 
 \usepackage{algorithm2e}
 \usepackage{array}
+\usepackage{flafter}
 
 % DON'T change margins - should be 1 inch all around.
 \addtolength{\oddsidemargin}{-.5in}%
@@ -61,16 +62,22 @@ load(file="../sim_times_agg.Rdata")
 {
 %opening
 \title{Iterative Quantile Nearest-Neighbors}
-\author{author names}
+\author{Karsten Maurer}
+\institute{Karsten Maurer 
+            \at Miami University, 100 Bishop Circle, Oxford, OH 45056, USA \\
+            ORCID: 0000-0002-0812-0256 \\
+            \email{maurerkt@miamioh.edu}}
   \maketitle
 } \fi
 
 \if1\blind
 {
 \title{Iterative Quantile Nearest-Neighbors}
-\author{Author A$^1$, Author B$^{2,3}$, Author C$^2$\\$^1$Affiliation X \\$^2$Affiliation Y \\$^3$Affiliation Z}
+\author{Author Blinded}
   \maketitle
 } \fi
+
+% Support for this research was received from both the Air Force Research Lab's Summer Faculty Fellowship Program and Miami University Committee for Faculty Research during different phases this research project. Additional thanks to Dr. Walter Bennette, Dr. Thomas Fisher and Dr. John Bailer for their advice and input throughout the project. 
 
 %-----------------------------------------------------------------------------------------------------
 %%% Abstract
@@ -92,6 +99,7 @@ Conducting a nearest-neighbor search is a classic computational challenge that h
 \section{Introduction}
 \label{intro}
 
+\normalsize
 Conducting a nearest-neighbor search is a classic computational challenge that has applications within many fields \citep{bhatia2010survey}. Within the context of machine learning the k-nearest neighbors search is used as a non-parametric method for gathering training observations used for prediction in both regression and classifier models (\citealt{fix1951discriminatory}; \citealt{cover1967nearest}). The basic mechanism for $k$-nearest-neighbor (KNN) models is to use numeric feature variables to calculate distances between a new query observation and all the observations in the training data, then generate a prediction based on the responses from the $k$ training observations with the smallest distances from the query point \citep{kuncheva2004combining}; commonly using an average of response values for KNN regressions, and the majority vote for KNN classifiers (\citealt{friedman2001elements}; \citealt{james2013introduction}). 
 
 Given the rapid growth in data volume and availability, it is important to consider how the computational requirements of a machine learning method scale with increase training and test data sizes. KNN models rely on calculation of $p$-dimensional distances - typically Euclidean - between the $n$ observations in the training set for each new query observation, which can be solved in $O(n)$ time through a brute force approach. Then the distances must be sorted by magnitude to allow the $k$-nearest points be selected, taking an additional $O(nlog(n))$ time with a quick-sort algorithm. This becomes increasingly computationally demanding when the training data set size increases. The computational demands are compounded when using KNN models to make a large number of predictions. In a test set with $m$ observations, every new query requires recalculation and sorting of distances; solved by brute force computation in $O(mn(1+log(n)))$ time. 
@@ -209,12 +217,12 @@ $\vec{x}_i \sim MVN\left(\begin{bmatrix}
   1 & .5 \\
   .5 & 1
 \end{bmatrix}\right)$, \\
-\vspace{.4cm}
+\vspace{.2cm}
 $y_i = x_{i1} + x_{i2} + \epsilon_i$, where $\epsilon_i \sim Normal(0,1)$
 \end{center}
-and iterative quantile binning with three bins per feature dimension is used to create iterative quantile nearest-neighborhoods of size $k=10$. The left and center panels demonstrates the two stages of quantile-based partitioning necessary for this bivariate feature space. 
+In this example, iterative quantile binning with three bins per feature dimension is used to create iterative quantile nearest-neighborhoods of size $k=10$. The left and center panels demonstrates the two stages of quantile-based partitioning necessary for this bivariate feature space. 
 
-This iterative quantile-based process is generalized for binning a set of $p$-dimensional points $[x_{i1},x_{i2},...,x_{ip}]^t = \vec{x}_i \in \mathbb{R}^p \hspace{.2cm} \forall \hspace{.2cm} i \in \{1,...,n\}$ in Algorithm~\ref{alg:iqalgorithm} below.
+The iterative quantile-based process is generalized for binning a set of $p$-dimensional points $[x_{i1},x_{i2},...,x_{ip}]^t = \vec{x}_i \in \mathbb{R}^p \hspace{.2cm} \forall \hspace{.2cm} i \in \{1,...,n\}$ in Algorithm~\ref{alg:iqalgorithm} below.
 
 
 \RestyleAlgo{boxruled}
@@ -250,7 +258,7 @@ This iterative quantile-based process is generalized for binning a set of $p$-di
 \label{alg:iqalgorithm}
 \end{algorithm}
 
-The process generates $p$-dimensional hyper-rectangular bins over the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each subsequent dimension. Figure~\ref{fig:rtree} below to demonstrates the R-tree generated by the iterative quantile binning algorithm with the simulated data example from above. In this example, the bin containing a query point, $\vec{q}=(q_{1},q_{2})$, can be identified by first finding the interval containing $q_{1}$ in the first level of the R-tree, then finding the interval containing $q_{2}$ among the three nested intervals. \\
+The process generates $p$-dimensional hyper-rectangular bins over the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each subsequent dimension. Figure~\ref{fig:rtree} below to demonstrates the R-tree generated by the iterative quantile binning algorithm with the simulated data example from above. In this example, the bin containing a query point, $\vec{q}=(q_{1},q_{2})$, can be identified by first finding the interval containing $q_{1}$ in the first level of the R-tree, then finding the interval containing $q_{2}$ among the three nested intervals.
 %
 \begin{figure}[hbtp]
 \centering
@@ -259,7 +267,6 @@ The process generates $p$-dimensional hyper-rectangular bins over the feature sp
   \caption{Interval R-tree structure generated by iterative quantile binning in simulated feature data example from above.}
   \label{fig:rtree}
 \end{figure}
-
 A benefit of this nested structure is that our search ignores all branches below intervals in the $j^{th}$ level of the R-tree not containing $j^{th}$ dimension of a query point. A query for membership among $\prod_{d=1}^{p}\delta_d$ unique $p$-dimensional bins is completed by checking membership within $\delta_j$ intervals at each level; thus $\sum_{d=1}^{p}\delta_d$ univariate intervals overall. Let $b_{\mathbf{X}}^{iq}(.): \vec{q} \rightarrow \ell$ denote the function mapping query points to iterative quantile bins by passing through the branches of the R-tree of intervals. 
 
 %-----------------------------------------------------------------------
@@ -341,7 +348,8 @@ For each parameterization described above we repeatedly simulate training and te
 To account for variation in processing speed, we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations. The order in which the models were evaluated was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 25 times for each parameterization. For smaller training sets, $n \le 2^{14}$, we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences between methods manifest much more strongly when $n$ is large. See Table~\ref{tab:sim_times_table} in Appendix~\ref{timingAppend} for all parameter combinations and average timing measurements.  
 
 Figure~\ref{fig:sim_time} displays the average time for pre-processing and predicting using each method in each simulated scenario. We see that for small training set sizes and for small numbers of neighbors, the KNN and AKNN models are faster than the IQNN model. The KNN model using brute-force requires no time to pre-process but requires substantially more time to predict in the test set as the training set size increases. The IQNN and both AKNN methods have increasing pre-processing time as the training and/or neighborhood sizes grow. Interestingly, the pre-processing time grows more rapidly as a function of $n$ but less rapidly as a function of $k$ for the IQNN model than the AKNN models -- as represented visually with steeper slopes but less vertical shifting per frame, respectively. Pre-processing in AKNN models tends to be more efficient than IQNN for small training sets and neighborhoods, but less efficient as these increase. For prediction, the AKNN methods require increasing time as training and neighborhood sizes increase, whereas the IQNN models require nearly constant time across all scenarios. As with pre-processing, AKNN models are more efficient for prediction than IQNN for small $n$ and $k$, but less efficient as either grow.
-<<sim_time, echo=F,include=T,eval=T,fig.width=9, fig.height=5, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Empirical timing measurements from pre-processing and prediction stages using each algorithm on simulated data sets across combinations of neighborhood sizes ($k$) and training set sizes ($n$).",warning=FALSE, message=FALSE>>=
+%
+<<sim_time, echo=F,include=T,eval=T,fig.width=9.5, fig.height=4.8, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Empirical timing measurements from pre-processing and prediction stages using each algorithm on simulated data sets across combinations of neighborhood sizes ($k$) and training set sizes ($n$).",warning=FALSE, message=FALSE>>=
 
 # pull out fittimes and move from wide to tall
 sim_fit_times <- sim_times_agg %>%
@@ -411,8 +419,10 @@ combined_times$type_pretty <- factor(combined_times$type, labels=c("IQNN   ","KN
  ggplot()+
   geom_hline(yintercept = 0)+
   # geom_vline(xintercept = 2^14)+
-  geom_line(aes(x=n, y=time, color=type_pretty),
-            size=1.2,data=combined_times) +
+  geom_line(aes(x=n, y=time, color=type_pretty, linetype=type_pretty),
+  size=.6,data=combined_times) +
+  geom_point(aes(x=n, y=time, color=type_pretty, shape=type_pretty),
+            size=2.5,data=combined_times) +
   # geom_text(aes(x=n, y=time, label=dlabel),
   #           data=filter(sim_pred_times, type=="iqnn"), parse=TRUE) +
   facet_grid(stage_pretty~klabel, labeller = label_parsed)+
@@ -420,6 +430,9 @@ combined_times$type_pretty <- factor(combined_times$type, labels=c("IQNN   ","KN
   scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
                      labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
   # scale_color_brewer(palette="Set1")+
+  # scale_linetype_manual("Neighborhood Algorithm:  ",values=c("solid","dotted","twodash","dotdash"))+
+  scale_linetype_manual("Neighborhood Algorithm:  ",values=c(1,1,1,1))+
+  scale_shape_manual("Neighborhood Algorithm:  ", values=c(17,18,15,19))+
   scale_color_manual("Neighborhood Algorithm:  ", values=my_colors)+
   labs(x="Training Size (n)")+
   theme_bw()+
@@ -443,8 +456,8 @@ Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} contains the s
 To prepare for comparing the nearest-neighbor classification models, we first tuned the parameterization for each classifier using ten initializations of ten-fold cross-validation and make the model selection using the parameterization with the minimum average misclassification rate. For IQNN this entailed tuning across ($\delta_1$,$\delta_2$) pairs that control the number of bins in each feature dimension. We narrowed our tuning to select from only nearly-balanced bins ($\gamma=1$) that provide average binned-neighborhood sizes that fell nearest to whole integers. This was done to avoid tuning exhaustively over all possible bin parameterizations. We then tuned the KNN models over the set of neighborhood sizes, $k$, that corresponded to the integers nearest to the average binned-neighborhood sizes from the IQNN tuning. In this way we tune over the same number of similar-sized neighborhoods for each method. The misclassification rates from the tuned models were then collected for 100 additional initializations of ten-fold cross-validation for each data set. See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} for the parameters selected in tuning and average ten-fold cross-validated misclassification error rates from each model on each data set.
 
 Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned classification models for all considered data sets. This visualization emphasizes the difference in average cross-validated percent misclassified relative to brute-force KNN as a baseline. We see that the data sets are shown from left to right in descending order of misclassification rates; indicating a relative level of difficulty for each classification task. Note that the misclassification rates may be high due to the challenge of a multiclass prediction, or artificially high in some cases due to the constraint to a bivariate feature space. However, it is also important to recognize that these factors impact all methods assessed; thus providing meaningful comparison of relative model accuracies. From this we see that the IQNN method performs very similar to the KNN and AKNN methods; between 0.3\% better and 1.8\% worse for all sets tested. In three of the ten scenarios the tuned IQNN model has a lower error rate than all other tuned KNN and AKNN models.  
-
- <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.4, out.width='.99\\linewidth', fig.pos='htb',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average misclassification error rates from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in misclassification error rates relative to KNN as a baseline (bottom).",warning=FALSE>>=
+%
+ <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.2, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average misclassification error rates from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in misclassification error rates relative to KNN as a baseline (bottom).",warning=FALSE>>=
 load(file="../DataRepo/classification/tuned_classification_testing.Rdata") 
  
 #Setting order of data sets
@@ -537,8 +550,9 @@ grid.arrange(p1,p2,nrow=2,heights=c(1,1.2))
 
 To compare the predictive accuracy across the nearest-neighbor style regression models we collect the root mean squared error (RMSE) for the ten regression data sets in an analogous process to that used for classification in subsection~\ref{classacc} above. We first clean, re-scale and select two feature variables for each regression data set. We additionally standardized the continuous response value to eliminate the inconsistent units when comparing across data sets; thus the RMSE is in units of standard deviation of the response variable for all sets. The tuning process for each model again selects the parameterizations that minimize the average RMSE from ten initializations of ten-fold cross-validation. Then an additional 100 initializations of ten-fold cross-validation are run for each tuned model to assess average performance of IQNN, KNN and AKNN methods on each data set. See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} the parameters selected in tuning and average ten-fold cross-validated RMSE values from each regression model on each data set.
 
-
- <<regression_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.4, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average RMSE from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in RMSE relative to KNN as a baseline (bottom).",warning=FALSE>>=
+In Figure~\ref{fig:regression_accuracy} we see that the IQNN made less accurate predictions than the KNN for most of the regression data sets; however the loss of accuracy was small relative to the units of the response variable. Typically the RMSE for IQNN is within 0.02 response standard deviations from the KNN and AKNN models. The Weather in Ankara (wankara) data is the case with the difference in predictive accuracy with the tuned IQNN model have an RMSE value of 0.039 standardized units higher than the tuned KNN model.
+%
+ <<regression_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.2, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average RMSE from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in RMSE relative to KNN as a baseline (bottom).",warning=FALSE>>=
 load(file="../DataRepo/regression/tuned_regression_testing.Rdata") 
  
 #Setting order of data sets
@@ -622,7 +636,6 @@ grid.arrange(p3,p4,nrow=2,heights=c(1,1.2))
 
 @
 
-In Figure~\ref{fig:regression_accuracy} we see that the IQNN made less accurate predictions than the KNN for most of the regression data sets; however the loss of accuracy was small relative to the units of the response variable. Typically the RMSE for IQNN is within 0.02 response standard deviations from the KNN and AKNN models. The Weather in Ankara (wankara) data is the case with the difference in predictive accuracy with the tuned IQNN model have an RMSE value of 0.039 standardized units higher than the tuned KNN model.
 
 %-----------------------------------------------------------------------------
 
@@ -642,15 +655,17 @@ There are many avenues for future work regarding the applied use of iterative qu
 
 %-----------------------------------------------------------------------------
 
-\section{Acknowledgments}
+\section*{Acknowledgments}
 \label{acknowledgments}
 
 Support for this research was received from both the Air Force Research Lab's Summer Faculty Fellowship Program and Miami University Committee for Faculty Research during different phases this research project. Additional thanks to Dr. Walter Bennette, Dr. Thomas Fisher and Dr. John Bailer for their advice and input throughout the project. 
 
+\newpage
+
 %----------------------------------------------------------------------------
 \begin{appendix}
 %-------------------------------------------
-\section{Appendix A: Timing Simulations}  
+\section{ - Appendix of Timing Simulations}  
 \label{timingAppend}
 <<sim_times_tables, eval=F, include=F>>=
 sim_times_tables <- sim_times_agg %>%
@@ -659,8 +674,8 @@ sim_times_tables <- sim_times_agg %>%
   arrange(n,k,d)
 print(xtable(sim_times_tables,digits=c(0,0,0,0,6,6,6,6,6,6,6)), include.rownames=FALSE)
 @
-\renewcommand{\arraystretch}{0.63}% Tighter
-\begin{table}[H]
+\renewcommand{\arraystretch}{.85}% Tighter
+\begin{table}[h]
 \centering
 \footnotesize
 \begin{tabular}{rrr|rrr|rrrr}
@@ -721,12 +736,13 @@ n & $k$ & $\delta$ & IQNN & cover & kd & IQNN & KNN & cover & kd \\
 \end{table}
 \normalsize
 
+\newpage
 %-------------------------------------------
-\section{Appendix B: Empirical Data Set Sources}  
+\section{ - Appendix of Empirical Data Set Sources}  
 \label{dataAppend}
 
-\renewcommand{\arraystretch}{0.75}
-\begin{table}[H]
+\renewcommand{\arraystretch}{1}
+\begin{table}[h]
 \footnotesize
 \centering
 \begin{tabular}{ll}
@@ -767,9 +783,10 @@ Name & Web Address (Accessed: 10/25/17) \\
 \end{table}
 \normalsize
 
+\newpage
 %-------------------------------------------
 
-\section{Appendix C: Model Parameters and Performance}  
+\section{ - Appendix of Model Parameters and Performance}  
 \label{accuracyAppend}
 
 <<data_tables, eval=F, include=F>>=
@@ -821,7 +838,7 @@ print(xtable(full_reg,digits=4), include.rownames=FALSE)
 @
 
 
-\begin{table}[H]
+\begin{table}[h]
 \footnotesize
 \centering
 \begin{tabular}{lr|rr|cr|rrrr} 
