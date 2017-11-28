@@ -354,12 +354,11 @@ We use simulated training and test data sets to empirically evaluate the time re
 
 For each parameterization described above we repeatedly simulate training and test data sets, then we collect timing measurements for training data pre-processing and for generating test data predictions using IQNN, KNN and AKNN models. All simulations were run using R on a Dell Optiplex 9020(TM) Desktop with an Intel(R) Core(TM) i7-4770 3.40GHz CPU \citep{R}. IQNN methods were implemented in R and are available in the \texttt{iqbin} package; available in development version through [author's github.com repository blinded] and will soon be submitted to CRAN for publication. The KNN and AKNN methods were run using implementations in the \texttt{FNN} package \citep{FNN}, which are highly optimized and drop computationally intensive tasks down into C \citep{kernighan2006c}.  
 
-To account for variation in processing speed, we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations. The order in which the models were evaluated was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 25 times for each parameterization. For smaller training sets, $n \le 2^{14}$, we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences between methods manifest much more strongly when $n$ is large. See Table~\ref{tab:sim_times_table} in Appendix~\ref{timingAppend} for all parameter combinations and average timing measurements.  
+To account for variation in processing speed, we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations. The order in which the models were evaluated was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 50 times for each parameterization. For smaller training sets, $n \le 2^{14}$, we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences between methods manifest much more strongly when $n$ is large. See Table~\ref{tab:sim_times_table} in Appendix~\ref{timingAppend} for all parameter combinations and average timing measurements.  
 
 Figure~\ref{fig:sim_time} displays the average time for pre-processing and predicting using each method in each simulated scenario. We see that for small training set sizes and for small numbers of neighbors, the KNN and AKNN models are faster than the IQNN model. The KNN model using brute-force requires no time to pre-process but requires substantially more time to predict in the test set as the training set size increases. The IQNN and both AKNN methods have increasing pre-processing time as the training and/or neighborhood sizes grow. Interestingly, the pre-processing time grows more rapidly as a function of $n$ but less rapidly as a function of $k$ for the IQNN model than the AKNN models -- as represented visually with steeper slopes but less vertical shifting per frame, respectively. Pre-processing in AKNN models tends to be more efficient than IQNN for small training sets and neighborhoods, but less efficient as these increase. For prediction, the AKNN methods require increasing time as training and neighborhood sizes increase, whereas the IQNN models require nearly constant time across all scenarios. As with pre-processing, AKNN models are more efficient for prediction than IQNN for small $n$ and $k$, but less efficient as either grow.
 %
 <<sim_time, echo=F,include=T,eval=T,fig.width=9.5, fig.height=4.8, out.width='.99\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Empirical timing measurements from pre-processing and prediction stages using each algorithm on simulated data sets across combinations of neighborhood sizes ($k$) and training set sizes ($n$).",warning=FALSE, message=FALSE>>=
-
 # pull out fittimes and move from wide to tall
 sim_fit_times <- sim_times_agg %>%
   select(-ends_with("predtime")) %>%
@@ -379,59 +378,26 @@ sim_pred_times <- sim_times_agg %>%
          klabel = factor(paste0("k == 2^",log2(k)), levels=paste0("k == 2^",sort(unique(log2(sim_times_agg$k))))),
          dlabel = factor(paste0("delta == 2^",log2(d)), levels=paste0("delta == 2^",sort(unique(log2(sim_times_agg$d))))) )
 
+
+# define color palette
 my_colors <- RColorBrewer::brewer.pal(n=4,name="Set1")[c(1,4,2,3)]
-# my_colors <- RColorBrewer::brewer.pal(n=7,name="Set1")[c(1,2,3,7)] # rearrange to highlight iqnn and knn
-# The colorblind palette with black: from http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/
-# my_colors <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
-# # plot fit times
-# fit_times <- ggplot()+
-#   geom_hline(yintercept = 0)+
-#   # geom_vline(xintercept = 2^14)+
-#   geom_line(aes(x=n, y=time, color=type),
-#             size=1.2,data=sim_fit_times) +
-#   facet_grid(.~klabel, labeller = label_parsed)+
-#   scale_y_continuous("Time in log(mins)", trans="log", breaks=c(.0001,.001,.01,.1,1,10)) +
-#   scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
-#                      labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
-#   # scale_color_brewer(palette="Set1")+
-#   scale_color_manual(values=my_colors)+
-#   labs(title="Training Data Pre-Processing Times", x=" ")+
-#   theme_bw()+
-#   theme(legend.position = "none")
-# 
-# # plot pred times
-# pred_times <- ggplot()+
-#   geom_hline(yintercept = 0)+
-#   # geom_vline(xintercept = 2^14)+
-#   geom_line(aes(x=n, y=time, color=type),
-#             size=1.2,data=sim_pred_times) +
-#   # geom_text(aes(x=n, y=time, label=dlabel),
-#   #           data=filter(sim_pred_times, type=="iqnn"), parse=TRUE) +
-#   facet_grid(.~klabel, labeller = label_parsed)+
-#   scale_y_continuous("Time in log(mins)", trans="log", breaks=c(0.0001,.001,.01,.1,1,10,100)) +
-#   scale_x_continuous(trans="log2", breaks=2^seq(4,20,by=4), 
-#                      labels=parse(text=paste0("2^",seq(4,20,by=4)))) +
-#   # scale_color_brewer(palette="Set1")+
-#   scale_color_manual(values=my_colors)+
-#   labs(title="Test Data Prediction Times", x="Training Size (n)")+
-#   theme_bw()+
-#   theme(legend.position = "bottom")
-# grid.arrange(fit_times,pred_times,nrow=2, heights=c(1,1.2))
-
+# combine and define transformation of strings to clarify labels
 combined_times <- rbind(data.frame(sim_fit_times,dlabel=NA),
                         sim_pred_times)
 
 combined_times$stage_pretty <- factor(ifelse(combined_times$stage=="fitting","Preprocessing","Prediction"),
                                       levels=c("Preprocessing","Prediction"))
 combined_times$type_pretty <- factor(combined_times$type, labels=c("IQNN   ","KNN-brute   ","AKNN-cover   ", "AKNN-kd   "))
- ggplot()+
+
+### lineplot of times with overlayed points (allows for better transition to grayscale)
+ggplot()+
   geom_hline(yintercept = 0)+
   # geom_vline(xintercept = 2^14)+
   geom_line(aes(x=n, y=time, color=type_pretty, linetype=type_pretty),
-  size=.6,data=combined_times) +
+            size=.6,data=combined_times) +
   geom_point(aes(x=n, y=time, color=type_pretty, shape=type_pretty),
-            size=2.5,data=combined_times) +
+             size=2.5,data=combined_times) +
   # geom_text(aes(x=n, y=time, label=dlabel),
   #           data=filter(sim_pred_times, type=="iqnn"), parse=TRUE) +
   facet_grid(stage_pretty~klabel, labeller = label_parsed)+
@@ -467,6 +433,8 @@ To prepare for comparing the nearest-neighbor classification models, we first tu
 Figure~\ref{fig:categorical_accuracy} displays the accuracy results for the tuned classification models for all considered data sets. This visualization emphasizes the difference in average cross-validated percent misclassified relative to brute-force KNN as a baseline. We see that the data sets are shown from left to right in descending order of misclassification rates; indicating a relative level of difficulty for each classification task. Note that the misclassification rates may be high due to the challenge of a multiclass prediction, or artificially high in some cases due to the constraint to a bivariate feature space. However, it is also important to recognize that these factors impact all methods assessed; thus providing meaningful comparison of relative model accuracies. From this we see that the IQNN method performs very similar to the KNN and AKNN methods; between 0.3\% better and 1.8\% worse for all sets tested. In three of the ten scenarios the tuned IQNN model has a lower error rate than all other tuned KNN and AKNN models.  
 %
  <<categorical_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.2, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average misclassification error rates from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in misclassification error rates relative to KNN as a baseline (bottom).",warning=FALSE>>=
+
+# Load the Rdata file containing the results_class data frame
 load(file="../DataRepo/classification/tuned_classification_testing.Rdata") 
  
 #Setting order of data sets
@@ -482,7 +450,7 @@ class_plot_data_knn <- results_class %>%
          xend=as.numeric(data_name)+.5)
 class_plot_data_knn$type_pretty <- "KNN-brute"
 
-shiftval=.25
+shiftval=.25 # control the horizontal offset of points on plot
 class_plot_data <- results_class %>%
   filter(type != "knn - brute") %>%
   mutate(data_name = factor(data_name,levels=iqnn_err_order),
@@ -740,7 +708,7 @@ n & $k$ & $\delta$ & IQNN & cover & kd & IQNN & KNN & cover & kd \\
   1048576 & 16384 & 8 & 0.423727 & 5.236268 & 0.954038 & 0.001210 & 8.229757 & 0.010522 & 0.010947 \\ 
    \hline
 \end{tabular}
-\caption{\small Average pre-processing and prediction times from simulations over each parameterization. Horizontal bar separating results from 500 initializations ($n\le 2^{14}$) and 25 initializations ($n\ge 2^{16}$)}
+\caption{\small Average pre-processing and prediction times from simulations over each parameterization. Horizontal bar separating results from 500 initializations ($n\le 2^{14}$) and 50 initializations ($n\ge 2^{16}$)}
 \label{tab:sim_times_table}
 \end{table}
 \normalsize
