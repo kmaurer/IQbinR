@@ -1,5 +1,10 @@
+\RequirePackage{amsmath}
 \documentclass[smallcondensed]{svjour3}
-\usepackage{amsmath,amsthm,amssymb}
+\let\proof\relax 
+\let\endproof\relax
+% \usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
 \usepackage{graphicx,psfrag,epsf,float,wrapfig,subfig,tabularx,ulem}
 \usepackage{enumerate}
 \usepackage{natbib}
@@ -7,21 +12,12 @@
 \usepackage{algorithm2e}
 \usepackage{array}
 \usepackage{flafter}
+\usepackage[utf8]{inputenc}
+\usepackage{fullpage}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{mathrsfs}
 
-% DON'T change margins - should be 1 inch all around.
-\addtolength{\oddsidemargin}{-.5in}%
-\addtolength{\evensidemargin}{-.5in}%
-\addtolength{\textwidth}{1in}%
-\addtolength{\textheight}{1.3in}%
-\addtolength{\topmargin}{-.8in}%
-
- \usepackage[utf8]{inputenc}
- \usepackage{fullpage}
- %\graphicspath{{figure/}}
- %\usepackage{csquotes}
- \usepackage{color}
- \usepackage{hyperref}
- \usepackage{mathrsfs}
  
 \newcommand{\blind}{0}
 \newcommand{\ktm}[1]{{\color{red} #1}} %red comments: 
@@ -88,7 +84,7 @@ Conducting a nearest-neighbor search is a classic computational challenge that h
 \end{abstract}
 
 \noindent%
-{\it Keywords:} Non-parametric, Predictive Modeling, Partitioning, KNN, Binning
+{\it Keywords:} Binning, KNN, Non-parametric, Partitioning, Predictive Modeling
 \vfill
 
 %-----------------------------------------------------------------------------------------------------
@@ -139,23 +135,23 @@ $d(x_i,q) = (x_i - q) \le (\beta_j - \beta_{j-1})  \hspace{.2cm} \forall \hspace
 \end{center}
 however the neighbors in each bin may vary depending on bin boundaries and the distribution of training points. Attempting to control $d(x_i,q)$ by setting regularly spaced intervals for any non-uniformly distributed training set would result in an imbalanced number of observations per bin; thus, a poor alternative to $k$-nearest neighborhoods. 
 
-We define \textit{quantile binning} by specifying that the $j^{th}$ bin interval, $(\beta_{j-1} , \beta_j]$, takes the form $(Q_X(\frac{j-1}{J})\hspace{.2cm},\hspace{.2cm}Q_X(\frac{j}{J})]$, where $Q_X(p)$ is the the $p^{th}$ empirical quantile using the inverse empirical distribution function \citep{hyndman1996sample}. The quantile binning function $b_X^q(.) : x_i \rightarrow j$ defined as 
+We define \textit{quantile binning} by specifying that the $j^{th}$ bin interval, $(\beta_{j-1} , \beta_j]$, takes the form $(Q_X(\frac{j-1}{J})\hspace{.2cm},\hspace{.2cm}Q_X(\frac{j}{J})]$, where $Q_X(p)$ is the the $p^{th}$ empirical quantile using the inverse empirical distribution function \citep{hyndman1996sample}. The quantile binning function $b_X^q(.) : x_i \rightarrow j$ is defined as 
 %
 \begin{eqnarray}\label{quantbin}
 b_X^q(x_i) = \left\{\begin{array}{ll} 
   1 &\text{ for all } x_i = \min(x_i) \\
   j & \text{ for all } x_i \in (Q_X(\frac{j-1}{J}) \hspace{.2cm} , \hspace{.2cm} Q_X(\frac{j}{J})] 
   \end{array}\right.
-\end{eqnarray}   The resulting $J$ partitions will have interval widths that vary base on distribution, but will each contain either $\lceil \frac{n}{J} \rceil$ or $\lceil \frac{n}{J} \rceil - 1$ training points; thus roughly approximating a $(\frac{n}{J})$-nearest-neighborhood. It should be noted that we are assuming training points $x_i \in \mathbb{R}$ to be truly continuous in nature. If the training data is collected with poor measurement precision or have naturally discrete values, repeated values for $x_i$ could result in empirical quantile where $\beta_j = \beta_k$ for some $j \ne k$, thus non-unique bin assignments. In practice, the simple addition of a small amount of random noise (example: $Uniform(-a,a)$ , for some small $a > 0$) may be added to each value for discrete feature variables to allow for unique quantile bin bounds.
+\end{eqnarray}   The resulting $J$ partitions will have interval widths that vary base on distribution, but will each contain either $\lceil \frac{n}{J} \rceil$ or $\lceil \frac{n}{J} \rceil - 1$ training points; thus roughly approximating a $(\frac{n}{J})$-nearest-neighborhood. It should be noted that we are assuming training points $x_i \in \mathbb{R}$ to be truly continuous in nature. If the training data is collected with poor measurement precision or have naturally discrete values, repeated values for $x_i$ could result in empirical quantiles where $\beta_j = \beta_k$ for some $j \ne k$, thus non-unique bin assignments. In practice, the addition of a small amount of random noise (e.g. $Uniform(-a,a)$, for some small $a > 0$) may be added to each value for discrete feature variables to allow for unique quantile bin bounds.
 
-We can then roughly approximate KNN classification or regression modeling by using the responses values from quantile bin neighbors, $\mathbf{y}_q = \{y_i \hspace{.2cm} | \hspace{.2cm} x_i \in \mathbf{x}_q\}$. The query point is given an estimated response, $\hat{y}_q = S(\mathbf{y}_q)$, for some summary statistic function $S(.)$ that is appropriate for the response type; such as an average of numeric responses or a majority vote count of categorical responses. The estimated responses for each bin may be pre-calculated and stored for quick retrieval in situations with a large number of query points; unlike KNN models where the estimated response needs to be calculated for each unique query point. 
+We can then roughly approximate KNN classification or regression modeling by using the response values from quantile bin neighbors, $\mathbf{y}_q = \{y_i \hspace{.2cm} | \hspace{.2cm} x_i \in \mathbf{x}_q\}$. The query point is given an estimated response, $\hat{y}_q = S(\mathbf{y}_q)$, for some summary statistic function $S(\cdot)$ that is appropriate for the response type; such as an average of numeric responses or a majority vote count of categorical responses. The estimated responses for each bin may be pre-calculated and stored for quick retrieval in situations with a large number of query points, unlike KNN models where the estimated response needs to be calculated for each unique query point. 
 
 
 
 \subsection{Iterative Quantile Binning}
 \label{iqbin}
 
-Now suppose we wish to create binned neighborhoods to approximate $k$-nearest-neighborhoods within a $p$-dimensional continuous valued feature space, $\vec{x}_i \in \mathbb{R}^p$. A $p$-dimensional bin can be defined using a $p$-dimensional hyper-rectangle with interval boundaries running orthogonal to the coordinate axes. It would be simplest to generate a univariate binning function for each dimension then apply these independently to form a $p$-dimensional grid of bin boundaries. In many cases the dependence between the feature variables would result in $p$-dimensional bins containing highly unbalanced number of neighbors, and thus would provide a poor substitute for the equal counts in $k$-nearest-neighborhoods. Instead we propose the \textit{iterative quantile binning} algorithm: starting with the univariate quantile binning described in Subsection~\ref{unibin} above, then iteratively using univariate quantile-bin partitions \textit{nested within} each partition from the previous dimension. By iteratively subdividing roughly equal sized groups at each stage, the resulting $p$-dimensional bins will maintain bin neighborhood counts that are roughly balanced throughout all $p$-dimensions. 
+Now suppose we wish to create binned neighborhoods to approximate $k$-nearest-neighborhoods within a $p$-dimensional continuous valued feature space, $\vec{x}_i \in \mathbb{R}^p$. A $p$-dimensional bin can be defined using a $p$-dimensional hyper-rectangle with interval boundaries running orthogonal to the coordinate axes. It would be simplest to generate a univariate binning function for each dimension then apply these independently to form a $p$-dimensional grid of bin boundaries. In many cases the dependence between the feature variables would result in $p$-dimensional bins containing a highly unbalanced number of neighbors, and thus would provide a poor substitute for the equal counts in $k$-nearest-neighborhoods. Instead we propose the \textit{iterative quantile binning} algorithm: starting with the univariate quantile binning described in Subsection~\ref{unibin} above, then iteratively using univariate quantile-bin partitions nested within each partition from the previous dimension. By iteratively subdividing approximately equal sized groups at each stage, the resulting $p$-dimensional bins will maintain bin neighborhood counts that are roughly balanced throughout all $p$-dimensions. 
 
 <<2d_iqbin_plots, echo=F,include=T,eval=T,fig.width=3, fig.height=3.5, out.width='.32\\linewidth', fig.pos='h',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Process for constructing IQNN regression model using 3X3 binning structure. (Left) first partition the training set using tertiles of $X_1$, (Center) then further partition each group using tertiles of $X_2$, (Right) then apply average $Y$ in each bin as the IQNN regression estimates for future points falling within each respective bin.">>=
 set.seed(12345)
@@ -217,7 +213,7 @@ ggplot()+
   mytheme
 @
 
-Figure~\ref{fig:2d_iqbin_plots} shows this process in the simple case where $\vec{x}_i \in \mathbb{R}^2$ and responses $y_i \in \mathbb{R}$. In this example we have randomly generated \Sexpr{nsim} feature pairs from a bivariate normal distribution with a strong positive covariance, and linearly related response values with additive random noise for each observation; parameterized such that 
+Figure~\ref{fig:2d_iqbin_plots} shows this process in the simple case where $\vec{x}_i \in \mathbb{R}^2$ and responses $y_i \in \mathbb{R}$. In this example we have randomly generated \Sexpr{nsim} feature pairs from a bivariate normal distribution with a strong positive correlation, and linearly related response values with additive random noise for each observation; parameterized such that 
 \begin{center}
 $\vec{x}_i \sim MVN\left(\begin{bmatrix}
   0 \\
@@ -238,25 +234,30 @@ The iterative quantile-based process is generalized for binning a set of $p$-dim
 \begin{algorithm}
 \noindent \textbf{Specification:} Define order of features $\{X_1,X_2,...,X_p\}$ to match desired iterative binning order and number of bins $\{\delta_1,\delta_2,...,\delta_p\}$ for partitioning in each dimension 
 
-\noindent \textbf{Binning:} \vspace{-.3cm}
+\vspace{.1cm}
+
+\noindent \textbf{Binning:}
   \begin{enumerate}
   \setlength\itemsep{0cm}
   \item Partition all points into $\delta_1$ quantile bins on feature $X_1$ with index sets\\
   $\{B_1,...B_{\delta_1}\}$ such that $B_\ell = \{i \hspace{.2cm} | \hspace{.2cm} b_{X_1}^q(x_{i1}) = \ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell = 1,...,\delta_1$
+
+  \vspace{.1cm}
+
   \item Repeat the following for $j = 2,...,p$ :
-    \vspace{-.3cm}
     \begin{enumerate}[i]
     \setlength\itemsep{0cm}
     \item Define $C_{s t} = \{i \hspace{.2cm} | \hspace{.2cm} i \in B_s$ and $b_{X_{j}}^q(x_{ij}) = t \} \hspace{.2cm} \forall \hspace{.2cm} s = 1,...,\displaystyle\prod_{d=1}^{j-1}\delta_d$ and $t = 1,...,\delta_j$ \\
-    to subdivide each $B_s$ from previous step with $\delta_j$ quantile bins on feature $X_j$ 
+    to subdivide each $B_s$ from previous step with $\delta_j$ quantile bins on feature $X_j$
+
+    \vspace{.1cm}
+
     \item Redefine index sets $\{B_1,...,B_L\}$ such that $B_\ell = C_{s t}$, where $\ell = t(s-1) + t$ \\
-    to combine parent and child indices of sets into unique indeces
+    to combine parent and child indices of sets into unique indices
     \end{enumerate}
-    \vspace{-.3cm}
 \end{enumerate}
   
 \noindent \textbf{Outputs:}
-    \vspace{-.3cm}
     \begin{enumerate}[i]
     \setlength\itemsep{0cm}
   \item Bin neighbor sets $\vec{\mathbf{x}}_\ell = \{\vec{x_i} \hspace{.1cm} | \hspace{.1cm}  i \in B_\ell \} \hspace{.2cm} \forall \hspace{.2cm} \ell = 1,...,L$, where $L=\displaystyle\prod_{j=1}^{p}\delta_j$
@@ -267,7 +268,7 @@ The iterative quantile-based process is generalized for binning a set of $p$-dim
 \label{alg:iqalgorithm}
 \end{algorithm}
 
-The process generates $p$-dimensional hyper-rectangular bins over the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each subsequent dimension. Figure~\ref{fig:rtree} below to demonstrates the R-tree generated by the iterative quantile binning algorithm with the simulated data example from above. In this example, the bin containing a query point, $\vec{q}=(q_{1},q_{2})$, can be identified by first finding the interval containing $q_{1}$ in the first level of the R-tree, then finding the interval containing $q_{2}$ among the three nested intervals.
+The process generates $p$-dimensional hyper-rectangular bins over the feature space in $\mathbb{R}^p$ through nested univariate partitions which are stored as an R-tree structured list of depth $p$. The interval bounds for feature $X_{j-1}$ act as a parent node branching down to the $\delta_j$ intervals for feature $X_j$. It is then simple to identify the iterative quantile bin containing a new query point $[q_1,...,q_p]^t = \vec{q} \in \mathbb{R}^p$ by finding the interval at the $j^{th}$ level of the R-tree containing $q_j$ then moving down the branches for each subsequent dimension. Figure~\ref{fig:rtree} demonstrates the R-tree generated by the iterative quantile binning algorithm with the simulated data example from Figure~\ref{fig:2d_iqbin_plots}. In this example, the bin containing a query point, $\vec{q}=(q_{1},q_{2})$, can be identified by first finding the interval containing $q_{1}$ in the first level of the R-tree, then finding the interval containing $q_{2}$ among the three nested intervals.
 %
 \begin{figure}[hbtp]
 \centering
@@ -276,21 +277,21 @@ The process generates $p$-dimensional hyper-rectangular bins over the feature sp
   \caption{Interval R-tree structure generated by iterative quantile binning in simulated feature data example from above.}
   \label{fig:rtree}
 \end{figure}
-A benefit of this nested structure is that our search ignores all branches below intervals in the $j^{th}$ level of the R-tree not containing $j^{th}$ dimension of a query point. A query for membership among $\prod_{d=1}^{p}\delta_d$ unique $p$-dimensional bins is completed by checking membership within $\delta_j$ intervals at each level; thus $\sum_{d=1}^{p}\delta_d$ univariate intervals overall. Let $b_{\mathbf{X}}^{iq}(.): \vec{q} \rightarrow \ell$ denote the function mapping query points to iterative quantile bins by passing through the branches of the R-tree of intervals. 
+A benefit of this nested structure is that our search ignores all branches below intervals in the $j^{th}$ level of the R-tree not containing the $j^{th}$ dimension of a query point. A query for membership among $\prod_{d=1}^{p}\delta_d$ unique $p$-dimensional bins is completed by checking membership within $\delta_j$ intervals at each level; thus $\sum_{d=1}^{p}\delta_d$ univariate intervals overall. Let $b_{\mathbf{X}}^{iq}(\cdot): \vec{q} \rightarrow \ell$ denote the function mapping query points to iterative quantile bins by passing through the branches of the R-tree of intervals. 
 
 %-----------------------------------------------------------------------
 \subsection{Iterative Quantile Nearest-Neighbor Modeling}
 \label{iqnnmodels}
 
-In Subsection~\ref{unibin} we used univariate quantile bin neighborhoods to roughly approximate KNN regression and classification models. An extension to $p$-dimensional feature spaces will use training observations within iterative quantile bins to predict responses for test observations. We propose \textit{iterative quantile nearest-neighbor} (IQNN) models for regression and classification where the predicted response for query point, $\vec{q}$, is defined as
+In Subsection~\ref{unibin} we used univariate quantile bin neighborhoods to roughly approximate KNN regression and classification models. An extension to $p$-dimensional feature spaces will use training observations within iterative quantile bins to predict responses for test observations. We propose iterative quantile nearest-neighbor models for regression and classification where the predicted response for query point, $\vec{q}$, is defined as
 
 \begin{center}
 $\hat{y}_{\vec{q}} = S(\vec{\mathbf{y}}_\ell)$, where $\vec{\mathbf{y}}_\ell = \{y_i \hspace{.15cm} | \hspace{.15cm} i = B_{\ell} \text{, where } \ell=b_{\mathbf{X}}^{iq}(q)\}$
 \end{center}
 
-Thus estimating the response using some appropriate summary statistic function $S(.)$ over the response values of training observations from the iterative quantile bin containing the query point. We propose using a simple average of numeric responses for IQNN regression and a majority vote count of categorical responses for IQNN classification. Note that the prediction for any query point in iterative quantile bin $\ell$ is a constant which may be pre-calculated and stored for fast retrieval using the R-tree structure. The rightmost panel of Figure~\ref{fig:2d_iqbin_plots} visually demonstrates the predicted values from IQNN regression for the simulated example by averaging the ten response values in each bin. 
+Thus estimating the response using some appropriate summary statistic function $S(\cdot)$ over the response values of training observations from the iterative quantile bin containing the query point. We propose using a simple average of numeric responses for IQNN regression and a majority vote count of categorical responses for IQNN classification. Note that the prediction for any query point in iterative quantile bin $\ell$ is a constant which may be pre-calculated and stored for fast retrieval using the R-tree structure. The rightmost panel of Figure~\ref{fig:2d_iqbin_plots} visually demonstrates the predicted values from IQNN regression for the simulated example by averaging the ten response values in each bin. 
 
-A potential problem for IQNN models is that a test observation could fall beyond the outermost bounds of the hyper-rectangular bins. We could refuse to predict for these outlying points to avoid extrapolation outside the range of observed data; however, this would severely limit the practical applicability of IQNN models. An alternative is to alter the quantile binning function, $b_{X}^q(.)$, used in stages 1 and 2.i of Algorithm~\ref{alg:iqalgorithm} to extend the outermost bin boundaries by some tolerance parameter. A \textit{stretched} quantile binning function, $b_{X,\tau}^q(.):x \rightarrow j$, would be defined as 
+A potential issue for IQNN models is that a test observation could fall beyond the outermost bounds of the hyper-rectangular bins. We could refuse to predict for these outlying points to avoid extrapolation outside the range of observed data; however, this would severely limit the practical applicability of IQNN models. An alternative is to alter the quantile binning function, $b_{X}^q(.)$, used in stages 1 and 2.i of Algorithm~\ref{alg:iqalgorithm} to extend the outermost bin boundaries by some tolerance parameter. We define a \textit{stretched} quantile binning function, $b_{X,\tau}^q(.):x \rightarrow j$, such that
 %
 \begin{eqnarray}
 \label{stretchbin}
@@ -301,25 +302,25 @@ b_{X,\tau}^q(x) = \left\{\begin{array}{ll}
 \end{array}\right.
 \end{eqnarray}
 %
-Setting the tolerance value, $\tau$, to the outermost quantile bins allows for the practitioner to control how far outside the range of observed points they are willing to make predictions. Additionally, a different value for $\tau$ can be specified for each dimensions to allow for more/less strict tolerance of extrapolation for each feature variable. This could be helpful in situations where measurement precision or measurement units differ vastly across the feature variables. We could also guarantee that every query point belongs to an iterative quantile bin by letting $\tau \rightarrow \infty$ for unlimited tolerance.
+Setting the tolerance value, $\tau$, to the outermost quantile bins allows the practitioner to control how far outside the range of observed points they are willing to make predictions. Additionally, a different $\tau$ value can be specified on each dimension to allow for more/less strict tolerance of extrapolation at each feature variable. This could be helpful in situations where measurement precision or measurement units differ vastly across the feature variables. We could also guarantee that every query point belongs to an iterative quantile bin by letting $\tau \rightarrow \infty$ for unlimited tolerance.
 
-Iterative quantile binning provides a potential alternative to $k$-nearest-neighborhoods within training data, but it is important to recognize fundamental differences in how their respective predictive models treat of feature values and how they are parameterized. The magnitude of values in each features dimension heavily influence $p$-dimensional distances between training and query points. Feature values are often standardized before constructing KNN models, in an attempt to allow more balanced contribution across feature dimensions. Interestingly for IQNN models, rescaling will impact the hyper-rectangular bin boundaries but will \textit{not} change the training points in each bin neighborhood. This is because order of training points is invariant to scaling, thus quantile-based partitions result in the same points in each group. We can make a similar attempt to balanced contribution of each features by specifying the IQNN model with equal number of bins in each dimension. We define a \textit{balanced-bin} parameterization with $\delta_1=...=\delta_p=\delta$ for some positive integer and will provide an average of $n/\delta^p$ points per bin. The problem with this parameterization is that the number of bin neighbors can shift dramatically as $\delta$ changes, giving us much less control over neighborhood sizes than with KNN, where any positive integer, $k$, can be defined. To loosen these constraints we define \textit{nearly-balanced-bin} parameterization such that $\delta_j \in \delta_{j'} \pm \gamma$ of any dimensions $j$ and $j'$. The bin-balance parameter, $\gamma$, is set as some small integer; creating nearly the same number of bins in each dimension, while maintaining more control over the number of neighbors per bin. For example, if we set $\gamma=1$ and $\delta_1=4$ for a bivariate feature space, then $\delta_2=4$ makes balanced-bins, $\delta_2=3$ makes nearly-balanced-bins and $\delta_2=2$ makes unbalanced-bins.
+Iterative quantile binning provides a potential alternative to $k$-nearest-neighborhoods within training data, but it is important to recognize fundamental differences in how feature values influence neighborhood structures and in how they are parameterized. Units of measurement in each dimension heavily influences $p$-dimensional distances between training and query points. Feature values are often standardized before constructing KNN models, in an attempt to allow more balanced contribution across feature dimensions. Interestingly for IQNN models, rescaling will impact the hyper-rectangular bin boundaries but will \textit{not} change the training points in each bin neighborhood. This is because order of training points is invariant to scaling, thus quantile-based partitions result in the same points in each group. We can make a similar attempt to balanced contribution of each feature by specifying the IQNN model with equal number of bins in each dimension. We define a \textit{balanced-bin} parameterization with $\delta_1=...=\delta_p=\delta$ for some positive integer and will provide an average of $n/\delta^p$ points per bin. The problem with this parameterization is that the number of bin neighbors can shift dramatically as $\delta$ changes, giving us much less control over neighborhood sizes than with KNN, where any positive integer, $k$, can be defined. To loosen these constraints we define \textit{nearly-balanced-bin} parameterization such that $\delta_j \in \delta_{j'} \pm \gamma$ of any dimensions $j$ and $j'$. The bin-balance parameter, $\gamma$, is set as some small integer; creating nearly the same number of bins in each dimension, while maintaining more control over the number of neighbors per bin. For example, if we set $\gamma=1$ and $\delta_1=4$ for a bivariate feature space, then $\delta_2=4$ makes balanced-bins, $\delta_2=3$ makes nearly-balanced-bins and $\delta_2=2$ makes unbalanced-bins.
 
 %-----------------------------------------------------------------------------
 
 \section{IQNN Model Properties and Performance}
 \label{eval}
 
-An iterative quantile nearest-neighbor model roughly mimics the distance-based neighborhoods of a $k$-nearest-neighbor model using iterative quantile bin neighborhoods over the feature space of the training data. To assess the viability of these IQNN models we need to evaluate the computational costs for constructing the binning structure using training observations and for making predictions for test observations. We then compare IQNN model performance to KNN, cover-tree AKNN, and kd-tree AKNN using several real data sets. We begin by investigating the computation times using theoretical and empirical approaches in Subsection~\ref{timing}. We then empirically assess the predictive performance of IQNN classification and regression models in Subsection~\ref{accuracy}. 
+An iterative quantile nearest-neighbor model roughly mimics the distance-based neighborhoods of a $k$-nearest-neighbor model using iterative quantile bin neighborhoods over the feature space of the training data. To assess the viability of these IQNN models we need to evaluate the computational costs for constructing the binning structure using training observations and for making predictions of test observations. We then compare IQNN model performance to KNN, cover-tree AKNN, and kd-tree AKNN using several real data sets. We begin by investigating the computation times using theoretical and empirical approaches in Subsection~\ref{timing}. We then empirically assess the predictive performance of IQNN classification and regression models in Subsection~\ref{accuracy}. 
 
 
 %-----------------------------------------------------------------------
 \subsection{Computational Efficiency}
 \label{timing}
 
-Iterative quantile nearest-neighbor models requires computational investment for the construction of the R-tree of univariate quantile intervals over each of the $p$-dimensions.
+Iterative quantile nearest-neighbor models require computational investment for the construction of the R-tree of univariate quantile intervals over each of the $p$-dimensions.
 %used for binning future observations with the iterative quantile binning function, $b_{\mathbf{X}}^{iq}(q)$. 
-The dominating computational cost for creating the iterative quantile bins is from generating the $\delta_j$ quantiles within each of the $\prod_{d=1}^{j}\delta_d$ data partitions at each iterative step for $j=1,...,p$. Creating empirical quantile for n observations can be conducted in $O(nlog(n))$ time using a comparison-based quick-sort algorithm to order the values. %Interestingly, as the number of partitions increases with each iteration, the number of training values per bin are dropping.
+The dominating computational cost for creating the iterative quantile bins is from generating the $\delta_j$ quantiles within each of the $\prod_{d=1}^{j}\delta_d$ data partitions at each iterative step for $j=1,...,p$. Creating empirical quantiles for $n$ observations can be conducted in $O(nlog(n))$ time using a comparison-based quick-sort algorithm to order the values. %Interestingly, as the number of partitions increases with each iteration, the number of training values per bin are dropping.
 The combined time required for generating quantiles in all stages of Algorithm~\ref{alg:iqalgorithm} is
 
 \begin{center}
@@ -328,7 +329,7 @@ $O\left(nlog(n) + \displaystyle\sum_{j=2}^{p-1} L_j \frac{n}{L_j}\log(\frac{n}{L
 %
 where $L_j = \displaystyle\prod_{d=1}^{j}\delta_d$ is the number of partitions at iteration $j$; thus $\frac{n}{L_j}$ is the average number of observations per partition at iteration $j$. Note that because $L_j \ge 2$, the time is bounded above by $O(pn\log(n))$.    
 
-The storage size of the resulting bin structure will increase as the number of partitions increase, because the $j^{th}$ level of the R-tree requires $O(L_j)$ space; a total space of size $O(\sum_j^p L_j)$. Note that the computational time required decreases and the computation storage increases as the number of partitions, $\delta_j$, at each iteration increases. Thus partitioning to a larger number of smaller bins requires less time but more storage space.
+The storage size of the resulting bin structure will increase as the number of partitions increase, since the $j^{th}$ level of the R-tree requires $O(L_j)$ space; a total space of size $O(\sum_j^p L_j)$. Note that the computational time required decreases and the computation storage increases as the number of partitions, $\delta_j$, at each iteration increases. Thus partitioning to a larger number of smaller bins requires less time but more storage space.
 
 The IQNN model then performs predictions for test observations in $O(\sum_{j=1}^{p}\delta_j)$ time, scaling with the number of univariate interval checks required to move through the R-tree. Table~\ref{tab:theory_time} summarizes the theoretical pre-processing and prediction times for IQNN models in comparison to the KNN, and AKNN methods discussed in Section~\ref{intro}. From this we anticipate that IQNN will require considerable preprocessing, similar to the AKNN methods, but will be substantially faster for making predictions in large $n$ scenarios where it is limited only by the number of bins. 
 
@@ -350,11 +351,11 @@ kd-tree - AKNN    & $O(pn\log(n))$ & $O(n)$ & $O(mc_{p\epsilon}\log(n))$ \\
 \end{table}
 \normalsize
 
-We use simulated training and test data sets to empirically evaluate the time required for preprocessing and prediction under many controlled scenarios with a bivariate feature space. For simplicity, values for training and test sets are generated using a uniform distribution over continuous intervals; parameterized such that $x_{ij}$ and $y_i$  are independently and identically distributed $Uniform(0,1)$, for all observations $i=1,...,n$ and features $j=1,2$. We will consider only balanced-bin parameterizations for IQNN where $\delta_1=\delta_2$, to allow the most appropriate comparisons with the KNN methods. We generate a new data set for combinations of training data size and neighborhoods size: $n\in\{2^\eta \hspace{.1cm} | \hspace{.1cm} \eta=4,6,8,10,12,14,16,18,20\}$ and $k\in\{2^\kappa \hspace{.1cm} | \hspace{.1cm} \kappa=0,2,4,6,8,10,12,14\}$, respectively. This corresponds with between 16 to 1048576 observation in the training data, and between 1 to 16384 neighbors. We maintain a constant number of test points with $m=1000$ because all models being considered generate predictions in line, thus timing differences will reflect the relative speed per prediction. Note that the powers of two for $n$ and $k$ conveniently align the neighborhood sizes with the $\delta$ parameter needed for balanced binning; for the bivariate feature space $\delta = (n/k)^{1/p} = (2^\eta/2^\kappa)^{1/2} = 2^{(\eta-\kappa)/2}$ will provide matching neighborhood sizes for the IQNN and KNN methods. Naturally, we consider only parameterizations where the training set is larger than the neighborhood sizes, $n > k$. We impose one further constraint to $n$ and $k$ combinations such that we place an upper limit at $2^{14}$ IQNN bins. 
+We use simulated training and test data sets to empirically evaluate the time required for preprocessing and prediction under many controlled scenarios with a bivariate feature space. For simplicity, values for training and test sets are generated using a uniform distribution over continuous intervals; parameterized such that $x_{ij}$ and $y_i$  are independently and identically distributed $Uniform(0,1)$, for all observations $i=1,...,n$ and features $j=1,2$. We will consider only balanced-bin parameterizations for IQNN where $\delta_1=\delta_2$, to allow the most appropriate comparisons with the KNN methods. We generate data sets for combinations of training data size and neighborhoods size: $n\in\{2^\eta \hspace{.1cm} | \hspace{.1cm} \eta=4,6,8,10,12,14,16,18,20\}$ and $k\in\{2^\kappa \hspace{.1cm} | \hspace{.1cm} \kappa=0,2,4,6,8,10,12,14\}$, respectively. This corresponds with between 16 to 1048576 observation in the training data, and between 1 to 16384 neighbors. We maintain a constant number of test points with $m=1000$ because all models being considered generate predictions in line, thus timing differences will reflect the relative speed per prediction. Note that the powers of two for $n$ and $k$ conveniently align the neighborhood sizes with the $\delta$ parameter needed for balanced binning; for the bivariate feature space $\delta = (n/k)^{1/p} = (2^\eta/2^\kappa)^{1/2} = 2^{(\eta-\kappa)/2}$ will provide matching neighborhood sizes for the IQNN and KNN methods. Naturally, we consider only parameterizations where the training set is larger than the neighborhood sizes, $n > k$. We impose one further constraint to $n$ and $k$ combinations such that we place an upper limit at $2^{14}$ IQNN bins. 
 
-For each parameterization described above we repeatedly simulate training and test data sets, then we collect timing measurements for training data pre-processing and for generating test data predictions using IQNN, KNN and AKNN models. All simulations were run using R on a Dell Optiplex 9020(TM) Desktop with an Intel(R) Core(TM) i7-4770 3.40GHz CPU \citep{R}. IQNN methods were implemented in R and are available in the \texttt{iqbin} package; available in development version through [author's github.com repository blinded] and will soon be submitted to CRAN for publication. The KNN and AKNN methods were run using implementations in the \texttt{FNN} package \citep{FNN}, which are highly optimized and drop computationally intensive tasks down into C \citep{kernighan2006c}.  
+For each parameterization described above we repeatedly simulate training and test data sets, then we collect timing measurements for training data pre-processing and for test data predictions using IQNN, KNN and AKNN models. All simulations were run using R on a Dell Optiplex 9020(TM) Desktop with an Intel(R) Core(TM) i7-4770 3.40GHz CPU \citep{R}. IQNN methods were implemented in R and are available in the \texttt{iqbin} package; available in development version through [author's github.com repository blinded] and will soon be submitted to CRAN for publication. The KNN and AKNN methods were run using implementations in the \texttt{FNN} package \citep{FNN}, which are highly optimized and drop computationally intensive tasks down into C \citep{kernighan2006c}.  
 
-To account for variation in processing speed, we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations. The order in which the models were evaluated was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 50 times for each parameterization. For smaller training sets, $n \le 2^{14}$, we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences between methods manifest much more strongly when $n$ is large. See Table~\ref{tab:sim_times_table} in Appendix~\ref{timingAppend} for all parameter combinations and average timing measurements.  
+To account for variation in processing speed, we look to the average timing for pre-processing and prediction for each parameterization over repeated simulations. The order in which the models were evaluated was randomized for each iteration to avoid any systemic processing differences. For larger training sets, $n \ge 2^{16}$, we repeat simulations 50 times for each parameterization. For smaller training sets, $n \le 2^{14}$, we repeat all simulations 500 times for each parameterization. We use a larger number of simulations for these small data cases because higher precision is needed to compare average timing values when the average times are all very short and close together, whereas average timing differences between methods manifest more strongly when $n$ is large. See Table~\ref{tab:sim_times_table} in Appendix~\ref{timingAppend} for all parameter combinations and average timing measurements.  
 
 Figure~\ref{fig:sim_time} displays the average time for pre-processing and predicting using each method in each simulated scenario. We see that for small training set sizes and for small numbers of neighbors, the KNN and AKNN models are faster than the IQNN model. The KNN model using brute-force requires no time to pre-process but requires substantially more time to predict in the test set as the training set size increases. The IQNN and both AKNN methods have increasing pre-processing time as the training and/or neighborhood sizes grow. Interestingly, the pre-processing time grows more rapidly as a function of $n$ but less rapidly as a function of $k$ for the IQNN model than the AKNN models -- as represented visually with steeper slopes but less vertical shifting per frame, respectively. Pre-processing in AKNN models tends to be more efficient than IQNN for small training sets and neighborhoods, but less efficient as these increase. For prediction, the AKNN methods require increasing time as training and neighborhood sizes increase, whereas the IQNN models require nearly constant time across all scenarios. As with pre-processing, AKNN models are more efficient for prediction than IQNN for small $n$ and $k$, but less efficient as either grow.
 %
@@ -525,9 +526,9 @@ grid.arrange(p1,p2,nrow=2,heights=c(1,1.2))
 \subsubsection{Regression Accuracy}
 \label{regacc}
 
-To compare the predictive accuracy across the nearest-neighbor style regression models we collect the root mean squared error (RMSE) for the ten regression data sets in an analogous process to that used for classification in subsection~\ref{classacc} above. We first clean, re-scale and select two feature variables for each regression data set. We additionally standardized the continuous response value to eliminate the inconsistent units when comparing across data sets; thus the RMSE is in units of standard deviation of the response variable for all sets. The tuning process for each model again selects the parameterizations that minimize the average RMSE from ten initializations of ten-fold cross-validation. Then an additional 100 initializations of ten-fold cross-validation are run for each tuned model to assess average performance of IQNN, KNN and AKNN methods on each data set. See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} the parameters selected in tuning and average ten-fold cross-validated RMSE values from each regression model on each data set.
+To compare the predictive accuracy across the nearest-neighbor style regression models we collect the root mean squared error (RMSE) for the ten regression data sets in an analogous process to that used for classification in subsection~\ref{classacc} above. We first clean, re-scale and select two feature variables for each regression data set. We additionally standardized the continuous response value to eliminate the inconsistent units when comparing across data sets; thus the RMSE is in units of standard deviation of the response variable for all sets. The tuning process for each model again selects the parameterizations that minimize the average RMSE from ten initializations of ten-fold cross-validation. Then an additional 100 initializations of ten-fold cross-validation are run for each tuned model to assess average performance of IQNN, KNN and AKNN methods on each data set. See Table~\ref{tab:tuning_reg_class} in Appendix~\ref{accuracyAppend} for the parameters selected in tuning and average ten-fold cross-validated RMSE values from each regression model on each data set.
 
-In Figure~\ref{fig:regression_accuracy} we see that the IQNN made less accurate predictions than the KNN for most of the regression data sets; however the loss of accuracy was small relative to the units of the response variable. Typically the RMSE for IQNN is within 0.02 response standard deviations from the KNN and AKNN models. The Weather in Ankara (wankara) data is the case with the difference in predictive accuracy with the tuned IQNN model have an RMSE value of 0.039 standardized units higher than the tuned KNN model.
+In Figure~\ref{fig:regression_accuracy} we see that the IQNN made less accurate predictions than the KNN for most of the regression data sets; however the loss of accuracy was small relative to the units of the response variable. Typically the RMSE for IQNN is within 0.02 response standard deviations from the KNN and AKNN models. In the scenario with the largest difference in predictive accuracy (wankara) the tuned IQNN model has an RMSE value of 0.039 standardized units higher than the tuned KNN model.
 %
  <<regression_accuracy, echo=F,include=T,eval=T,fig.width=9, fig.height=5.2, out.width='.99\\linewidth', fig.pos='H',fig.align='center',tidy=F, cache=TRUE, fig.show='hold',fig.cap="Average RMSE from 100 initializations of ten-fold cross-validatation on all tuned models (top) and difference in RMSE relative to KNN as a baseline (bottom).",warning=FALSE>>=
 load(file="../DataRepo/regression/tuned_regression_testing.Rdata") 
@@ -621,11 +622,11 @@ grid.arrange(p3,p4,nrow=2,heights=c(1,1.2))
 
 We have proposed an alternative to $k$-nearest-neighbors models using iterative quantile binning. In Section~\ref{eval} we showed that IQNN models provide computational advantage over KNN and AKNN models for situations with large training set sizes and large neighborhoods. We also saw that the tuned IQNN model can provide comparable predictive accuracy to that of the tuned KNN and AKNN models. 
 
-It is important to consider the real-time costs to an analyst when choosing between the IQNN, KNN and AKNN models. The simulation in Subsection~\ref{timing} were reported and compared on a log scale, but the real world wait times for the analyst are experienced linearly. For ``small $n$ - small $k$" scenarios the IQNN was consistently slower, but the differences observed in our simulations were measured in fractions of seconds. For ``big $n$ - small $k$" simulations we observed that the kd-tree AKNN model outperformed the IQNN for preprocessing, saving several minutes in some cases. However, IQNN providing minutes to hours of reduced wait time in our simulated ``big $n$ - big $k$" scenarios. Therefore, IQNN provides an intriguing computationally efficient alternative to KNN in situations with large training data where prediction generation is time sensitive. 
+It is important to consider the real-time costs to an analyst when choosing between the IQNN, KNN and AKNN models. The simulation in Subsection~\ref{timing} were reported and compared on a log scale, but the real world wait times for the analyst are experienced linearly. For ``small $n$ - small $k$" scenarios the IQNN was consistently slower, but the differences observed in our simulations were measured in fractions of seconds. For ``big $n$ - small $k$" simulations we observed that the kd-tree AKNN model outperformed the IQNN for preprocessing, saving several minutes in some cases. However, IQNN provided minutes of reduced wait time in our simulated ``big $n$ - big $k$" scenarios. Therefore, IQNN provides an intriguing computationally efficient alternative to KNN in situations with large training data where prediction generation is time sensitive. 
  
-Uniquely, the storage size of the IQNN R-tree and time required for prediction is \textit{not} tied to the training set size. The aggregation within iterative quantile bins provides an option for scaling a KNN-style method to cases with truly "big $n$" data scenarios if sufficient computational infrastructure is available at the time of bin creation. The iterative quantile binning algorithm could be implemented using a database query language to scale to situations with huge numbers of training observations because the iterative quantile binning algorithm only requires tracking indices in a sequence of quantile calculations, then calculating simple summary statistics over the resulting index groups. 
+Uniquely, the storage size of the IQNN R-tree and time required for prediction is \textit{not} tied to the training set size. The aggregation within iterative quantile bins provides an option for scaling a KNN-style method to cases with truly ``big $n$" data scenarios if sufficient computational infrastructure is available at the time of bin creation. The iterative quantile binning algorithm could be implemented using a database query language to scale to situations with huge numbers of training observations because the iterative quantile binning algorithm only requires tracking indices in a sequence of quantile calculations, then calculating simple summary statistics over the resulting index groups. 
 
-Through empirical testing we saw that predictive accuracy for IQNN classifiers and regressions were quite comparable to the analogous KNN and AKNN models. The misclassification error rates for all IQNN classifier models in our empirical analysis of tuned models was consistently within a few percent above or below the KNN accuracy. The RMSE for the tuned IQNN regressions were typically within 0.02 response standard deviations above of the RMSE from the tuned KNN. It appears that the loss of predictive accuracy from approximating $k$-nearest-neighborhoods with the iterative quantile bins is relatively minimal; depending on the application this may be an acceptable loss of precision for the possible gains in computational efficiency. The IQNN methods are particularly promising for cases where number of observations is very large and a coarse neighborhood structure is desired.  
+Through empirical testing we saw that predictive accuracy for IQNN classifiers and regressions were quite comparable to the analogous KNN and AKNN models. The misclassification error rates for all IQNN classifier models in our empirical analysis of tuned models was consistently within a few percent above or below the KNN accuracy. The RMSE for the tuned IQNN regressions were typically within 0.02 response standard deviations above of the RMSE from the tuned KNN. It appears that the loss of predictive accuracy from approximating $k$-nearest-neighborhoods with the iterative quantile bins is relatively minimal; depending on the application this may be an acceptable loss of precision for the possible gains in computational efficiency. The IQNN methods are particularly promising for cases where the number of observations is very large and a coarse neighborhood structure is desired.  
 
 There are many avenues for future work regarding the applied use of iterative quantile binning and IQNN models. First is developing a variable selection procedure that provides a reliable guidance for an analyst in selecting and ordering the feature variables for strongest IQNN model performance. A related area would be to optimize the tuning process to identify an efficient way to select the number of bins in each dimension without an exhaustive - and therefore computationally expensive - search. Other future work could be done to assess if alternative summary statistics within each bin could improve predictive performance; for instance trying medians for IQNN regression estimates or posterior probability weighted voting for IQNN classification. There are also a number of applications that utilize $k$-nearest-neighbors outside of predictive modeling. For example, \cite{woods1997combination} use nearest neighborhoods to generate localized weights for ensemble classifiers; a process that could be augmented to use iterative quantile binned neighborhoods. 
 % The R-package \texttt{iqbin} has been developed (currently available on Github and under review for distribution on CRAN) to provide access to iterative quantile binning, IQNN model building, generating cross-validated predictions and creating related data visualizations; future versions could allow connection to data bases 
@@ -635,7 +636,7 @@ There are many avenues for future work regarding the applied use of iterative qu
 \section*{Acknowledgments}
 \label{acknowledgments}
 
-Support for this research was received from both the Air Force Research Lab's Summer Faculty Fellowship Program and Miami University Committee for Faculty Research during different phases this research project. Additional thanks to Dr. Walter Bennette, Dr. Thomas Fisher and Dr. John Bailer for their advice and input throughout the project. 
+Support for this research was received from both the Air Force Research Lab's Summer Faculty Fellowship Program and Miami University Committee for Faculty Research during different phases this project. Additional thanks to Dr. Walter Bennette, Dr. Thomas Fisher and Dr. John Bailer for their advice and input throughout the project. 
 
 \newpage
 
@@ -727,32 +728,32 @@ n & $k$ & $\delta$ & IQNN & cover & kd & IQNN & KNN & cover & kd \\
 \hline 
 Name & Web Address (Accessed: 10/25/17) \\ 
 \hline 
-  iris & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/iris} \\ 
-  wpbc & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
-  pima & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes} \\
-  yeast & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/yeast} \\ 
-  abalone & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/abalone} \\ 
-  waveform & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/waveform} \\ 
-  optdigits & \html{http://sci2s.ugr.es/keel/dataset.php?cod=199} \\ 
-  satimage & \html{http://sci2s.ugr.es/keel/dataset.php?cod=71} \\ 
-  marketing & \html{http://sci2s.ugr.es/keel/dataset.php?cod=163} \\
-  seizure & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00388} \\ 
+  iris & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/iris} \\ 
+  wpbc & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
+  pima & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes} \\
+  yeast & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/yeast} \\ 
+  abalone & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/abalone} \\ 
+  waveform & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/waveform} \\ 
+  optdigits & \url{http://sci2s.ugr.es/keel/dataset.php?cod=199} \\ 
+  satimage & \url{http://sci2s.ugr.es/keel/dataset.php?cod=71} \\ 
+  marketing & \url{http://sci2s.ugr.es/keel/dataset.php?cod=163} \\
+  seizure & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/00388} \\ 
 \hline 
  & \\
 \textbf{Regression} & \\ 
 \hline 
 Name & Web Address (Accessed: 10/25/17) \\ 
 \hline 
-  wpbc & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
-  wankara &  \html{http://sci2s.ugr.es/keel/dataset.php?cod=41} \\ 
-  laser &  \html{http://sci2s.ugr.es/keel/dataset.php?cod=47} \\ 
-  treasury &  \html{http://sci2s.ugr.es/keel/dataset.php?cod=42} \\
-  quake & \html{http://sci2s.ugr.es/keel/dataset.php?cod=75} \\ 
-  skillcraft &  \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00272} \\
-  anacalt & \html{http://sci2s.ugr.es/keel/dataset.php?cod=159} \\
-  puma & \html{http://sci2s.ugr.es/keel/dataset.php?cod=1291} \\
-  air quality & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00360} \\
-  ccpp & \html{http://archive.ics.uci.edu/ml/machine-learning-databases/00294} \\
+  wpbc & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin} \\ 
+  wankara &  \url{http://sci2s.ugr.es/keel/dataset.php?cod=41} \\ 
+  laser &  \url{http://sci2s.ugr.es/keel/dataset.php?cod=47} \\ 
+  treasury &  \url{http://sci2s.ugr.es/keel/dataset.php?cod=42} \\
+  quake & \url{http://sci2s.ugr.es/keel/dataset.php?cod=75} \\ 
+  skillcraft &  \url{http://archive.ics.uci.edu/ml/machine-learning-databases/00272} \\
+  anacalt & \url{http://sci2s.ugr.es/keel/dataset.php?cod=159} \\
+  puma & \url{http://sci2s.ugr.es/keel/dataset.php?cod=1291} \\
+  air quality & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/00360} \\
+  ccpp & \url{http://archive.ics.uci.edu/ml/machine-learning-databases/00294} \\
    \hline
 \end{tabular}
 \caption{\small Sources for data sets used for testing predictive accuracy for models in Section~\ref{accuracy}.}
@@ -856,28 +857,6 @@ wpbc &   198 & mean texture & mean radius & (3,2) &    30 & 0.9322 & 0.9129 & 0.
 \caption{\small Feature variables selected, tuned parameters, and average model error rates from 100 initialization of ten-fold cross-validation. Classification models evaluated using misclassification error proportions. Regression models evaluated with root mean-squared error. Note that some data set and variable names have been shortened for brevity.  }
 \label{tab:tuning_reg_class}
 \end{table}
-% 
-% \begin{table}[H]
-% \small
-% \centering
-% \begin{tabular}{|lr|cr|rrrr|} \hline
-% Data & n & tuned-$(\delta_1,\delta_2)$ & tuned-$k$ & IQNN & KNN & cover &  kd  \\
-%   \hline
-%   wpbc &   198 & (3,2) &    30 & 0.9322 & 0.9129 & 0.9129 & 0.9129 \\ 
-%   wankara &   321 & (9,8) &     3 & 0.1664 & 0.1277 & 0.1277 & 0.1277 \\ 
-%   laser &   993 & (5,5) &    25 & 0.5694 & 0.5645 & 0.5643 & 0.5643 \\ 
-%   treasury &  1049 & (14,14) &     9 & 0.0953 & 0.0772 & 0.0772 & 0.0772 \\ 
-%   quake &  2178 & (2,2) &   490 & 0.9989 & 0.9990 & 0.9990 & 0.9990 \\ 
-%   skillcraft &  3395 & (13,12) &    48 & 0.6325 & 0.6163 & 0.6163 & 0.6163 \\ 
-%   anacalt &  4052 & (30,30) &     8 & 0.1551 & 0.1445 & 0.1477 & 0.1445 \\ 
-%   puma &  8192 & (26,26) &    33 & 0.2666 & 0.2504 & 0.2504 & 0.2504 \\ 
-%   air\_quality &  9357 & (9,9) &   117 & 0.7188 & 0.7145 & 0.7149 & 0.7231 \\ 
-%   ccpp &  9568 & (38,38) &    13 & 0.2513 & 0.2519 & 0.2519 & 0.2519 \\ 
-% \hline
-% \end{tabular}
-% \caption{Tuned parameters for regression models and average RMSE from 100 initialization of ten-fold cross-validation}
-% \label{tab:tuning_class}
-% \end{table}
 
 %----------------------------------------------------------------------------
 \end{appendix}
